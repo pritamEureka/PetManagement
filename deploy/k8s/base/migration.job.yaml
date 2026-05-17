@@ -1,0 +1,45 @@
+# EF Core migration Job — run before rolling out a new API version. CI applies
+# this with `kubectl apply -f` after `envsubst` replaces ${IMAGE_TAG}.
+#
+# Convention: re-runs are idempotent because EF migrations are. If a previous
+# run failed the Job stays around (ttl=600s) so logs can be inspected.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # Unique per-tag so a rollback doesn't collide with the prior Job's name.
+  name: db-migrate-${IMAGE_TAG}
+  namespace: pawzaroo
+  labels:
+    app.kubernetes.io/part-of: pawzaroo
+    app.kubernetes.io/component: migration
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    metadata:
+      labels: { app: db-migrate, app.kubernetes.io/part-of: pawzaroo }
+    spec:
+      restartPolicy: Never
+      serviceAccountName: pawzaroo
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: migrate
+          image: ghcr.io/your-org/pawzaroo-api:${IMAGE_TAG}
+          # The API image already contains `dotnet ef` is NOT bundled — we use the
+          # built-in `--migrate` switch (see Program.cs) so the same binary runs
+          # both as the API and as a one-shot migrator.
+          command: ["dotnet", "Pawzaroo.Api.dll"]
+          args: ["--migrate-only"]
+          envFrom:
+            - configMapRef: { name: pawzaroo-config }
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: POSTGRES_PASSWORD } }
+            - name: ConnectionStrings__Postgres
+              value: "Host=$(POSTGRES_HOST);Port=$(POSTGRES_PORT);Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASSWORD)"
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "1Gi" }

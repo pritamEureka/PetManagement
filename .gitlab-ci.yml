@@ -1,0 +1,244 @@
+# =============================================================================
+#  GitLab CI/CD mirror of .github/workflows.
+#  Same pipeline shape: ci -> security -> build -> deploy:{dev|staging|prod}.
+#
+#  Required variables (Settings → CI/CD → Variables):
+#    CI_REGISTRY              GitLab container registry (preset)
+#    CI_REGISTRY_USER         preset
+#    CI_REGISTRY_PASSWORD     preset
+#    KUBECONFIG_DEV           base64-encoded kubeconfig (file type recommended)
+#    KUBECONFIG_STAGING       base64-encoded kubeconfig
+#    KUBECONFIG_PROD          base64-encoded kubeconfig
+# =============================================================================
+
+stages:
+  - lint
+  - test
+  - security
+  - build
+  - deploy
+
+variables:
+  DOTNET_VERSION: "9.0"
+  NODE_VERSION: "20"
+  IMAGE_PREFIX: "$CI_REGISTRY_IMAGE"
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+
+default:
+  interruptible: true
+
+# -----------------------------------------------------------------------------
+#  Reusable templates
+# -----------------------------------------------------------------------------
+.dotnet:
+  image: mcr.microsoft.com/dotnet/sdk:9.0
+  cache:
+    key: nuget-$CI_COMMIT_REF_SLUG
+    paths: [.nuget/packages]
+  before_script:
+    - export NUGET_PACKAGES=$CI_PROJECT_DIR/.nuget/packages
+
+.node:
+  image: node:20-alpine
+  cache:
+    key: npm-$CI_COMMIT_REF_SLUG
+    paths: [frontend/node_modules]
+
+# -----------------------------------------------------------------------------
+#  Stage: lint
+# -----------------------------------------------------------------------------
+backend:lint:
+  extends: .dotnet
+  stage: lint
+  script:
+    - cd backend
+    - dotnet restore Pawzaroo.sln
+    - dotnet format Pawzaroo.sln --verify-no-changes --no-restore --verbosity diagnostic
+  allow_failure: true
+
+frontend:lint:
+  extends: .node
+  stage: lint
+  script:
+    - cd frontend
+    - npm ci --no-audit --no-fund
+    - npm run lint --if-present
+  allow_failure: true
+
+# -----------------------------------------------------------------------------
+#  Stage: test
+# -----------------------------------------------------------------------------
+backend:test:
+  extends: .dotnet
+  stage: test
+  script:
+    - cd backend
+    - dotnet restore Pawzaroo.sln
+    - dotnet build Pawzaroo.sln -c Release --no-restore
+    - dotnet test Pawzaroo.sln -c Release --no-build --logger trx --collect:"XPlat Code Coverage" --results-directory ./TestResults
+  artifacts:
+    when: always
+    reports:
+      junit: backend/TestResults/**/*.trx
+    paths: [backend/TestResults]
+    expire_in: 1 week
+
+frontend:build:
+  extends: .node
+  stage: test
+  script:
+    - cd frontend
+    - npm ci --no-audit --no-fund
+    - npm run build
+  artifacts:
+    paths: [frontend/dist]
+    expire_in: 1 week
+
+# -----------------------------------------------------------------------------
+#  Stage: security (advisory)
+# -----------------------------------------------------------------------------
+security:trivy:
+  stage: security
+  image: aquasec/trivy:latest
+  script:
+    - trivy fs --severity CRITICAL,HIGH --exit-code 0 --ignore-unfixed --format table .
+  allow_failure: true
+
+security:gitleaks:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
+  script:
+    - gitleaks detect --no-banner --redact --exit-code 0
+  allow_failure: true
+
+# -----------------------------------------------------------------------------
+#  Stage: build (Docker images)
+# -----------------------------------------------------------------------------
+.docker-build:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_BUILDKIT: "1"
+    DOCKER_TLS_CERTDIR: ""    # ignored when DinD listens on tcp:2375
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+build:api:
+  extends: .docker-build
+  script:
+    - docker build
+        --file backend/src/Pawzaroo.Api/Dockerfile
+        --build-arg VERSION=$IMAGE_TAG --build-arg GIT_SHA=$CI_COMMIT_SHA
+        --tag $IMAGE_PREFIX/api:$IMAGE_TAG
+        --tag $IMAGE_PREFIX/api:$CI_COMMIT_REF_SLUG .
+    - docker push $IMAGE_PREFIX/api:$IMAGE_TAG
+    - docker push $IMAGE_PREFIX/api:$CI_COMMIT_REF_SLUG
+
+build:worker:
+  extends: .docker-build
+  script:
+    - docker build
+        --file backend/src/Pawzaroo.Worker/Dockerfile
+        --build-arg VERSION=$IMAGE_TAG --build-arg GIT_SHA=$CI_COMMIT_SHA
+        --tag $IMAGE_PREFIX/worker:$IMAGE_TAG
+        --tag $IMAGE_PREFIX/worker:$CI_COMMIT_REF_SLUG .
+    - docker push $IMAGE_PREFIX/worker:$IMAGE_TAG
+    - docker push $IMAGE_PREFIX/worker:$CI_COMMIT_REF_SLUG
+
+build:web:
+  extends: .docker-build
+  script:
+    - docker build
+        --file frontend/Dockerfile
+        --build-arg VERSION=$IMAGE_TAG --build-arg GIT_SHA=$CI_COMMIT_SHA
+        --tag $IMAGE_PREFIX/web:$IMAGE_TAG
+        --tag $IMAGE_PREFIX/web:$CI_COMMIT_REF_SLUG .
+    - docker push $IMAGE_PREFIX/web:$IMAGE_TAG
+    - docker push $IMAGE_PREFIX/web:$CI_COMMIT_REF_SLUG
+
+# -----------------------------------------------------------------------------
+#  Stage: deploy
+#    - dev:        auto on every main commit
+#    - staging:    manual button (any branch); also auto on v* tags
+#    - production: manual button on v* tags only
+# -----------------------------------------------------------------------------
+.deploy:
+  stage: deploy
+  image:
+    name: alpine/k8s:1.30.0
+    entrypoint: [""]
+  before_script:
+    - mkdir -p ~/.kube
+    - echo "$KUBECONFIG_FILE" | base64 -d > ~/.kube/config
+    - apk add --no-cache gettext   # for envsubst
+  script:
+    # 1. Patch image tags in the chosen overlay
+    - kustomize edit set image
+        "$IMAGE_PREFIX/api=$IMAGE_PREFIX/api:$IMAGE_TAG"
+        "$IMAGE_PREFIX/worker=$IMAGE_PREFIX/worker:$IMAGE_TAG"
+        "$IMAGE_PREFIX/web=$IMAGE_PREFIX/web:$IMAGE_TAG"
+        --working-dir "$OVERLAY_PATH"
+    - kustomize build "$OVERLAY_PATH" > rendered.yaml
+
+    # 2. Run migration job (idempotent)
+    - export IMAGE_TAG && envsubst < deploy/k8s/base/migration.job.yaml > migration.yaml
+    - kubectl -n "$K8S_NAMESPACE" apply -f migration.yaml
+    - kubectl -n "$K8S_NAMESPACE" wait --for=condition=complete --timeout=10m job/db-migrate-$IMAGE_TAG
+
+    # 3. Apply workloads + wait for healthy rollout
+    - kubectl apply -f rendered.yaml
+    - for d in api worker web; do
+        kubectl -n "$K8S_NAMESPACE" rollout status deploy/$d --timeout=10m;
+      done
+
+    # 4. Smoke test
+    - envsubst < deploy/k8s/base/smoketest.job.yaml > smoke.yaml
+    - kubectl -n "$K8S_NAMESPACE" apply -f smoke.yaml
+    - kubectl -n "$K8S_NAMESPACE" wait --for=condition=complete --timeout=5m job/smoke-test-$IMAGE_TAG
+  after_script:
+    # Rollback on failure — restores prior pod spec for every workload.
+    - if [ "$CI_JOB_STATUS" != "success" ]; then
+        echo "Deploy failed — rolling back";
+        for d in api worker web; do
+          kubectl -n "$K8S_NAMESPACE" rollout undo deploy/$d || true;
+          kubectl -n "$K8S_NAMESPACE" rollout status deploy/$d --timeout=5m || true;
+        done;
+      fi
+
+deploy:dev:
+  extends: .deploy
+  environment: { name: dev, url: https://dev.pawzaroo.example.com }
+  variables:
+    OVERLAY_PATH: deploy/k8s/overlays/dev
+    K8S_NAMESPACE: pawzaroo-dev
+    KUBECONFIG_FILE: "$KUBECONFIG_DEV"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+
+deploy:staging:
+  extends: .deploy
+  environment: { name: staging, url: https://staging.pawzaroo.example.com }
+  variables:
+    OVERLAY_PATH: deploy/k8s/overlays/staging
+    K8S_NAMESPACE: pawzaroo-staging
+    KUBECONFIG_FILE: "$KUBECONFIG_STAGING"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+    - when: manual
+
+deploy:production:
+  extends: .deploy
+  environment: { name: production, url: https://pawzaroo.example.com }
+  variables:
+    OVERLAY_PATH: deploy/k8s/overlays/production
+    K8S_NAMESPACE: pawzaroo
+    KUBECONFIG_FILE: "$KUBECONFIG_PROD"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+      when: manual

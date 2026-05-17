@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: api, namespace: pawzaroo }
+spec: { replicas: 5 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: worker, namespace: pawzaroo }
+spec: { replicas: 3 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: web, namespace: pawzaroo }
+spec: { replicas: 3 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: api, namespace: pawzaroo }
+spec: { minReplicas: 5, maxReplicas: 30 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: web, namespace: pawzaroo }
+spec: { minReplicas: 3, maxReplicas: 12 }

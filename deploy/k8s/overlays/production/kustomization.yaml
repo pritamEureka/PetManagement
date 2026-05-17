@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pawzaroo
+commonLabels:
+  app.kubernetes.io/environment: production
+
+resources:
+  - ../../base
+
+# Production omits in-cluster Postgres / Kafka / MinIO — those are managed
+# services. Patches set them to zero replicas (kustomize doesn't have a clean
+# "exclude" without splitting bases; this is the simplest fix that still
+# leaves the Service stubs in place for dev parity).
+patches:
+  - path: patches/replicas.yaml
+  - path: patches/ingress-host.yaml
+  - path: patches/resources.yaml
+  - target:
+      kind: StatefulSet
+      name: postgres
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 0
+  - target:
+      kind: StatefulSet
+      name: kafka
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 0
+  - target:
+      kind: Deployment
+      name: minio
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 0
+
+images:
+  - name: ghcr.io/your-org/pawzaroo-api
+    newTag: stable
+  - name: ghcr.io/your-org/pawzaroo-worker
+    newTag: stable
+  - name: ghcr.io/your-org/pawzaroo-web
+    newTag: stable

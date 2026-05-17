@@ -1,0 +1,20 @@
+# dotnet
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# node
+node_modules/
+dist/
+.vite/
+
+# env
+.env
+.env.local
+appsettings.Local.json
+
+# os
+.DS_Store
+Thumbs.db

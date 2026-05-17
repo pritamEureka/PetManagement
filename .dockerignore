@@ -1,0 +1,38 @@
+# Files excluded from the Docker build context. Each Dockerfile copies
+# narrowly already, but excluding here cuts upload time for large repos.
+
+# Source control
+.git/
+.gitignore
+.gitattributes
+.gitlab/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+.DS_Store
+
+# Build artifacts — re-built inside the image
+**/bin/
+**/obj/
+**/dist/
+**/build/
+**/out/
+**/.next/
+**/coverage/
+**/TestResults/
+
+# Frontend deps — installed inside the image
+**/node_modules/
+
+# Logs
+**/*.log
+
+# Local secrets — never bake into images
+.env
+.env.*
+!.env.example

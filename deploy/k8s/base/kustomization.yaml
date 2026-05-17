@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Workloads, services, autoscalers, and policies.
+# The migration / smoke-test Jobs are NOT part of the base — CI renders them
+# with envsubst so a fresh ${IMAGE_TAG} can be injected on each deploy.
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - configmap.yaml
+  - secret.yaml
+  - postgres.yaml
+  - redis.yaml
+  - kafka.yaml
+  - minio.yaml
+  - api.deployment.yaml
+  - api.service.yaml
+  - api.hpa.yaml
+  - worker.deployment.yaml
+  - web.deployment.yaml
+  - ingress.yaml
+
+# Common labels stamped onto every resource — easy filtering with kubectl.
+commonLabels:
+  app.kubernetes.io/part-of: pawzaroo
+
+images:
+  - name: ghcr.io/your-org/pawzaroo-api
+    newTag: latest
+  - name: ghcr.io/your-org/pawzaroo-worker
+    newTag: latest
+  - name: ghcr.io/your-org/pawzaroo-web
+    newTag: latest

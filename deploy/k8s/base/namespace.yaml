@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pawzaroo
+  labels:
+    app.kubernetes.io/part-of: pawzaroo
+    # Pod Security Standards — enforce baseline (no host namespace / privileged),
+    # audit at the stricter "restricted" level so violations show up before we
+    # turn it on.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted

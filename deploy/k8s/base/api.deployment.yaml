@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: pawzaroo
+  labels:
+    app: api
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: pawzaroo
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  # Rolling deploy — at least 75% of pods stay live during the swap so SignalR
+  # connections drain gracefully and the LB never sees zero healthy targets.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+  selector:
+    matchLabels: { app: api }
+  template:
+    metadata:
+      labels:
+        app: api
+        app.kubernetes.io/name: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: pawzaroo
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 45
+      topologySpreadConstraints:
+        # Spread replicas across zones so a zone outage doesn't take the API down.
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: { matchLabels: { app: api } }
+      containers:
+        - name: api
+          image: ghcr.io/your-org/pawzaroo-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { containerPort: 8080, name: http }
+          envFrom:
+            - configMapRef: { name: pawzaroo-config }
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: POSTGRES_PASSWORD } }
+            - name: ConnectionStrings__Postgres
+              value: "Host=$(POSTGRES_HOST);Port=$(POSTGRES_PORT);Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASSWORD)"
+            - name: ConnectionStrings__Redis
+              value: "$(REDIS_HOST):$(REDIS_PORT)"
+            - name: Kafka__BootstrapServers
+              value: "$(KAFKA_BROKERS)"
+            - name: Storage__Endpoint
+              valueFrom: { configMapKeyRef: { name: pawzaroo-config, key: STORAGE_ENDPOINT } }
+            - name: Storage__Bucket
+              valueFrom: { configMapKeyRef: { name: pawzaroo-config, key: STORAGE_BUCKET } }
+            - name: Storage__AccessKey
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: STORAGE_ACCESS_KEY } }
+            - name: Storage__SecretKey
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: STORAGE_SECRET_KEY } }
+            - name: Jwt__SigningKey
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: JWT_SIGNING_KEY } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          # Liveness restarts hung pods; readiness gates traffic. /health is
+          # bare ("liveness"), /health/ready does the dependency probes.
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 30  # ~150s grace for cold-start migrations
+          readinessProbe:
+            httpGet: { path: /health/ready, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: "200m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "1Gi" }
+          # writable tmp + dotnet diagnostics; root FS stays read-only.
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }

@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pawzaroo-config
+  namespace: pawzaroo
+  labels: { app.kubernetes.io/part-of: pawzaroo }
+# Non-secret defaults. Per-environment overrides patch the values via Kustomize.
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  DOTNET_ENVIRONMENT: "Production"
+  POSTGRES_DB: "pawzaroo"
+  POSTGRES_USER: "pawzaroo"
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  KAFKA_BROKERS: "kafka:9092"
+  STORAGE_ENDPOINT: "http://minio:9000"
+  STORAGE_PUBLIC_URL: "https://media.pawzaroo.example.com"
+  STORAGE_BUCKET: "pawzaroo-media"
+  STORAGE_USE_PATH_STYLE: "true"
+  JWT_ISSUER: "pawzaroo"
+  JWT_AUDIENCE: "pawzaroo.clients"
+  JWT_ACCESS_MINUTES: "60"
+  JWT_REFRESH_DAYS: "14"
+  LOG_LEVEL: "Information"

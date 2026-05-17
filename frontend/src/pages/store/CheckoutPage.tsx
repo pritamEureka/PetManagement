@@ -1,0 +1,135 @@
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { checkoutSchema, type CheckoutInput } from "@/lib/schemas";
+import { ordersV2Api, shippingAddressesApi } from "@/api/marketplace";
+import { useCartStore } from "@/store/cartStore";
+import { toast } from "@/components/ui/sonner";
+
+export function CheckoutPage() {
+  const nav = useNavigate();
+  const { lines, subtotal, clear } = useCartStore();
+
+  const { data: addresses } = useQuery({
+    queryKey: ["shipping-addresses"],
+    queryFn: () => shippingAddressesApi.list()
+  });
+
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } =
+    useForm<CheckoutInput>({ resolver: zodResolver(checkoutSchema) });
+
+  const selectedAddressId = watch("shippingAddressId");
+
+  useEffect(() => {
+    const def = addresses?.find((a) => a.isDefault) ?? addresses?.[0];
+    if (def && !selectedAddressId) setValue("shippingAddressId", def.id);
+  }, [addresses, selectedAddressId, setValue]);
+
+  async function onSubmit(values: CheckoutInput) {
+    if (lines.length === 0) { toast.error("Cart is empty."); return; }
+    try {
+      const order = await ordersV2Api.checkout({
+        shippingAddressId: values.shippingAddressId || undefined,
+        shippingAddress: values.shippingAddress || undefined,
+        shippingCity: values.shippingCity || undefined,
+        shippingCountry: values.shippingCountry || undefined,
+        paymentMethod: values.paymentMethod || undefined
+      });
+      clear();
+      toast.success(`Order ${order.orderNumber} placed.`);
+      nav(`/orders/${order.id}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Checkout failed.");
+    }
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto grid lg:grid-cols-[1fr_20rem] gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Shipping details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {addresses && addresses.length > 0 && (
+              <div className="space-y-2">
+                <Label>Choose a saved address</Label>
+                <div className="space-y-2">
+                  {addresses.map((a) => (
+                    <label key={a.id} className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
+                      <input
+                        type="radio"
+                        className="mt-1"
+                        name="shippingAddressId"
+                        value={a.id}
+                        checked={selectedAddressId === a.id}
+                        onChange={() => setValue("shippingAddressId", a.id)}
+                      />
+                      <div className="text-sm">
+                        <p className="font-medium">{a.label} — {a.recipientName} {a.isDefault && <span className="text-xs text-primary">(default)</span>}</p>
+                        <p className="text-muted-foreground">{a.addressLine1}{a.addressLine2 ? `, ${a.addressLine2}` : ""}</p>
+                        <p className="text-muted-foreground">{[a.city, a.state, a.country, a.postalCode].filter(Boolean).join(", ")}</p>
+                        <p className="text-xs text-muted-foreground">{a.phoneNumber}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <Link to="/account/addresses" className="text-xs text-primary hover:underline">Manage addresses</Link>
+              </div>
+            )}
+
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted-foreground">Or ship to a one-off address</summary>
+              <div className="space-y-2 pt-3">
+                <Label htmlFor="addr">Address</Label>
+                <Input id="addr" placeholder="123 Main St" {...register("shippingAddress")} />
+                {errors.shippingAddress && <p className="text-xs text-destructive">{errors.shippingAddress.message}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label htmlFor="city">City</Label><Input id="city" {...register("shippingCity")} /></div>
+                  <div><Label htmlFor="country">Country</Label><Input id="country" {...register("shippingCountry")} /></div>
+                </div>
+              </div>
+            </details>
+
+            <div>
+              <Label htmlFor="pay">Payment method</Label>
+              <Input id="pay" placeholder="card / cod / wallet" defaultValue="placeholder" {...register("paymentMethod")} />
+              <p className="text-xs text-muted-foreground mt-1">
+                Payment is a placeholder in the MVP — your order will be created as <em>Pending payment</em>.
+              </p>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isSubmitting || lines.length === 0}>
+              {isSubmitting ? "Placing order..." : "Place order"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="h-fit">
+        <CardHeader><CardTitle>Items ({lines.length})</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {lines.map((l) => (
+              <div key={l.productId} className="flex justify-between text-sm">
+                <span className="truncate">{l.quantity}× {l.name}</span>
+                <span className="font-medium">${(l.price * l.quantity).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+          <Separator />
+          <div className="flex justify-between font-semibold">
+            <span>Total</span><span>${subtotal().toFixed(2)}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

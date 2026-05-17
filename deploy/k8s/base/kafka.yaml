@@ -1,0 +1,151 @@
+# Single-broker KRaft Kafka for dev/staging.
+# For production use Strimzi / Confluent / MSK — see the Helm values block at
+# the bottom of this file for a Strimzi reference config.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka-data
+  namespace: pawzaroo
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: { storage: 20Gi }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: pawzaroo
+  labels: { app: kafka, app.kubernetes.io/part-of: pawzaroo }
+spec:
+  serviceName: kafka
+  replicas: 1
+  selector: { matchLabels: { app: kafka } }
+  template:
+    metadata: { labels: { app: kafka } }
+    spec:
+      containers:
+        - name: kafka
+          image: bitnami/kafka:3.7
+          ports:
+            - { containerPort: 9092, name: kafka }
+            - { containerPort: 9093, name: controller }
+          env:
+            - { name: KAFKA_CFG_NODE_ID, value: "1" }
+            - { name: KAFKA_CFG_PROCESS_ROLES, value: "broker,controller" }
+            - { name: KAFKA_CFG_LISTENERS, value: "PLAINTEXT://:9092,CONTROLLER://:9093" }
+            - { name: KAFKA_CFG_ADVERTISED_LISTENERS, value: "PLAINTEXT://kafka:9092" }
+            - { name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP, value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT" }
+            - { name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME, value: "PLAINTEXT" }
+            - { name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS, value: "1@kafka:9093" }
+            - { name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES, value: "CONTROLLER" }
+            - { name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE, value: "true" }
+            - { name: KAFKA_CFG_DEFAULT_REPLICATION_FACTOR, value: "1" }
+            - { name: KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR, value: "1" }
+            - { name: KAFKA_KRAFT_CLUSTER_ID, value: "pawzaroo-cluster-1" }
+            - { name: ALLOW_PLAINTEXT_LISTENER, value: "yes" }
+          readinessProbe:
+            exec:
+              command: ["bash", "-c", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          resources:
+            requests: { cpu: "200m", memory: "512Mi" }
+            limits:   { cpu: "2",    memory: "2Gi" }
+          volumeMounts:
+            - { name: data, mountPath: /bitnami/kafka }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: kafka-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: pawzaroo
+spec:
+  selector: { app: kafka }
+  ports:
+    - { name: kafka,      port: 9092, targetPort: kafka }
+    - { name: controller, port: 9093, targetPort: controller }
+---
+# One-shot topic creation. Idempotent — safe to re-run.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-init
+  namespace: pawzaroo
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init
+          image: bitnami/kafka:3.7
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              BS=kafka:9092
+              until kafka-topics.sh --bootstrap-server $BS --list >/dev/null 2>&1; do
+                echo "waiting for kafka..."; sleep 3
+              done
+              for t in \
+                pawzaroo.user.events pawzaroo.rbac.events \
+                pawzaroo.feed.post.events pawzaroo.feed.comment.events \
+                pawzaroo.adoption.events pawzaroo.adoption.approvals \
+                pawzaroo.message.events \
+                pawzaroo.vet.events pawzaroo.appointment.events \
+                pawzaroo.marketplace.store pawzaroo.marketplace.product \
+                pawzaroo.marketplace.inventory pawzaroo.marketplace.order \
+                pawzaroo.marketplace.payment pawzaroo.marketplace.review \
+                pawzaroo.marketplace.admin \
+                pawzaroo.notifications pawzaroo.audit; do
+                kafka-topics.sh --bootstrap-server $BS --create --if-not-exists \
+                  --topic $t --partitions 3 --replication-factor 1
+                kafka-topics.sh --bootstrap-server $BS --create --if-not-exists \
+                  --topic ${t}.dlq --partitions 1 --replication-factor 1 \
+                  --config retention.ms=1209600000
+              done
+---
+# Reference Helm values for production via Strimzi operator.
+# Save the section below as `strimzi-kafka.yaml`, install Strimzi, then apply.
+#
+# apiVersion: kafka.strimzi.io/v1beta2
+# kind: Kafka
+# metadata:
+#   name: pawzaroo
+#   namespace: pawzaroo
+# spec:
+#   kafka:
+#     version: 3.7.0
+#     replicas: 3
+#     listeners:
+#       - name: plain
+#         port: 9092
+#         type: internal
+#         tls: false
+#       - name: tls
+#         port: 9093
+#         type: internal
+#         tls: true
+#     config:
+#       offsets.topic.replication.factor: 3
+#       transaction.state.log.replication.factor: 3
+#       transaction.state.log.min.isr: 2
+#       default.replication.factor: 3
+#       min.insync.replicas: 2
+#     storage:
+#       type: persistent-claim
+#       size: 100Gi
+#       deleteClaim: false
+#   zookeeper:    # omit when running KRaft mode
+#     replicas: 3
+#     storage: { type: persistent-claim, size: 20Gi }
+#   entityOperator:
+#     topicOperator: {}
+#     userOperator: {}

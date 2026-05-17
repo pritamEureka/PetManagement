@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: pawzaroo
+  labels:
+    app: worker
+    app.kubernetes.io/name: worker
+    app.kubernetes.io/part-of: pawzaroo
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0     # keep at least one consumer instance up at all times
+  selector:
+    matchLabels: { app: worker }
+  template:
+    metadata:
+      labels: { app: worker, app.kubernetes.io/name: worker }
+    spec:
+      serviceAccountName: pawzaroo
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 60  # give Kafka consumers time to commit offsets
+      containers:
+        - name: worker
+          image: ghcr.io/your-org/pawzaroo-worker:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: pawzaroo-config }
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: POSTGRES_PASSWORD } }
+            - name: ConnectionStrings__Postgres
+              value: "Host=$(POSTGRES_HOST);Port=$(POSTGRES_PORT);Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASSWORD)"
+            - name: ConnectionStrings__Redis
+              value: "$(REDIS_HOST):$(REDIS_PORT)"
+            - name: Kafka__BootstrapServers
+              value: "$(KAFKA_BROKERS)"
+            - name: Storage__Endpoint
+              valueFrom: { configMapKeyRef: { name: pawzaroo-config, key: STORAGE_ENDPOINT } }
+            - name: Storage__Bucket
+              valueFrom: { configMapKeyRef: { name: pawzaroo-config, key: STORAGE_BUCKET } }
+            - name: Storage__AccessKey
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: STORAGE_ACCESS_KEY } }
+            - name: Storage__SecretKey
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: STORAGE_SECRET_KEY } }
+            - name: Jwt__SigningKey
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: JWT_SIGNING_KEY } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "512Mi" }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: worker
+  namespace: pawzaroo
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: worker } }

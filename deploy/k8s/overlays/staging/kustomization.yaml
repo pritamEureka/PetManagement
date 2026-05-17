@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pawzaroo-staging
+commonLabels:
+  app.kubernetes.io/environment: staging
+
+resources:
+  - ../../base
+
+patches:
+  - path: patches/replicas.yaml
+  - path: patches/ingress-host.yaml
+
+images:
+  - name: ghcr.io/your-org/pawzaroo-api
+    newTag: staging
+  - name: ghcr.io/your-org/pawzaroo-worker
+    newTag: staging
+  - name: ghcr.io/your-org/pawzaroo-web
+    newTag: staging

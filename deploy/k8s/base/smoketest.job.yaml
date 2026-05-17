@@ -1,0 +1,52 @@
+# Post-deploy smoke test. Hits the in-cluster API service for /health/ready
+# plus a couple of read-only endpoints. CI waits on this Job; if it fails the
+# pipeline triggers `kubectl rollout undo`.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: smoke-test-${IMAGE_TAG}
+  namespace: pawzaroo
+  labels:
+    app.kubernetes.io/part-of: pawzaroo
+    app.kubernetes.io/component: smoke
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: pawzaroo
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: smoke
+          image: curlimages/curl:8.10.1
+          env:
+            - { name: BASE_URL, value: "http://api:8080" }
+          command:
+            - sh
+            - -ec
+            - |
+              echo "[smoke] waiting for readiness..."
+              for i in $(seq 1 30); do
+                if curl -fsS "$BASE_URL/health/ready" >/dev/null; then
+                  echo "[smoke] /health/ready OK"
+                  break
+                fi
+                sleep 2
+              done
+
+              echo "[smoke] /health"
+              curl -fsS "$BASE_URL/health" >/dev/null
+
+              echo "[smoke] /api/v1/products  (public catalog)"
+              curl -fsS "$BASE_URL/api/v1/products?pageSize=1" >/dev/null
+
+              echo "[smoke] /api/v1/products/categories"
+              curl -fsS "$BASE_URL/api/v1/products/categories" >/dev/null
+
+              echo "[smoke] all checks passed"
+          resources:
+            requests: { cpu: "20m", memory: "32Mi" }
+            limits:   { cpu: "200m", memory: "128Mi" }

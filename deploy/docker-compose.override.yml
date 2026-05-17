@@ -1,0 +1,33 @@
+# Picked up automatically by `docker compose up` (no -f needed).
+# Holds the dev-only conveniences (debugger port, source mount, lower
+# memory limits) so CI/CD pulls a clean docker-compose.yml without them.
+#
+# Disable by running:  docker compose -f docker-compose.yml up
+
+services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_DETAILEDERRORS: "true"
+      Logging__LogLevel__Default: Debug
+    ports:
+      - "8080:8080"
+      - "5050:5050"     # remote debugger / inspector
+
+  worker:
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      Logging__LogLevel__Default: Debug
+
+  web:
+    environment:
+      # Tell Vite to point at the host-exposed API port directly.
+      VITE_API_BASE: http://localhost:8080/api
+
+  # Optional dev-only services -----------------------------------------------
+  mailhog:
+    image: mailhog/mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web UI

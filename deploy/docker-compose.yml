@@ -1,0 +1,224 @@
+name: pawzaroo
+
+# ============================================================================
+#  Local development stack.
+#  Production deployments use Kubernetes (see deploy/k8s + overlays).
+# ============================================================================
+
+x-app-env: &app-env
+  ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-pawzaroo};Username=${POSTGRES_USER:-pawzaroo};Password=${POSTGRES_PASSWORD:-pawzaroo}"
+  ConnectionStrings__Redis: "${REDIS_HOST:-redis}:${REDIS_PORT:-6379}"
+  Kafka__BootstrapServers: "${KAFKA_BOOTSTRAP:-kafka:9092}"
+  Storage__Endpoint: "${STORAGE_ENDPOINT:-http://minio:9000}"
+  Storage__PublicBaseUrl: "${STORAGE_PUBLIC_URL:-http://localhost:9000}"
+  Storage__Bucket: "${STORAGE_BUCKET:-pawzaroo-media}"
+  Storage__AccessKey: "${STORAGE_ACCESS_KEY:-minioadmin}"
+  Storage__SecretKey: "${STORAGE_SECRET_KEY:-minioadmin}"
+  Jwt__SigningKey: "${JWT_SIGNING_KEY:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS_xxxxxxxxxxxxx}"
+  Jwt__Issuer: "${JWT_ISSUER:-pawzaroo}"
+  Jwt__Audience: "${JWT_AUDIENCE:-pawzaroo.clients}"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pawzaroo}
+      POSTGRES_USER: ${POSTGRES_USER:-pawzaroo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pawzaroo}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes: [pg_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pawzaroo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+    ports: ["${REDIS_PORT:-6379}:6379"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # KRaft mode (no Zookeeper). Single broker is enough for dev.
+  kafka:
+    image: bitnami/kafka:3.7
+    restart: unless-stopped
+    environment:
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_NUM_PARTITIONS: "3"
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_KRAFT_CLUSTER_ID: "pawzaroo-dev-cluster-1"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+      - "29092:29092"  # host bootstrap for IDE-side producers
+    volumes: [kafka_data:/bitnami/kafka]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+
+  kafka-init:
+    image: bitnami/kafka:3.7
+    depends_on:
+      kafka: { condition: service_healthy }
+    entrypoint: >
+      /bin/bash -c "
+      set -e;
+      BS=kafka:9092;
+      kafka-topics.sh --bootstrap-server $$BS --list >/dev/null;
+      for t in \
+        pawzaroo.user.events pawzaroo.rbac.events \
+        pawzaroo.feed.post.events pawzaroo.feed.comment.events \
+        pawzaroo.adoption.events pawzaroo.adoption.approvals \
+        pawzaroo.message.events \
+        pawzaroo.vet.events pawzaroo.appointment.events \
+        pawzaroo.marketplace.store pawzaroo.marketplace.product \
+        pawzaroo.marketplace.inventory pawzaroo.marketplace.order \
+        pawzaroo.marketplace.payment pawzaroo.marketplace.review \
+        pawzaroo.marketplace.admin \
+        pawzaroo.notifications pawzaroo.audit; do
+        kafka-topics.sh --bootstrap-server $$BS --create --if-not-exists \
+          --topic $$t --partitions 3 --replication-factor 1;
+        kafka-topics.sh --bootstrap-server $$BS --create --if-not-exists \
+          --topic $$t.dlq --partitions 1 --replication-factor 1 \
+          --config retention.ms=1209600000;
+      done;
+      echo 'topics provisioned';
+      "
+
+  kafka-ui:
+    image: redpandadata/console:latest
+    restart: unless-stopped
+    depends_on:
+      kafka: { condition: service_healthy }
+    environment:
+      KAFKA_BROKERS: "kafka:9092"
+    ports: ["8085:8080"]
+
+  redis-ui:
+    image: redislabs/redisinsight:latest
+    restart: unless-stopped
+    depends_on: [redis]
+    ports: ["8001:8001"]
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes: [minio_data:/data]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio: { condition: service_started }
+    entrypoint: >
+      /bin/sh -c "
+      until /usr/bin/mc alias set local http://minio:9000 ${STORAGE_ACCESS_KEY:-minioadmin} ${STORAGE_SECRET_KEY:-minioadmin}; do sleep 1; done;
+      /usr/bin/mc mb --ignore-existing local/${STORAGE_BUCKET:-pawzaroo-media};
+      /usr/bin/mc anonymous set download local/${STORAGE_BUCKET:-pawzaroo-media};
+      "
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/src/Pawzaroo.Api/Dockerfile
+      args:
+        VERSION: ${IMAGE_TAG:-local}
+        GIT_SHA: ${GIT_SHA:-local}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-your-org/pawzaroo}-api:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    depends_on:
+      postgres:   { condition: service_healthy }
+      redis:      { condition: service_healthy }
+      kafka:      { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      minio:      { condition: service_started }
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      <<: *app-env
+    ports: ["8080:8080"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/src/Pawzaroo.Worker/Dockerfile
+      args:
+        VERSION: ${IMAGE_TAG:-local}
+        GIT_SHA: ${GIT_SHA:-local}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-your-org/pawzaroo}-worker:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    depends_on:
+      postgres:   { condition: service_healthy }
+      redis:      { condition: service_healthy }
+      kafka:      { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+    environment:
+      DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT:-Development}
+      <<: *app-env
+
+  web:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-/api}
+        VERSION: ${IMAGE_TAG:-local}
+        GIT_SHA: ${GIT_SHA:-local}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-your-org/pawzaroo}-web:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["3000:8080"]
+
+volumes:
+  pg_data:
+  redis_data:
+  kafka_data:
+  minio_data:

@@ -1,0 +1,86 @@
+name: Deploy
+description: Render Kustomize, run migration, apply, smoke-test, rollback on failure.
+
+inputs:
+  overlay:
+    description: Path to the Kustomize overlay (e.g. deploy/k8s/overlays/dev)
+    required: true
+  image_tag:
+    description: Image tag to deploy
+    required: true
+  namespace:
+    description: Target Kubernetes namespace
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # ---------- Render manifests ----------------------------------------------
+    - name: Render Kustomize
+      shell: bash
+      run: |
+        set -euo pipefail
+        kustomize edit set image \
+          ghcr.io/${{ github.repository }}-api=ghcr.io/${{ github.repository }}-api:${{ inputs.image_tag }} \
+          ghcr.io/${{ github.repository }}-worker=ghcr.io/${{ github.repository }}-worker:${{ inputs.image_tag }} \
+          ghcr.io/${{ github.repository }}-web=ghcr.io/${{ github.repository }}-web:${{ inputs.image_tag }} \
+          --working-dir ${{ inputs.overlay }} || true
+        kustomize build ${{ inputs.overlay }} > rendered.yaml
+        wc -l rendered.yaml
+
+    - name: Capture current image tags (for rollback)
+      shell: bash
+      run: |
+        set -euo pipefail
+        for d in api worker web; do
+          PREV=$(kubectl -n ${{ inputs.namespace }} get deploy/$d -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+          echo "$d_prev_image=$PREV" >> $GITHUB_ENV
+        done
+      env: { KUBECONFIG: /home/runner/.kube/config }
+
+    # ---------- DB migration --------------------------------------------------
+    - name: Database migration job
+      shell: bash
+      run: |
+        set -euo pipefail
+        export IMAGE_TAG="${{ inputs.image_tag }}"
+        envsubst < deploy/k8s/base/migration.job.yaml > migration.rendered.yaml
+        kubectl -n ${{ inputs.namespace }} apply -f migration.rendered.yaml
+        kubectl -n ${{ inputs.namespace }} wait --for=condition=complete --timeout=10m \
+          job/db-migrate-${IMAGE_TAG} || (kubectl -n ${{ inputs.namespace }} logs job/db-migrate-${IMAGE_TAG} --tail=200; exit 1)
+
+    # ---------- Apply workloads ----------------------------------------------
+    - name: Apply manifests
+      shell: bash
+      run: |
+        kubectl apply -f rendered.yaml
+        kubectl -n ${{ inputs.namespace }} rollout status deploy/api    --timeout=10m
+        kubectl -n ${{ inputs.namespace }} rollout status deploy/worker --timeout=10m
+        kubectl -n ${{ inputs.namespace }} rollout status deploy/web    --timeout=10m
+
+    # ---------- Smoke test ----------------------------------------------------
+    - name: Smoke test
+      id: smoke
+      shell: bash
+      run: |
+        set -euo pipefail
+        export IMAGE_TAG="${{ inputs.image_tag }}"
+        envsubst < deploy/k8s/base/smoketest.job.yaml > smoke.rendered.yaml
+        kubectl -n ${{ inputs.namespace }} apply -f smoke.rendered.yaml
+        kubectl -n ${{ inputs.namespace }} wait --for=condition=complete --timeout=5m \
+          job/smoke-test-${IMAGE_TAG} || (kubectl -n ${{ inputs.namespace }} logs job/smoke-test-${IMAGE_TAG} --tail=200; exit 1)
+        echo "smoke-test passed"
+
+    # ---------- Rollback on failure ------------------------------------------
+    - name: Rollback on failure
+      if: failure()
+      shell: bash
+      run: |
+        echo "Smoke test failed — rolling back to the previous image tags."
+        for d in api worker web; do
+          # Prefer `rollout undo` so we revert the entire pod spec, not just the image.
+          kubectl -n ${{ inputs.namespace }} rollout undo deploy/$d || true
+          kubectl -n ${{ inputs.namespace }} rollout status deploy/$d --timeout=5m || true
+        done
+        echo "::error::Deployment rolled back."
+        exit 1

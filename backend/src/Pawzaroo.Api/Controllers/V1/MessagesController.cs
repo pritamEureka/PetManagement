@@ -2,9 +2,7 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.SignalR;
 using Pawzaroo.Api.Authorization;
-using Pawzaroo.Api.Hubs;
 using Pawzaroo.Application.Common.Permissions;
 using Pawzaroo.Application.Modules.Messaging.Dtos;
 using Pawzaroo.Application.Modules.Messaging.Services;
@@ -28,13 +26,11 @@ public class MessagesController : ControllerBase
 {
     private readonly IMessagingService _messaging;
     private readonly IMessageModerationService _moderation;
-    private readonly IHubContext<ChatHub> _hub;
 
-    public MessagesController(IMessagingService messaging, IMessageModerationService moderation, IHubContext<ChatHub> hub)
+    public MessagesController(IMessagingService messaging, IMessageModerationService moderation)
     {
         _messaging = messaging;
         _moderation = moderation;
-        _hub = hub;
     }
 
     // ---------- Conversations ----------
@@ -98,7 +94,9 @@ public class MessagesController : ControllerBase
             id, dto.Type, dto.Content, dto.MediaUrl, dto.ReplyToMessageId,
             dto.Attachments?.Select(a => new AttachmentInput(a.Url, a.MimeType, a.SizeBytes, a.FileName, a.Width, a.Height)).ToList()), ct);
 
-        await _hub.Clients.Group($"conv:{id}").SendAsync("message", msg, ct);
+        // SignalR fan-out happens inside SendMessageAsync via the per-user
+        // chat-hub group, so every participant's client gets the "message"
+        // event without having to be in the conversation group.
         return Ok(msg);
     }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
-import { Send, MessageSquare, Search, Archive, ArchiveX, BellOff, Bell, Ban, MoreHorizontal } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Send, MessageSquare, Search, Archive, ArchiveX, BellOff, Bell, Ban, MoreHorizontal, Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,10 +13,12 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { messagesApi, type ChatMessage, type ConversationSummary, type Attachment } from "@/api/messages";
+import { usersApi, type PublicUser } from "@/api/users";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useChatHub } from "@/hooks/useChatHub";
+import { UNREAD_MESSAGES_QUERY_KEY } from "@/hooks/useUnreadMessages";
 import { PresenceDot } from "@/components/messaging/PresenceDot";
 import { TypingIndicator } from "@/components/messaging/TypingIndicator";
 import { MessageBubble } from "@/components/messaging/MessageBubble";
@@ -28,8 +30,11 @@ const TYPING_DEBOUNCE = 800;
 
 export function MessagingPage() {
   const qc = useQueryClient();
+  const nav = useNavigate();
   const me = useAuthStore((s) => s.user);
+  const [tab, setTab] = useState<"chats" | "people">("chats");
   const [search, setSearch] = useState("");
+  const [peopleSearch, setPeopleSearch] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -70,6 +75,7 @@ export function MessagingPage() {
         if (m.senderId !== me?.id) hub.ackDelivered(m.id);
       }
       qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: UNREAD_MESSAGES_QUERY_KEY });
     } else if (e.kind === "typing") {
       const { conversationId, userId, isTyping } = e.payload;
       if (conversationId !== activeId || userId === me?.id) return;
@@ -101,7 +107,13 @@ export function MessagingPage() {
     if (!activeId) return;
     hub.joinConversation(activeId);
     const last = messages[messages.length - 1];
-    if (last) hub.markRead(activeId, last.id);
+    if (last) {
+      hub.markRead(activeId, last.id);
+      // The hub doesn't echo "read" back to the reader, so the sidebar badge
+      // and conversation list need a manual nudge to drop the unread count.
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: UNREAD_MESSAGES_QUERY_KEY });
+    }
     return () => { hub.leaveConversation(activeId); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
@@ -185,28 +197,84 @@ export function MessagingPage() {
     <div className="h-[calc(100vh-6rem)] grid grid-cols-1 md:grid-cols-[18rem_1fr] lg:grid-cols-[20rem_1fr] gap-3">
       <Card className={cn("flex flex-col", activeId ? "hidden md:flex" : "flex")}>
         <div className="p-3 border-b space-y-2">
+          {/* Tab switcher: Chats (existing conversations) vs People (directory of
+              users you can start a fresh DM with). */}
+          <div className="grid grid-cols-2 gap-1 bg-muted/50 rounded-md p-1">
+            <button
+              type="button"
+              onClick={() => setTab("chats")}
+              className={cn(
+                "text-xs font-medium px-2 py-1.5 rounded transition-colors",
+                tab === "chats" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >Chats</button>
+            <button
+              type="button"
+              onClick={() => setTab("people")}
+              className={cn(
+                "text-xs font-medium px-2 py-1.5 rounded transition-colors",
+                tab === "people" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >People</button>
+          </div>
+
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Search conversations" value={search} onChange={(e) => setSearch(e.target.value)} />
+            {tab === "chats" ? (
+              <Input className="pl-8" placeholder="Search conversations"
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+            ) : (
+              <Input className="pl-8" placeholder="Search people by name"
+                value={peopleSearch} onChange={(e) => setPeopleSearch(e.target.value)} />
+            )}
           </div>
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />
-            Show archived
-          </label>
+
+          {tab === "chats" && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />
+              Show archived
+            </label>
+          )}
         </div>
         <ScrollArea className="flex-1">
-          {loadingList ? (
-            <div className="p-3 space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 rounded-md" />)}</div>
-          ) : !convos || convos.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">No conversations yet.</div>
+          {tab === "chats" ? (
+            loadingList ? (
+              <div className="p-3 space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 rounded-md" />)}</div>
+            ) : !convos || convos.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground space-y-3">
+                <p>No conversations yet.</p>
+                <Button variant="outline" size="sm" onClick={() => setTab("people")}>
+                  Find people to message
+                </Button>
+              </div>
+            ) : (
+              <ul className="divide-y">
+                {convos.map((c) => (
+                  <ConversationRow key={c.id} c={c} active={c.id === activeId}
+                    presence={presence}
+                    onClick={() => setSearchParams({ c: c.id }, { replace: true })}
+                    onMessage={() => setSearchParams({ c: c.id }, { replace: true })}
+                    onViewProfile={(userId) => nav(`/u/${userId}`)} />
+                ))}
+              </ul>
+            )
           ) : (
-            <ul className="divide-y">
-              {convos.map((c) => (
-                <ConversationRow key={c.id} c={c} active={c.id === activeId}
-                  presence={presence}
-                  onClick={() => setSearchParams({ c: c.id }, { replace: true })} />
-              ))}
-            </ul>
+            <PeopleList
+              query={peopleSearch}
+              onView={(userId) => nav(`/u/${userId}`)}
+              onMessage={async (userId) => {
+                try {
+                  const conv = await messagesApi.start(userId);
+                  // Refresh the conversations list so the new DM shows up on the
+                  // Chats tab next time the user switches back.
+                  qc.invalidateQueries({ queryKey: ["conversations"] });
+                  setTab("chats");
+                  setSearchParams({ c: conv.id }, { replace: true });
+                } catch (err: any) {
+                  toast.error(err?.response?.data?.error?.message ?? "Couldn't open chat.");
+                }
+              }}
+            />
           )}
         </ScrollArea>
       </Card>
@@ -303,15 +371,29 @@ export function MessagingPage() {
   );
 }
 
-function ConversationRow({ c, active, presence, onClick }: {
-  c: ConversationSummary; active: boolean; presence: Record<string, boolean>; onClick: () => void;
+function ConversationRow({ c, active, presence, onClick, onViewProfile, onMessage }: {
+  c: ConversationSummary; active: boolean; presence: Record<string, boolean>;
+  onClick: () => void;
+  onViewProfile: (userId: string) => void;
+  onMessage: () => void;
 }) {
   const other = c.participants[0];
   const online = other ? (presence[other.userId] ?? other.online) : false;
   return (
     <li>
-      <button onClick={onClick}
-              className={`w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors ${active ? "bg-accent" : ""}`}>
+      {/* Outer row is a div (not a button) so the inline View / Message icons
+          can themselves be real <button>s — nesting buttons is invalid HTML. */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+        className={cn(
+          "w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors cursor-pointer",
+          "focus:outline-none focus-visible:bg-accent",
+          active && "bg-accent"
+        )}
+      >
         <div className="relative">
           <Avatar>
             <AvatarImage src={other?.avatarUrl ?? undefined} />
@@ -329,8 +411,32 @@ function ConversationRow({ c, active, presence, onClick }: {
             {c.lastMessagePreview ?? "No messages yet"}
           </p>
         </div>
-        {c.unreadCount > 0 && <Badge className="ml-auto">{c.unreadCount}</Badge>}
-      </button>
+
+        {/* Row actions — stopPropagation so clicking an icon doesn't also fire
+            the row's onClick. Hidden when there's no resolvable user. */}
+        {other && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button
+              type="button" variant="ghost" size="icon"
+              className="h-7 w-7"
+              title={`View ${other.displayName}'s profile`}
+              onClick={(e) => { e.stopPropagation(); onViewProfile(other.userId); }}
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              type="button" variant="ghost" size="icon"
+              className="h-7 w-7"
+              title={`Message ${other.displayName}`}
+              onClick={(e) => { e.stopPropagation(); onMessage(); }}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+
+        {c.unreadCount > 0 && <Badge className="ml-1 shrink-0">{c.unreadCount}</Badge>}
+      </div>
     </li>
   );
 }
@@ -372,5 +478,92 @@ function ConversationHeader({ c, presence, onArchive, onMute, onBlock }: {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  );
+}
+
+/**
+ * Directory of users you can DM. Debounces the search query, paginates 25 at a
+ * time, and exposes per-row View / Message actions. Used from the People tab
+ * on the messages page (and reusable elsewhere if needed later).
+ */
+function PeopleList({
+  query, onView, onMessage
+}: {
+  query: string;
+  onView: (userId: string) => void;
+  onMessage: (userId: string) => void | Promise<void>;
+}) {
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  // Debounce so we don't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["users", "directory", debouncedQuery],
+    queryFn: () => usersApi.list({ q: debouncedQuery || undefined, pageSize: 50 })
+  });
+
+  if (isLoading) {
+    return <div className="p-3 space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 rounded-md" />)}</div>;
+  }
+  const items = data?.items ?? [];
+  if (items.length === 0) {
+    return (
+      <div className="p-6 text-center text-sm text-muted-foreground">
+        {debouncedQuery ? "No people match that name." : "No other users to show yet."}
+      </div>
+    );
+  }
+  return (
+    <ul className="divide-y">
+      {items.map((u) => <PersonRow key={u.id} u={u} onView={onView} onMessage={onMessage} />)}
+    </ul>
+  );
+}
+
+function PersonRow({ u, onView, onMessage }: {
+  u: PublicUser;
+  onView: (userId: string) => void;
+  onMessage: (userId: string) => void | Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function handleMessage() {
+    if (busy) return;
+    setBusy(true);
+    try { await onMessage(u.id); }
+    finally { setBusy(false); }
+  }
+  return (
+    <li className="flex items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors">
+      <Avatar>
+        <AvatarImage src={u.avatarUrl ?? undefined} />
+        <AvatarFallback>{u.displayName?.[0] ?? "?"}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{u.displayName}</p>
+        {u.primaryRole && (
+          <p className="text-[11px] text-muted-foreground truncate">{u.primaryRole}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-0.5 shrink-0">
+        <Button
+          type="button" variant="ghost" size="icon" className="h-7 w-7"
+          title={`View ${u.displayName}'s profile`}
+          onClick={() => onView(u.id)}
+        >
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button" variant="ghost" size="icon" className="h-7 w-7"
+          title={`Message ${u.displayName}`}
+          disabled={busy}
+          onClick={handleMessage}
+        >
+          <MessageSquare className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </li>
   );
 }

@@ -259,12 +259,21 @@ public class MessagingService : IMessagingService
             .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleOrDefaultAsync(ct)
             ?? throw new NotFoundException("User", uid);
 
-        return new MessageDto(msg.Id, conv.Id, uid, sender.DisplayName, sender.AvatarUrl,
+        var dto = new MessageDto(msg.Id, conv.Id, uid, sender.DisplayName, sender.AvatarUrl,
             msg.Type.ToString(), msg.Content, msg.MediaUrl, msg.ReplyToMessageId,
             msg.IsEdited, msg.IsDeletedForAll, msg.CreatedAt,
             input.Attachments?.Select(a => new AttachmentDto(a.Url, a.MimeType, a.SizeBytes, a.FileName, a.Width, a.Height)).ToList()
                 ?? new List<AttachmentDto>(),
             null, null);
+
+        // Fan out to every participant's user-group on the chat hub so all of
+        // their connected clients see the message immediately — even the ones
+        // that haven't joined the conversation-specific group (sidebar badge,
+        // conversations list, other tabs).
+        var allParticipantIds = conv.Participants.Where(p => !p.HasLeft).Select(p => p.UserId).ToList();
+        await _notify.PushChatMessageToUsersAsync(allParticipantIds, dto, ct);
+
+        return dto;
     }
 
     public async Task DeleteMessageAsync(Guid messageId, CancellationToken ct = default)

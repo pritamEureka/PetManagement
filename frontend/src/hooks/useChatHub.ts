@@ -9,44 +9,90 @@ export type ChatEvent =
   | { kind: "delivered"; payload: { messageId: string; userId: string; at: string } }
   | { kind: "presence"; payload: { userId: string; online: boolean } };
 
+type ConnState = "disconnected" | "connecting" | "connected";
+
+interface SharedHub {
+  conn: signalR.HubConnection;
+  state: ConnState;
+  subscribers: Set<(e: ChatEvent) => void>;
+  stateSubscribers: Set<(s: ConnState) => void>;
+  refCount: number;
+}
+
+// Module-level singleton — keeps a single SignalR connection per tab regardless
+// of how many components call useChatHub. Prevents the sidebar badge and the
+// messaging page from each spinning up their own websocket.
+let shared: SharedHub | null = null;
+
+function ensureHub(): SharedHub {
+  if (shared) return shared;
+  const conn = createHubConnection("/hubs/chat");
+  const subscribers = new Set<(e: ChatEvent) => void>();
+  const stateSubscribers = new Set<(s: ConnState) => void>();
+  const h: SharedHub = { conn, state: "disconnected", subscribers, stateSubscribers, refCount: 0 };
+
+  const fan = (e: ChatEvent) => { subscribers.forEach((s) => s(e)); };
+  conn.on("message",   (p) => fan({ kind: "message",   payload: p }));
+  conn.on("typing",    (p) => fan({ kind: "typing",    payload: p }));
+  conn.on("read",      (p) => fan({ kind: "read",      payload: p }));
+  conn.on("delivered", (p) => fan({ kind: "delivered", payload: p }));
+  conn.on("presence",  (p) => fan({ kind: "presence",  payload: p }));
+
+  const setState = (s: ConnState) => { h.state = s; stateSubscribers.forEach((cb) => cb(s)); };
+  conn.onreconnected(() => setState("connected"));
+  conn.onreconnecting(() => setState("connecting"));
+  conn.onclose(() => setState("disconnected"));
+
+  setState("connecting");
+  conn.start()
+    .then(() => setState("connected"))
+    .catch((err) => { console.warn("chat hub start failed", err); setState("disconnected"); });
+
+  shared = h;
+  return h;
+}
+
+function releaseHub() {
+  if (!shared) return;
+  shared.refCount--;
+  if (shared.refCount > 0) return;
+  const h = shared;
+  shared = null;
+  h.conn.stop().catch(() => { /* ignore */ });
+}
+
 /**
- * Single, shared chat-hub connection per app session. Subscribers receive every
- * event and decide how to handle it. Re-connects automatically; the hook hides
- * the connection lifecycle from page components.
+ * Subscribe to the shared chat-hub connection. Every caller receives every
+ * event; callers decide what to handle. The connection is started on first
+ * mount and torn down when the last subscriber unmounts.
  */
 export function useChatHub(onEvent: (e: ChatEvent) => void) {
-  const connRef = useRef<signalR.HubConnection | null>(null);
-  const [state, setState] = useState<"disconnected" | "connecting" | "connected">("disconnected");
+  const [state, setState] = useState<ConnState>(() => shared?.state ?? "disconnected");
   const handlerRef = useRef(onEvent);
   handlerRef.current = onEvent;
 
   useEffect(() => {
-    const conn = createHubConnection("/hubs/chat");
-    connRef.current = conn;
+    const h = ensureHub();
+    h.refCount++;
+    const handler = (e: ChatEvent) => handlerRef.current(e);
+    h.subscribers.add(handler);
+    const stateHandler = (s: ConnState) => setState(s);
+    h.stateSubscribers.add(stateHandler);
+    setState(h.state);
 
-    conn.on("message",   (p) => handlerRef.current({ kind: "message",   payload: p }));
-    conn.on("typing",    (p) => handlerRef.current({ kind: "typing",    payload: p }));
-    conn.on("read",      (p) => handlerRef.current({ kind: "read",      payload: p }));
-    conn.on("delivered", (p) => handlerRef.current({ kind: "delivered", payload: p }));
-    conn.on("presence",  (p) => handlerRef.current({ kind: "presence",  payload: p }));
-
-    setState("connecting");
-    conn.start()
-      .then(() => setState("connected"))
-      .catch((err) => { console.warn("chat hub start failed", err); setState("disconnected"); });
-    conn.onreconnected(() => setState("connected"));
-    conn.onreconnecting(() => setState("connecting"));
-    conn.onclose(() => setState("disconnected"));
-
-    return () => { conn.stop().catch(() => { /* ignore */ }); };
+    return () => {
+      h.subscribers.delete(handler);
+      h.stateSubscribers.delete(stateHandler);
+      releaseHub();
+    };
   }, []);
 
   return {
     state,
-    joinConversation: (id: string) => connRef.current?.invoke("JoinConversation", id).catch(() => {}),
-    leaveConversation: (id: string) => connRef.current?.invoke("LeaveConversation", id).catch(() => {}),
-    sendTyping: (id: string, on: boolean) => connRef.current?.invoke("Typing", id, on).catch(() => {}),
-    markRead: (id: string, lastMessageId?: string) => connRef.current?.invoke("MarkRead", id, lastMessageId ?? null).catch(() => {}),
-    ackDelivered: (messageId: string) => connRef.current?.invoke("AckDelivered", messageId).catch(() => {})
+    joinConversation: (id: string) => shared?.conn.invoke("JoinConversation", id).catch(() => {}),
+    leaveConversation: (id: string) => shared?.conn.invoke("LeaveConversation", id).catch(() => {}),
+    sendTyping: (id: string, on: boolean) => shared?.conn.invoke("Typing", id, on).catch(() => {}),
+    markRead: (id: string, lastMessageId?: string) => shared?.conn.invoke("MarkRead", id, lastMessageId ?? null).catch(() => {}),
+    ackDelivered: (messageId: string) => shared?.conn.invoke("AckDelivered", messageId).catch(() => {})
   };
 }

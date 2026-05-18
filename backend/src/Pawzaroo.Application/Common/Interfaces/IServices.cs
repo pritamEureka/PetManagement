@@ -38,6 +38,14 @@ public interface INotificationService
 {
     Task NotifyUserAsync(Guid userId, string title, string body, object? payload = null, CancellationToken ct = default);
     Task BroadcastAsync(string title, string body, object? payload = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Pushes a chat "message" event to every connection in each user's chat-hub
+    /// user group. Lets clients react to incoming messages even when they haven't
+    /// joined the conversation-specific group (e.g. for sidebar unread badges or
+    /// auto-refreshing the conversations list).
+    /// </summary>
+    Task PushChatMessageToUsersAsync(IEnumerable<Guid> userIds, object payload, CancellationToken ct = default);
 }
 
 /// <summary>

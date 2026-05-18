@@ -9,9 +9,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { PostCard } from "@/components/feed/PostCard";
 import { postsApi } from "@/api/posts";
+import { MessageUserButton } from "@/components/common/MessageUserButton";
+import { useAuthStore } from "@/store/authStore";
 
 export function UserProfilePage() {
   const { userId = "" } = useParams();
+  const me = useAuthStore((s) => s.user);
+  const isSelf = me?.id === userId;
   const {
     data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading
   } = useInfiniteQuery({
@@ -46,10 +50,14 @@ export function UserProfilePage() {
           <Avatar className="h-16 w-16">
             <AvatarFallback>{profile?.displayName?.[0] ?? "?"}</AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">{profile?.displayName ?? "—"}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold truncate">{profile?.displayName ?? "—"}</h1>
             <p className="text-xs text-muted-foreground">Posts: {items.length}{hasNextPage ? "+" : ""}</p>
           </div>
+          {/* Don't show "Message" on the user's own profile — they'd be DM-ing themselves. */}
+          {userId && !isSelf && (
+            <MessageUserButton userId={userId} userName={profile?.displayName} />
+          )}
         </CardContent>
       </Card>
 

@@ -20,6 +20,7 @@ import { UserProfilePage } from "@/pages/UserProfilePage";
 import { SavedPostsPage } from "@/pages/feed/SavedPostsPage";
 import { MyPostsPage } from "@/pages/feed/MyPostsPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
+import { NotificationsPage } from "@/pages/NotificationsPage";
 
 // Pets
 import { PetsPage } from "@/pages/pets/PetsPage";
@@ -184,7 +185,7 @@ export default function App() {
               </Route>
 
               <Route path="/appointments" element={<MyAppointmentsPage />} />
-              <Route path="/notifications" element={<PlaceholderPage title="Notifications" />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
 
               <Route element={<ProtectedRoute permission="vets.edit" />}>
                 <Route path="/dashboard/vet/profile" element={<DoctorRegistrationPage />} />

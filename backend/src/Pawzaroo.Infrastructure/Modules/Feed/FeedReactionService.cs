@@ -15,13 +15,15 @@ public class FeedReactionService : IFeedReactionService
     private readonly ICurrentUserService _current;
     private readonly IKafkaProducer _kafka;
     private readonly IFeedCache _cache;
+    private readonly INotificationService _notify;
 
-    public FeedReactionService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka, IFeedCache cache)
+    public FeedReactionService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka, IFeedCache cache, INotificationService notify)
     {
         _db = db;
         _current = current;
         _kafka = kafka;
         _cache = cache;
+        _notify = notify;
     }
 
     public async Task SetReactionAsync(Guid postId, string type, CancellationToken ct = default)
@@ -42,6 +44,26 @@ public class FeedReactionService : IFeedReactionService
         await _kafka.PublishAsync(FeedTopics.Posts,
             new PostReacted(postId, uid, rt.ToString(), Removed: false, DateTime.UtcNow),
             postId.ToString(), ct);
+
+        // Send notification to post author (only for new reactions, not re-reactions)
+        if (isNew)
+        {
+            var post = await _db.Posts.AsNoTracking()
+                .Where(p => p.Id == postId)
+                .Select(p => new { p.AuthorId })
+                .SingleOrDefaultAsync(ct);
+            if (post is not null && post.AuthorId != uid)
+            {
+                var reactorName = await _db.Users.Where(u => u.Id == uid)
+                    .Select(u => u.DisplayName).SingleOrDefaultAsync(ct) ?? "Someone";
+                await _notify.NotifyUserAsync(
+                    post.AuthorId,
+                    "New reaction on your post",
+                    $"{reactorName} reacted with {rt} to your post.",
+                    new { type = "post_reaction", postId, reactorId = uid, reactionType = rt.ToString() },
+                    ct);
+            }
+        }
     }
 
     public async Task RemoveReactionAsync(Guid postId, CancellationToken ct = default)

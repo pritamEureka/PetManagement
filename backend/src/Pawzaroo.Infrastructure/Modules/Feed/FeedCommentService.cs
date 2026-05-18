@@ -16,13 +16,15 @@ public class FeedCommentService : IFeedCommentService
     private readonly ICurrentUserService _current;
     private readonly IKafkaProducer _kafka;
     private readonly IFeedCache _cache;
+    private readonly INotificationService _notify;
 
-    public FeedCommentService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka, IFeedCache cache)
+    public FeedCommentService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka, IFeedCache cache, INotificationService notify)
     {
         _db = db;
         _current = current;
         _kafka = kafka;
         _cache = cache;
+        _notify = notify;
     }
 
     private bool IsModerator => _current.Permissions.Contains(Permissions.Comments.Moderate)
@@ -77,6 +79,23 @@ public class FeedCommentService : IFeedCommentService
         var author = await _db.Users.Where(u => u.Id == uid)
             .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleOrDefaultAsync(ct)
             ?? throw new NotFoundException("User", uid);
+
+        // Send notification to post author when someone comments on their post
+        var postAuthorId = await _db.Posts.AsNoTracking()
+            .Where(p => p.Id == postId)
+            .Select(p => p.AuthorId)
+            .SingleOrDefaultAsync(ct);
+        if (postAuthorId != default && postAuthorId != uid)
+        {
+            var snippet = content.Trim().Length > 80 ? content.Trim()[..80] + "..." : content.Trim();
+            await _notify.NotifyUserAsync(
+                postAuthorId,
+                "New comment on your post",
+                $"{author.DisplayName} commented: \"{snippet}\"",
+                new { type = "post_comment", postId, commentId = c.Id, commenterId = uid },
+                ct);
+        }
+
         return new CommentDto(c.Id, c.PostId, c.ParentCommentId, c.AuthorId,
             author.DisplayName, author.AvatarUrl, c.Content, c.CreatedAt, c.UpdatedAt, true);
     }

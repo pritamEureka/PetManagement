@@ -16,8 +16,10 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useNotifications } from "@/hooks/useNotifications";
 
-interface NavItem { to: string; label: string; icon: LucideIcon; perm?: string; anyOf?: string[]; }
+interface NavItem { to: string; label: string; icon: LucideIcon; perm?: string; anyOf?: string[]; badgeKey?: "unreadMessages" | "unreadNotifications"; }
 
 const USER_NAV: NavItem[] = [
   { to: "/home",     label: "Dashboard", icon: Home },
@@ -28,8 +30,8 @@ const USER_NAV: NavItem[] = [
   { to: "/adoption", label: "Adoption",  icon: HeartHandshake, perm: "adoption.view" },
   { to: "/adoption/mine",  label: "My adoption listings", icon: HeartHandshake, perm: "adoption.create" },
   { to: "/adoption/saved", label: "Saved pets",          icon: Bookmark,       perm: "adoption.view" },
-  { to: "/messages", label: "Messages",  icon: MessageSquare,  perm: "messaging.view" },
-  { to: "/notifications", label: "Notifications", icon: Bell },
+  { to: "/messages", label: "Messages",  icon: MessageSquare,  perm: "messaging.view", badgeKey: "unreadMessages" },
+  { to: "/notifications", label: "Notifications", icon: Bell, badgeKey: "unreadNotifications" },
   { to: "/vets",     label: "Vets",      icon: Stethoscope,    perm: "vets.view" },
   { to: "/appointments", label: "My appointments", icon: Stethoscope, perm: "appointments.view" },
   { to: "/store",    label: "Store",     icon: ShoppingBag,    perm: "products.view" },
@@ -70,30 +72,48 @@ const DELIVERY_NAV: NavItem[] = [
   { to: "/delivery", label: "Deliveries", icon: Truck, perm: "delivery.view" }
 ];
 
-function SidebarNavItem({ to, label, icon: Icon, collapsed, onNavigate }: NavItem & { collapsed: boolean; onNavigate?: () => void }) {
+function SidebarNavItem({ to, label, icon: Icon, badgeKey, collapsed, onNavigate, badges }: NavItem & {
+  collapsed: boolean; onNavigate?: () => void; badges: { unreadMessages: number; unreadNotifications: number };
+}) {
+  const badgeCount = badgeKey ? badges[badgeKey] : 0;
+  const showBadge = badgeCount > 0;
+  const badgeLabel = badgeCount > 99 ? "99+" : String(badgeCount);
   return (
     <NavLink
       to={to}
       onClick={onNavigate}
-      title={collapsed ? label : undefined}
+      title={collapsed ? `${label}${showBadge ? ` (${badgeCount} unread)` : ""}` : undefined}
       className={({ isActive }) => cn(
-        "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent transition-colors",
+        "relative flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent transition-colors",
         collapsed ? "justify-center" : "gap-3",
         isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <span className="relative shrink-0">
+        <Icon className="h-4 w-4" />
+        {collapsed && showBadge && (
+          <span className="absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center leading-none">
+            {badgeLabel}
+          </span>
+        )}
+      </span>
       <span className={cn(
         "truncate whitespace-nowrap transition-all duration-300 overflow-hidden",
         collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
       )}>
         {label}
       </span>
+      {!collapsed && showBadge && (
+        <Badge className="ml-auto h-5 px-1.5 text-[10px] leading-none">{badgeLabel}</Badge>
+      )}
     </NavLink>
   );
 }
 
-function SidebarNavGroup({ items, heading, collapsed, onNavigate }: { items: NavItem[]; heading?: string; collapsed: boolean; onNavigate?: () => void }) {
+function SidebarNavGroup({ items, heading, collapsed, onNavigate, badges }: {
+  items: NavItem[]; heading?: string; collapsed: boolean; onNavigate?: () => void;
+  badges: { unreadMessages: number; unreadNotifications: number };
+}) {
   if (items.length === 0) return null;
   return (
     <div className="space-y-1">
@@ -106,7 +126,7 @@ function SidebarNavGroup({ items, heading, collapsed, onNavigate }: { items: Nav
         </p>
       )}
       {items.map((item) => (
-        <SidebarNavItem key={item.to} {...item} collapsed={collapsed} onNavigate={onNavigate} />
+        <SidebarNavItem key={item.to} {...item} collapsed={collapsed} onNavigate={onNavigate} badges={badges} />
       ))}
     </div>
   );
@@ -114,6 +134,9 @@ function SidebarNavGroup({ items, heading, collapsed, onNavigate }: { items: Nav
 
 function SidebarContent({ collapsed, onNavigate, search }: { collapsed: boolean; onNavigate?: () => void; search?: string }) {
   const { can, canAny } = usePermissions();
+  const unreadMessages = useUnreadMessages();
+  const unreadNotifications = useNotifications();
+  const badges = { unreadMessages, unreadNotifications };
 
   const visible = (items: NavItem[]) => items.filter((i) =>
     (i.perm ? can(i.perm) : true) && (i.anyOf ? canAny(i.anyOf) : true));
@@ -131,11 +154,22 @@ function SidebarContent({ collapsed, onNavigate, search }: { collapsed: boolean;
 
   return (
     <div className={cn("flex-1 space-y-4 overflow-y-auto transition-all duration-300", collapsed ? "px-2" : "px-3")}>
-      <SidebarNavGroup items={userVisible} collapsed={collapsed} onNavigate={onNavigate} />
-      <SidebarNavGroup items={proVisible} heading="Pro" collapsed={collapsed} onNavigate={onNavigate} />
-      <SidebarNavGroup items={deliveryVisible} heading="Logistics" collapsed={collapsed} onNavigate={onNavigate} />
-      <SidebarNavGroup items={adminVisible} heading="Admin" collapsed={collapsed} onNavigate={onNavigate} />
+      <SidebarNavGroup items={userVisible} collapsed={collapsed} onNavigate={onNavigate} badges={badges} />
+      <SidebarNavGroup items={proVisible} heading="Pro" collapsed={collapsed} onNavigate={onNavigate} badges={badges} />
+      <SidebarNavGroup items={deliveryVisible} heading="Logistics" collapsed={collapsed} onNavigate={onNavigate} badges={badges} />
+      <SidebarNavGroup items={adminVisible} heading="Admin" collapsed={collapsed} onNavigate={onNavigate} badges={badges} />
     </div>
+  );
+}
+
+function NotificationBellBadge() {
+  const count = useNotifications();
+  if (count === 0) return null;
+  const label = count > 99 ? "99+" : String(count);
+  return (
+    <span className="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold flex items-center justify-center leading-none">
+      {label}
+    </span>
   );
 }
 
@@ -283,9 +317,10 @@ export function AppLayout() {
           <div className="flex-1" />
 
           {/* Notification bell */}
-          <Button variant="ghost" size="icon" asChild title="Notifications">
+          <Button variant="ghost" size="icon" asChild title="Notifications" className="relative">
             <Link to="/notifications">
               <Bell className="h-5 w-5" />
+              <NotificationBellBadge />
             </Link>
           </Button>
 

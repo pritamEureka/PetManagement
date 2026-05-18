@@ -40,5 +40,5 @@ public class AdminController : ControllerBase
     public Task<UsersAdminController.UserListResponse> Users(
         [FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
-        => _users.Search(q, null, null, null, page, pageSize, ct);
+        => _users.Search(q, null, null, null, null, page, pageSize, ct);
 }

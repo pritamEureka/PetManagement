@@ -40,6 +40,15 @@ public interface INotificationService
     Task BroadcastAsync(string title, string body, object? payload = null, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Generic transactional email. Stubbed by default (logs + best-effort in-app
+/// notification). Swap the implementation for MailKit/SendGrid/SES in prod.
+/// </summary>
+public interface IEmailService
+{
+    Task SendAsync(string toEmail, string subject, string body, Guid? userId = null, CancellationToken ct = default);
+}
+
 public interface IPermissionResolver
 {
     Task<IReadOnlyCollection<string>> GetPermissionsForUserAsync(Guid userId, CancellationToken ct = default);

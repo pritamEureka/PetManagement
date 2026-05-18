@@ -113,12 +113,14 @@ export const adminApi = {
        .then((r) => r.data),
 
   users: {
-    list: (params: { q?: string; role?: string; suspended?: boolean; active?: boolean; page?: number; pageSize?: number } = {}) =>
+    list: (params: { q?: string; role?: string; suspended?: boolean; active?: boolean; approvalStatus?: "Pending" | "Approved" | "Rejected"; page?: number; pageSize?: number } = {}) =>
       api.get<AdminUserListResponse>(`${V1}/admin/users`, { params }).then((r) => r.data),
     get: (id: string) => api.get<AdminUserDetail>(`${V1}/admin/users/${id}`).then((r) => r.data),
     grantRole: (id: string, roleName: string) => api.post(`${V1}/admin/users/${id}/roles`, { roleName }),
     revokeRole: (id: string, roleName: string) => api.delete(`${V1}/admin/users/${id}/roles/${roleName}`),
-    forceLogout: (id: string) => api.post(`${V1}/admin/users/${id}/force-logout`)
+    forceLogout: (id: string) => api.post(`${V1}/admin/users/${id}/force-logout`),
+    approve: (id: string, notes?: string) => api.post(`${V1}/admin/users/${id}/approve`, { notes }),
+    reject: (id: string, reason: string) => api.post(`${V1}/admin/users/${id}/reject`, { reason })
   },
 
   appointments: (params: {

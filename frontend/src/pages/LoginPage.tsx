@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PawPrint, ShieldCheck } from "lucide-react";
+import { PawPrint, ShieldCheck, Hourglass, XCircle } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,29 +12,40 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 import { toast } from "@/components/ui/sonner";
 
+// Server-emitted status messages we render inline instead of as a transient toast.
+type ApprovalStatus = { kind: "pending" | "rejected"; message: string };
+
 export function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const needsTwoFactor = useAuthStore((s) => s.needsTwoFactor);
   const nav = useNavigate();
   const loc = useLocation();
   const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [approval, setApproval] = useState<ApprovalStatus | null>(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, getValues } =
     useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
+  // Translate the server's structured error codes into an inline approval banner
+  // (so the user sees what step they're on, not just a toast that disappears).
+  function handleLoginError(err: any): boolean {
+    const code: string | undefined = err?.response?.data?.error?.code;
+    const message: string = err?.response?.data?.error?.message ?? "Login failed";
+    if (code === "registration_pending") { setApproval({ kind: "pending", message }); return true; }
+    if (code === "registration_rejected") { setApproval({ kind: "rejected", message }); return true; }
+    if (message.includes("two_factor_required")) { toast.info("Enter your authenticator code to continue."); return true; }
+    return false;
+  }
+
   async function onSubmit(v: LoginInput) {
+    setApproval(null);
     try {
       await login(v.email, v.password, needsTwoFactor ? twoFactorCode : undefined);
       const to = (loc.state as { from?: { pathname: string } })?.from?.pathname ?? "/home";
       nav(to, { replace: true });
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message ?? "Login failed";
-      // The store has already set needsTwoFactor when the server asks for it.
-      if (msg.includes("two_factor_required")) {
-        toast.info("Enter your authenticator code to continue.");
-        return;
-      }
-      toast.error(msg);
+      if (handleLoginError(err)) return;
+      toast.error(err?.response?.data?.error?.message ?? "Login failed");
     }
   }
 
@@ -47,6 +58,7 @@ export function LoginPage() {
       const to = (loc.state as { from?: { pathname: string } })?.from?.pathname ?? "/home";
       nav(to, { replace: true });
     } catch (err: any) {
+      if (handleLoginError(err)) return;
       toast.error(err?.response?.data?.error?.message ?? "Invalid code");
     }
   }
@@ -67,6 +79,7 @@ export function LoginPage() {
           </p>
         </CardHeader>
         <CardContent>
+          {approval && <ApprovalBanner status={approval} />}
           {!needsTwoFactor ? (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
               <div>
@@ -114,6 +127,35 @@ export function LoginPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ApprovalBanner({ status }: { status: ApprovalStatus }) {
+  const pending = status.kind === "pending";
+  const Icon = pending ? Hourglass : XCircle;
+  const tone = pending
+    ? "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
+    : "border-destructive/40 bg-destructive/10 text-destructive";
+  const title = pending ? "Your registration is in approval" : "Registration rejected";
+
+  return (
+    <div className={`mb-4 rounded-md border p-3 text-sm ${tone}`}>
+      <div className="flex items-start gap-2">
+        <Icon className="h-4 w-4 mt-0.5 shrink-0" />
+        <div className="space-y-1">
+          <p className="font-medium">{title}</p>
+          <p className="text-xs leading-relaxed">{status.message}</p>
+          {pending && (
+            <ol className="text-xs leading-relaxed list-decimal pl-4 pt-1 space-y-0.5 text-muted-foreground">
+              <li>Request submitted.</li>
+              <li>Waiting for an administrator to approve.</li>
+              <li>Approval email will be sent to your address.</li>
+              <li>Sign in here once approved.</li>
+            </ol>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

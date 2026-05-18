@@ -207,7 +207,7 @@ export default function App() {
               </Route>
 
               {/* Approvals */}
-              <Route element={<ProtectedRoute anyOf={["adoption.approve", "moderation.moderate", "vets.approve", "stores.approve"]} />}>
+              <Route element={<ProtectedRoute anyOf={["users.approve", "adoption.approve", "moderation.moderate", "vets.approve", "stores.approve"]} />}>
                 <Route path="/admin/approvals" element={<ApprovalsPage />} />
               </Route>
               <Route element={<ProtectedRoute anyOf={["adoption.approve", "adoption.reject"]} />}>

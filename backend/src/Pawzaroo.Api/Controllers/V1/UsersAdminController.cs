@@ -3,16 +3,19 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pawzaroo.Api.Authorization;
+using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Common.Permissions;
 using Pawzaroo.Application.Modules.Security.Services;
+using Pawzaroo.Domain.Common;
 using Pawzaroo.Infrastructure.Persistence;
 using Pawzaroo.Shared.Exceptions;
 
 namespace Pawzaroo.Api.Controllers.V1;
 
 /// <summary>
-/// Admin-only user management: search, detail, role grant/revoke, force logout.
-/// Suspend / restore / warn live in <see cref="ModerationController"/>.
+/// Admin-only user management: search, detail, role grant/revoke, force logout,
+/// and registration approval. Suspend / restore / warn live in
+/// <see cref="ModerationController"/>.
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
@@ -22,16 +25,24 @@ public class UsersAdminController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly IAdminActionLogger _adminLog;
+    private readonly IEmailService _email;
+    private readonly INotificationService _notify;
+    private readonly ICurrentUserService _current;
 
-    public UsersAdminController(ApplicationDbContext db, IAdminActionLogger adminLog)
+    public UsersAdminController(ApplicationDbContext db, IAdminActionLogger adminLog,
+        IEmailService email, INotificationService notify, ICurrentUserService current)
     {
         _db = db;
         _adminLog = adminLog;
+        _email = email;
+        _notify = notify;
+        _current = current;
     }
 
     public record UserSummary(
         Guid Id, string Email, string DisplayName, string? AvatarUrl,
         bool IsActive, bool IsSuspended, bool EmailConfirmed,
+        ApprovalStatus ApprovalStatus,
         DateTime CreatedAt, DateTime? LastLoginAt,
         IReadOnlyList<string> Roles);
 
@@ -44,6 +55,7 @@ public class UsersAdminController : ControllerBase
         [FromQuery] string? role,
         [FromQuery] bool? suspended,
         [FromQuery] bool? active,
+        [FromQuery] ApprovalStatus? approvalStatus,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
@@ -53,6 +65,8 @@ public class UsersAdminController : ControllerBase
             query = query.Where(u => u.Email.Contains(q) || u.DisplayName.Contains(q));
         if (suspended.HasValue) query = query.Where(u => u.IsSuspended == suspended);
         if (active.HasValue)    query = query.Where(u => u.IsActive == active);
+        if (approvalStatus.HasValue)
+            query = query.Where(u => u.ApprovalStatus == approvalStatus);
         if (!string.IsNullOrWhiteSpace(role))
             query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name == role));
 
@@ -62,6 +76,7 @@ public class UsersAdminController : ControllerBase
             .Select(u => new UserSummary(
                 u.Id, u.Email, u.DisplayName, u.AvatarUrl,
                 u.IsActive, u.IsSuspended, u.EmailConfirmed,
+                u.ApprovalStatus,
                 u.CreatedAt, u.LastLoginAt,
                 u.UserRoles.Select(r => r.Role.Name).ToList()))
             .ToListAsync(ct);
@@ -71,6 +86,7 @@ public class UsersAdminController : ControllerBase
     public record UserDetailDto(
         Guid Id, string Email, string DisplayName, string? AvatarUrl, string? PhoneNumber,
         bool IsActive, bool IsSuspended, bool EmailConfirmed,
+        ApprovalStatus ApprovalStatus, string? RejectionReason,
         DateTime CreatedAt, DateTime? LastLoginAt,
         IReadOnlyList<string> Roles,
         long PostCount, long OrderCount, long AdoptionListingCount);
@@ -84,6 +100,7 @@ public class UsersAdminController : ControllerBase
             .Select(x => new UserDetailDto(
                 x.Id, x.Email, x.DisplayName, x.AvatarUrl, x.PhoneNumber,
                 x.IsActive, x.IsSuspended, x.EmailConfirmed,
+                x.ApprovalStatus, x.RejectionReason,
                 x.CreatedAt, x.LastLoginAt,
                 x.UserRoles.Select(r => r.Role.Name).ToList(),
                 _db.Posts.Count(p => p.AuthorId == x.Id),
@@ -99,6 +116,11 @@ public class UsersAdminController : ControllerBase
     [Permission(Permissions.Roles.Assign)]
     public async Task<IActionResult> GrantRole(Guid id, [FromBody] GrantRoleBody body, CancellationToken ct)
     {
+        // Admin / SuperAdmin escalation must come from a SuperAdmin. Other roles
+        // (Moderator, StoreOwner, etc.) ride on the standard roles.assign permission.
+        if (body.RoleName is SystemRoles.Admin or SystemRoles.SuperAdmin && !User.IsInRole(SystemRoles.SuperAdmin))
+            throw new ForbiddenException("Only a SuperAdmin can grant Admin or SuperAdmin roles.");
+
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct) ?? throw new NotFoundException("User", id);
         var role = await _db.Roles.FirstOrDefaultAsync(r => r.Name == body.RoleName, ct)
                     ?? throw new NotFoundException("Role", body.RoleName);
@@ -110,6 +132,66 @@ public class UsersAdminController : ControllerBase
             await _db.SaveChangesAsync(ct);
         }
         await _adminLog.LogAsync("user.role.grant", "User", id.ToString(), null, new { body.RoleName }, ct);
+        return NoContent();
+    }
+
+    // ---------- Registration approval ----------
+
+    public record ApproveBody(string? Notes);
+    public record RejectBody(string Reason);
+
+    [HttpPost("{id:guid}/approve")]
+    [Permission(Permissions.Users.Approve)]
+    public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveBody? body, CancellationToken ct)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct)
+                   ?? throw new NotFoundException("User", id);
+
+        if (user.ApprovalStatus == ApprovalStatus.Approved)
+            return NoContent();
+
+        user.ApprovalStatus = ApprovalStatus.Approved;
+        user.ApprovedAt = DateTime.UtcNow;
+        user.ApprovedById = _current.UserId;
+        user.RejectionReason = null;
+        await _db.SaveChangesAsync(ct);
+
+        await _email.SendAsync(user.Email,
+            "Your Pawzaroo account is approved",
+            $"Hi {user.DisplayName},\n\nGood news — your account has been approved by an administrator. " +
+            "You can now log in at the Pawzaroo sign-in page.\n\n— Pawzaroo",
+            user.Id, ct);
+
+        try { await _notify.NotifyUserAsync(user.Id, "Account approved", "You can sign in now.", null, ct); }
+        catch { /* notification is non-critical */ }
+
+        await _adminLog.LogAsync("user.approve", "User", id.ToString(), body?.Notes, null, ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/reject")]
+    [Permission(Permissions.Users.Reject)]
+    public async Task<IActionResult> Reject(Guid id, [FromBody] RejectBody body, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Reason))
+            throw new Pawzaroo.Shared.Exceptions.ValidationException(
+                new Dictionary<string, string[]> { ["reason"] = new[] { "Reason is required." } });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct)
+                   ?? throw new NotFoundException("User", id);
+
+        user.ApprovalStatus = ApprovalStatus.Rejected;
+        user.RejectionReason = body.Reason.Trim();
+        user.ApprovedAt = null;
+        user.ApprovedById = _current.UserId;
+        await _db.SaveChangesAsync(ct);
+
+        await _email.SendAsync(user.Email,
+            "Your Pawzaroo registration was not approved",
+            $"Hi {user.DisplayName},\n\nWe're unable to approve your account at this time.\n\nReason: {user.RejectionReason}\n\n— Pawzaroo",
+            user.Id, ct);
+
+        await _adminLog.LogAsync("user.reject", "User", id.ToString(), body.Reason, null, ct);
         return NoContent();
     }
 

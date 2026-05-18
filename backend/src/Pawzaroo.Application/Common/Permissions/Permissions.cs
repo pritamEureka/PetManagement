@@ -38,15 +38,17 @@ public static class Permissions
     // -- Per-module surface -------------------------------------------------------
     public static class Users
     {
-        public const string View    = "users.view";
-        public const string Create  = "users.create";
-        public const string Edit    = "users.edit";
-        public const string Delete  = "users.delete";
-        public const string Suspend = "users.suspend";
-        public const string Restore = "users.restore";
-        public const string Export  = "users.export";
-        public const string Import  = "users.import";
-        public const string Assign  = "users.assign";
+        public const string View     = "users.view";
+        public const string Create   = "users.create";
+        public const string Edit     = "users.edit";
+        public const string Delete   = "users.delete";
+        public const string Suspend  = "users.suspend";
+        public const string Restore  = "users.restore";
+        public const string Export   = "users.export";
+        public const string Import   = "users.import";
+        public const string Assign   = "users.assign";
+        public const string Approve  = "users.approve";
+        public const string Reject   = "users.reject";
     }
 
     public static class Posts

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { authApi, type AuthResponse } from "@/api/auth";
+import { authApi, type AuthResponse, type RegistrationResult } from "@/api/auth";
 
 interface AuthState {
   accessToken: string | null;
@@ -14,7 +14,7 @@ interface AuthState {
   suspensionMessage: string | null;
 
   login: (email: string, password: string, twoFactorCode?: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string, phoneNumber?: string) => Promise<void>;
+  register: (email: string, password: string, displayName: string, phoneNumber?: string) => Promise<RegistrationResult>;
   refresh: () => Promise<string | null>;
   logout: () => Promise<void>;
   setSuspensionMessage: (msg: string | null) => void;
@@ -54,15 +54,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       async register(email, password, displayName, phoneNumber) {
-        const res = await authApi.register(email, password, displayName, phoneNumber);
-        set({
-          accessToken: res.accessToken,
-          refreshToken: res.refreshToken,
-          expiresAt: res.expiresAt,
-          user: res.user,
-          needsTwoFactor: false,
-          suspensionMessage: null
-        });
+        // Registration no longer issues tokens — the new account is Pending
+        // approval. We return the server's status payload so the page can
+        // route the user to a "request received" screen.
+        return await authApi.register(email, password, displayName, phoneNumber);
       },
 
       async refresh() {

@@ -110,6 +110,10 @@ public static class DependencyInjection
         // Dev: log-only OTP transport. Swap in SES/Twilio adapter for prod.
         services.AddScoped<Application.Modules.Security.Services.IOtpDeliveryService,    Modules.Security.ConsoleOtpDelivery>();
 
+        // Generic transactional email (registration approval, etc.) — log + in-app
+        // notification fallback. Swap in MailKit/SendGrid for prod.
+        services.AddScoped<IEmailService, Modules.Identity.ConsoleEmailService>();
+
         return services;
     }
 

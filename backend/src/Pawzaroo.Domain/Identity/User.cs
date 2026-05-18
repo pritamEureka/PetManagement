@@ -23,6 +23,14 @@ public class User : AuditableEntity
     public bool IsSuspended { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
+    // Self-service registration creates Pending users; admin/super-admin must
+    // approve before login is allowed. Direct admin grants bypass this by
+    // creating the user as Approved.
+    public ApprovalStatus ApprovalStatus { get; set; } = ApprovalStatus.Approved;
+    public DateTime? ApprovedAt { get; set; }
+    public Guid? ApprovedById { get; set; }
+    public string? RejectionReason { get; set; }
+
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<Pet> Pets { get; set; } = new List<Pet>();

@@ -15,6 +15,15 @@ export interface AuthResponse {
   };
 }
 
+// Register no longer auto-logs in — every new account starts Pending and must
+// be approved by an admin before it can sign in.
+export interface RegistrationResult {
+  userId: string;
+  email: string;
+  status: "Pending" | "Approved" | "Rejected";
+  message: string;
+}
+
 // Auth flows render their own error UI (2FA prompt, inline messages),
 // so opt out of the global error toast on these calls.
 const noToast = { skipErrorToast: true } as const;
@@ -30,7 +39,7 @@ export const authApi = {
       .then((r) => r.data),
 
   register: (email: string, password: string, displayName: string, phoneNumber?: string) =>
-    api.post<AuthResponse>("/v1/auth/register", { email, password, displayName, phoneNumber }, noToast).then((r) => r.data),
+    api.post<RegistrationResult>("/v1/auth/register", { email, password, displayName, phoneNumber }, noToast).then((r) => r.data),
 
   refresh: (refreshToken: string) =>
     api.post<AuthResponse>("/v1/auth/refresh", { refreshToken }, noToast).then((r) => r.data),

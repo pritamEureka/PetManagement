@@ -31,7 +31,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public Task<AuthResponse> Register([FromBody] RegisterDto dto, CancellationToken ct)
+    public Task<Pawzaroo.Application.Modules.Identity.Features.Register.RegistrationResult> Register(
+        [FromBody] RegisterDto dto, CancellationToken ct)
         => _mediator.SendAsync(new RegisterCommand(dto.Email, dto.Password, dto.DisplayName, dto.PhoneNumber,
             HttpContext.Connection.RemoteIpAddress?.ToString()), ct);
 

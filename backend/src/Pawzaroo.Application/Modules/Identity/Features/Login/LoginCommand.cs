@@ -4,6 +4,7 @@ using Pawzaroo.Application.Common.Cqrs;
 using Pawzaroo.Application.Common.DTOs;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Modules.Security.Services;
+using Pawzaroo.Domain.Common;
 using Pawzaroo.Shared.Exceptions;
 
 namespace Pawzaroo.Application.Modules.Identity.Features.Login;
@@ -49,9 +50,25 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponse>
         var user = await _db.Users.SingleOrDefaultAsync(u => u.Email == email, ct)
             ?? throw new ForbiddenException("Invalid credentials.");
 
-        // Verify password before checking active/suspended so timing doesn't leak account existence.
+        // Verify password before checking status flags so timing doesn't leak account existence.
         if (!_hasher.Verify(req.Password, user.PasswordHash))
             throw new ForbiddenException("Invalid credentials.");
+
+        // Approval gate: self-registered accounts wait for admin review. Reject codes
+        // surface to the frontend as "registration_pending" / "registration_rejected"
+        // so the login screen can show the right status to the user.
+        switch (user.ApprovalStatus)
+        {
+            case ApprovalStatus.Pending:
+                throw new AppException("registration_pending",
+                    "Your registration is awaiting admin approval. You'll receive an email once it's approved.");
+            case ApprovalStatus.Rejected:
+                throw new AppException("registration_rejected",
+                    user.RejectionReason is { Length: > 0 } reason
+                        ? $"Your registration was rejected: {reason}"
+                        : "Your registration was rejected by an administrator.");
+        }
+
         if (!user.IsActive || user.IsSuspended) throw new ForbiddenException("Account disabled.");
 
         // 2FA gate (admins typically; users may opt in). If enabled, require the code.

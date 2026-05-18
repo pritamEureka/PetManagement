@@ -21,6 +21,7 @@ import { TypingIndicator } from "@/components/messaging/TypingIndicator";
 import { MessageBubble } from "@/components/messaging/MessageBubble";
 import { AttachmentUpload } from "@/components/messaging/AttachmentUpload";
 import { MessageReportDialog } from "@/components/messaging/MessageReportDialog";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 const TYPING_DEBOUNCE = 800;
 
@@ -32,6 +33,8 @@ export function MessagingPage() {
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [reportingId, setReportingId] = useState<string | null>(null);
+  const [blockTarget, setBlockTarget] = useState<{ userId: string; displayName: string } | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: convos, isLoading: loadingList } = useQuery({
@@ -144,19 +147,34 @@ export function MessagingPage() {
     await messagesApi.mute(active.id, !active.isMuted);
     qc.invalidateQueries({ queryKey: ["conversations"] });
   }
-  async function blockOther() {
+  function blockOther() {
     const other = active?.participants[0];
     if (!other) return;
-    if (!confirm(`Block ${other.displayName}? You'll no longer be able to message them.`)) return;
-    await messagesApi.block(other.userId);
-    qc.invalidateQueries({ queryKey: ["conversations"] });
-    toast.success("Blocked.");
+    setBlockTarget({ userId: other.userId, displayName: other.displayName });
+  }
+  async function confirmBlock() {
+    if (!blockTarget) return;
+    try {
+      await messagesApi.block(blockTarget.userId);
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success("Blocked.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Failed.");
+    }
   }
 
-  async function deleteMessage(id: string) {
-    if (!confirm("Delete this message for everyone?")) return;
-    await messagesApi.deleteMessage(id);
-    setMessages((prev) => prev.map((m) => m.id === id ? { ...m, isDeletedForAll: true, content: null } : m));
+  function deleteMessage(id: string) {
+    setDeletingMessageId(id);
+  }
+  async function confirmDeleteMessage() {
+    if (!deletingMessageId) return;
+    const id = deletingMessageId;
+    try {
+      await messagesApi.deleteMessage(id);
+      setMessages((prev) => prev.map((m) => m.id === id ? { ...m, isDeletedForAll: true, content: null } : m));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Failed.");
+    }
   }
 
   const typingNames = Object.keys(typingUsers).map((uid) =>
@@ -255,6 +273,26 @@ export function MessagingPage() {
           messageId={reportingId}
         />
       )}
+
+      <ConfirmDialog
+        open={!!blockTarget}
+        onOpenChange={(v) => !v && setBlockTarget(null)}
+        title={`Block ${blockTarget?.displayName ?? "user"}?`}
+        description="You'll no longer be able to message them and they won't be able to message you."
+        confirmLabel="Block"
+        destructive
+        onConfirm={confirmBlock}
+      />
+
+      <ConfirmDialog
+        open={!!deletingMessageId}
+        onOpenChange={(v) => !v && setDeletingMessageId(null)}
+        title="Delete this message for everyone?"
+        description="The message will be removed for all participants in this conversation."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDeleteMessage}
+      />
     </div>
   );
 }

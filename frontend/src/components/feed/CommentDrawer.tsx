@@ -19,6 +19,7 @@ import { commentsApi, type Comment } from "@/api/posts";
 import { toast } from "@/components/ui/sonner";
 import { MoreHorizontal } from "lucide-react";
 import { ReportPostDialog } from "./ReportPostDialog";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 interface Props {
   open: boolean;
@@ -30,6 +31,7 @@ export function CommentDrawer({ open, onOpenChange, postId }: Props) {
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
   const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Comment | null>(null);
 
   const {
     data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading
@@ -56,10 +58,12 @@ export function CommentDrawer({ open, onOpenChange, postId }: Props) {
     }
   }
 
-  async function onDelete(c: Comment) {
-    if (!confirm("Delete this comment?")) return;
+  function onDelete(c: Comment) { setDeleteTarget(c); }
+
+  async function confirmDeleteComment() {
+    if (!deleteTarget) return;
     try {
-      await commentsApi.remove(c.id);
+      await commentsApi.remove(deleteTarget.id);
       qc.invalidateQueries({ queryKey: ["comments", postId] });
       qc.invalidateQueries({ queryKey: ["feed"] });
     } catch (err: any) {
@@ -112,6 +116,16 @@ export function CommentDrawer({ open, onOpenChange, postId }: Props) {
         onReport={(reason, details) => commentsApi.report(reportTarget, reason, details)}
       />
     )}
+
+    <ConfirmDialog
+      open={!!deleteTarget}
+      onOpenChange={(v) => !v && setDeleteTarget(null)}
+      title="Delete this comment?"
+      description="This is permanent."
+      confirmLabel="Delete"
+      destructive
+      onConfirm={confirmDeleteComment}
+    />
     </>
   );
 }

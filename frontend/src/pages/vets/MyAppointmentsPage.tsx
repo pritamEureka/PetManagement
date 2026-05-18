@@ -11,7 +11,9 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { appointmentsApi, type Appointment, type AppointmentStatus } from "@/api/vets";
 import { AppointmentStatusBadge } from "@/components/vet/AppointmentStatusBadge";
+import { ReviewDialog } from "@/components/vet/ReviewDialog";
 import { toast } from "@/components/ui/sonner";
+import { PromptDialog } from "@/components/common/PromptDialog";
 
 // Radix Select disallows empty-string item values (it reserves "" to mean "cleared").
 // "all" is the sentinel for the no-filter case, converted to `undefined` at the API.
@@ -30,6 +32,8 @@ const FILTER_STATUSES: { label: string; value: StatusFilter }[] = [
 export function MyAppointmentsPage() {
   const qc = useQueryClient();
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<Appointment | null>(null);
   const sentinel = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -57,9 +61,9 @@ export function MyAppointmentsPage() {
 
   function invalidate() { qc.invalidateQueries({ queryKey: ["appointments", "mine"] }); }
 
-  async function cancel(a: Appointment) {
-    const reason = prompt("Reason for cancellation?") ?? "";
-    try { await appointmentsApi.cancel(a.id, reason); toast.success("Cancelled."); invalidate(); }
+  async function doCancel(reason: string) {
+    if (!cancelTarget) return;
+    try { await appointmentsApi.cancel(cancelTarget.id, reason); toast.success("Cancelled."); invalidate(); }
     catch (err: any) { toast.error(err?.response?.data?.error?.message ?? "Failed."); }
   }
   async function pay(a: Appointment) {
@@ -74,11 +78,9 @@ export function MyAppointmentsPage() {
       toast.error(err?.response?.data?.error?.message ?? "Can't open meeting.");
     }
   }
-  async function review(a: Appointment) {
-    const rs = prompt("Rating 1–5?"); if (!rs) return;
-    const rating = Number(rs); if (Number.isNaN(rating) || rating < 1 || rating > 5) return;
-    const comment = prompt("Comment (optional)?") ?? "";
-    try { await appointmentsApi.review(a.id, rating, comment || undefined); toast.success("Thanks for the review!"); invalidate(); }
+  async function doReview(rating: number, comment: string) {
+    if (!reviewTarget) return;
+    try { await appointmentsApi.review(reviewTarget.id, rating, comment || undefined); toast.success("Thanks for the review!"); invalidate(); }
     catch (err: any) { toast.error(err?.response?.data?.error?.message ?? "Failed."); }
   }
 
@@ -105,7 +107,7 @@ export function MyAppointmentsPage() {
       ) : (
         <div className="space-y-2">
           {items.map((a) => <AppointmentRow key={a.id} a={a}
-            onCancel={() => cancel(a)} onPay={() => pay(a)} onJoin={() => joinCall(a)} onReview={() => review(a)} />)}
+            onCancel={() => setCancelTarget(a)} onPay={() => pay(a)} onJoin={() => joinCall(a)} onReview={() => setReviewTarget(a)} />)}
         </div>
       )}
 
@@ -114,6 +116,27 @@ export function MyAppointmentsPage() {
           {isFetchingNextPage ? "Loading more..." : "Scroll for more"}
         </div>
       )}
+
+      <PromptDialog
+        open={!!cancelTarget}
+        onOpenChange={(v) => !v && setCancelTarget(null)}
+        title={`Cancel appointment with Dr. ${cancelTarget?.doctorName ?? ""}?`}
+        description="Let the doctor know why you're cancelling."
+        label="Reason for cancellation"
+        placeholder="Why are you cancelling?"
+        confirmLabel="Cancel appointment"
+        destructive
+        multiline
+        onSubmit={doCancel}
+      />
+
+      <ReviewDialog
+        open={!!reviewTarget}
+        onOpenChange={(v) => !v && setReviewTarget(null)}
+        title={`Review Dr. ${reviewTarget?.doctorName ?? ""}`}
+        description="Your feedback helps other pet owners find the right vet."
+        onSubmit={doReview}
+      />
     </div>
   );
 }

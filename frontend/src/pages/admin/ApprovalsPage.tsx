@@ -11,6 +11,7 @@ import { Can } from "@/components/auth/Can";
 import { adoptionApi } from "@/api/adoption";
 import { adminApi } from "@/api/adminV2";
 import { toast } from "@/components/ui/sonner";
+import { PromptDialog } from "@/components/common/PromptDialog";
 
 export function ApprovalsPage() {
   return (
@@ -59,6 +60,7 @@ export function ApprovalsPage() {
 
 function UserRegistrationQueue() {
   const qc = useQueryClient();
+  const [rejecting, setRejecting] = useState<{ id: string; name: string } | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "users", "pending"],
     queryFn: () => adminApi.users.list({ approvalStatus: "Pending", pageSize: 50 })
@@ -70,10 +72,9 @@ function UserRegistrationQueue() {
     try { await adminApi.users.approve(id); toast.success(`${name} approved.`); invalidate(); }
     catch (e: any) { toast.error(e?.response?.data?.error?.message ?? "Failed."); }
   }
-  async function reject(id: string, name: string) {
-    const reason = prompt(`Reason for rejecting ${name}?`)?.trim();
-    if (!reason) return;
-    try { await adminApi.users.reject(id, reason); toast.success(`${name} rejected.`); invalidate(); }
+  async function doReject(reason: string) {
+    if (!rejecting) return;
+    try { await adminApi.users.reject(rejecting.id, reason); toast.success(`${rejecting.name} rejected.`); invalidate(); }
     catch (e: any) { toast.error(e?.response?.data?.error?.message ?? "Failed."); }
   }
 
@@ -110,7 +111,7 @@ function UserRegistrationQueue() {
                 </Button>
               </Can>
               <Can permission="users.reject">
-                <Button size="sm" variant="destructive" onClick={() => reject(u.id, u.displayName)}>
+                <Button size="sm" variant="destructive" onClick={() => setRejecting({ id: u.id, name: u.displayName })}>
                   <X className="h-3.5 w-3.5 mr-1" /> Reject
                 </Button>
               </Can>
@@ -118,6 +119,18 @@ function UserRegistrationQueue() {
           </CardContent>
         </Card>
       ))}
+
+      <PromptDialog
+        open={!!rejecting}
+        onOpenChange={(v) => !v && setRejecting(null)}
+        title={`Reject ${rejecting?.name ?? "user"}?`}
+        description="The reason is emailed to the user along with the rejection notice."
+        label="Reason"
+        confirmLabel="Reject"
+        destructive
+        multiline
+        onSubmit={doReject}
+      />
     </div>
   );
 }
@@ -127,14 +140,15 @@ function AdoptionQueue() {
   // would expose GET /v1/adoption/listings?status=pending — wire that here when
   // it lands. For now this surface demonstrates the per-row workflow.
   const [items] = useState<{ id: string; title: string; ownerName: string; createdAt: string }[]>([]);
+  const [rejecting, setRejecting] = useState<string | null>(null);
 
   async function approve(id: string) {
     try { await adoptionApi.approve(id); toast.success("Approved."); }
     catch (e: any) { toast.error(e?.response?.data?.error?.message ?? "Failed."); }
   }
-  async function reject(id: string) {
-    const notes = prompt("Reason (visible to the submitter)?") ?? "";
-    try { await adoptionApi.reject(id, notes); toast.success("Rejected."); }
+  async function doReject(notes: string) {
+    if (!rejecting) return;
+    try { await adoptionApi.reject(rejecting, notes); toast.success("Rejected."); }
     catch (e: any) { toast.error(e?.response?.data?.error?.message ?? "Failed."); }
   }
 
@@ -157,12 +171,25 @@ function AdoptionQueue() {
                 <Button size="sm" onClick={() => approve(it.id)}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
               </Can>
               <Can permission="adoption.reject">
-                <Button size="sm" variant="destructive" onClick={() => reject(it.id)}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
+                <Button size="sm" variant="destructive" onClick={() => setRejecting(it.id)}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
               </Can>
             </div>
           </CardContent>
         </Card>
       ))}
+
+      <PromptDialog
+        open={!!rejecting}
+        onOpenChange={(v) => !v && setRejecting(null)}
+        title="Reject adoption listing"
+        description="The reason is shown to the submitter."
+        label="Reason"
+        confirmLabel="Reject"
+        destructive
+        multiline
+        required={false}
+        onSubmit={doReject}
+      />
     </div>
   );
 }

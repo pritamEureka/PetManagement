@@ -11,7 +11,7 @@ using Pawzaroo.Application.Modules.Identity.Features.Register;
 
 namespace Pawzaroo.Api.Controllers.V1;
 
-public record RegisterDto(string Email, string Password, string DisplayName, string? PhoneNumber);
+public record RegisterDto(string Email, string Password, string DisplayName, string? PhoneNumber, string? RequestedRole);
 public record LoginDto(string Email, string Password, string? TwoFactorCode = null, string? DeviceFingerprint = null);
 public record RefreshDto(string RefreshToken);
 
@@ -34,7 +34,7 @@ public class AuthController : ControllerBase
     public Task<Pawzaroo.Application.Modules.Identity.Features.Register.RegistrationResult> Register(
         [FromBody] RegisterDto dto, CancellationToken ct)
         => _mediator.SendAsync(new RegisterCommand(dto.Email, dto.Password, dto.DisplayName, dto.PhoneNumber,
-            HttpContext.Connection.RemoteIpAddress?.ToString()), ct);
+            HttpContext.Connection.RemoteIpAddress?.ToString(), dto.RequestedRole), ct);
 
     [HttpPost("login")]
     public Task<AuthResponse> Login([FromBody] LoginDto dto, CancellationToken ct)

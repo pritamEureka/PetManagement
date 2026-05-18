@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users as UsersIcon, Search, MoreHorizontal, KeyRound, Ban, RotateCcw } from "lucide-react";
+import {
+  Users as UsersIcon, Search, MoreHorizontal, KeyRound, Ban, RotateCcw,
+  Eye, Pencil, Trash2, Plus
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,17 +15,33 @@ import {
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { PromptDialog } from "@/components/common/PromptDialog";
 import { Can } from "@/components/auth/Can";
 import { adminApi, type AdminUser } from "@/api/admin";
 import { rbacApi } from "@/api/rbac";
 import { AssignRoleDialog } from "@/components/admin/AssignRoleDialog";
+import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
+import { EditUserDialog } from "@/components/admin/EditUserDialog";
+import { ViewUserDialog } from "@/components/admin/ViewUserDialog";
 import { toast } from "@/components/ui/sonner";
+import { useAuthStore } from "@/store/authStore";
 
 export function UsersPage() {
   const qc = useQueryClient();
+  const isSuperAdmin = useAuthStore((s) => s.user?.roles.includes("SuperAdmin")) ?? false;
+
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [roleUser, setRoleUser] = useState<AdminUser | null>(null);
+
+  // Dialog state — one slot per action, holds the row the action targets.
+  const [roleUser, setRoleUser]       = useState<AdminUser | null>(null);
+  const [viewing, setViewing]         = useState<AdminUser | null>(null);
+  const [editing, setEditing]         = useState<AdminUser | null>(null);
+  const [deleting, setDeleting]       = useState<AdminUser | null>(null);
+  const [suspending, setSuspending]   = useState<AdminUser | null>(null);
+  const [restoring, setRestoring]     = useState<AdminUser | null>(null);
+  const [creating, setCreating]       = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "users", q, page],
@@ -31,14 +50,39 @@ export function UsersPage() {
 
   const { data: roles } = useQuery({ queryKey: ["rbac", "roles"], queryFn: rbacApi.listRoles });
 
-  async function suspend(u: AdminUser) {
-    if (!confirm(`Suspend ${u.displayName}?`)) return;
-    try { await adminApi.suspend(u.id); toast.success("Suspended."); qc.invalidateQueries({ queryKey: ["admin", "users"] }); }
-    catch (e: any) { toast.error(e?.response?.data?.error?.message ?? "Failed."); }
+  function refresh() { qc.invalidateQueries({ queryKey: ["admin", "users"] }); }
+
+  async function doSuspend(reason: string) {
+    if (!suspending) return;
+    try {
+      await adminApi.suspend(suspending.id, reason);
+      toast.success(`${suspending.displayName} suspended.`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? "Failed.");
+    }
   }
-  async function restore(u: AdminUser) {
-    try { await adminApi.restore(u.id); toast.success("Restored."); qc.invalidateQueries({ queryKey: ["admin", "users"] }); }
-    catch (e: any) { toast.error(e?.response?.data?.error?.message ?? "Failed."); }
+
+  async function doRestore() {
+    if (!restoring) return;
+    try {
+      await adminApi.restore(restoring.id);
+      toast.success(`${restoring.displayName} restored.`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? "Failed.");
+    }
+  }
+
+  async function doDelete() {
+    if (!deleting) return;
+    try {
+      await adminApi.deleteUser(deleting.id);
+      toast.success(`${deleting.displayName} permanently deleted.`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? "Delete failed.");
+    }
   }
 
   const columns: Column<AdminUser>[] = [
@@ -68,6 +112,8 @@ export function UsersPage() {
       key: "status", header: "Status", className: "w-32",
       render: (u) =>
         u.isSuspended ? <Badge variant="destructive">Suspended</Badge>
+                       : u.approvalStatus === "Pending" ? <Badge variant="secondary">Pending</Badge>
+                       : u.approvalStatus === "Rejected" ? <Badge variant="destructive">Rejected</Badge>
                        : u.isActive ? <Badge variant="secondary">Active</Badge>
                                     : <Badge variant="muted">Inactive</Badge>
     },
@@ -83,24 +129,41 @@ export function UsersPage() {
             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setViewing(u)}>
+              <Eye className="h-3.5 w-3.5 mr-2" /> View
+            </DropdownMenuItem>
+            <Can permission="users.edit">
+              <DropdownMenuItem onClick={() => setEditing(u)}>
+                <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+              </DropdownMenuItem>
+            </Can>
             <Can permission="roles.assign">
               <DropdownMenuItem onClick={() => setRoleUser(u)}>
                 <KeyRound className="h-3.5 w-3.5 mr-2" /> Manage roles
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
             </Can>
+            <DropdownMenuSeparator />
             {u.isSuspended ? (
               <Can permission="users.restore">
-                <DropdownMenuItem onClick={() => restore(u)}>
+                <DropdownMenuItem onClick={() => setRestoring(u)}>
                   <RotateCcw className="h-3.5 w-3.5 mr-2" /> Restore
                 </DropdownMenuItem>
               </Can>
             ) : (
               <Can permission="users.suspend">
-                <DropdownMenuItem destructive onClick={() => suspend(u)}>
+                <DropdownMenuItem destructive onClick={() => setSuspending(u)}>
                   <Ban className="h-3.5 w-3.5 mr-2" /> Suspend
                 </DropdownMenuItem>
               </Can>
+            )}
+            {/* Permanent delete is SuperAdmin-only, both gated client- and server-side. */}
+            {isSuperAdmin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem destructive onClick={() => setDeleting(u)}>
+                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete permanently
+                </DropdownMenuItem>
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -113,7 +176,14 @@ export function UsersPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="Users" icon={UsersIcon}
-        description={data ? `${data.total} total` : "Manage accounts and roles."} />
+        description={data ? `${data.total} total` : "Manage accounts and roles."}
+        actions={
+          <Can permission="users.create">
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4 mr-2" /> New user
+            </Button>
+          </Can>
+        } />
 
       <Card>
         <CardContent className="pt-6 space-y-4">
@@ -144,6 +214,29 @@ export function UsersPage() {
         </CardContent>
       </Card>
 
+      {/* Create */}
+      <CreateUserDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onCreated={refresh}
+      />
+
+      {/* View */}
+      <ViewUserDialog
+        open={!!viewing}
+        onOpenChange={(v) => !v && setViewing(null)}
+        userId={viewing?.id ?? null}
+      />
+
+      {/* Edit */}
+      <EditUserDialog
+        open={!!editing}
+        onOpenChange={(v) => !v && setEditing(null)}
+        user={editing}
+        onSaved={refresh}
+      />
+
+      {/* Manage roles (existing dialog) */}
       {roleUser && (
         <AssignRoleDialog
           open={!!roleUser}
@@ -153,6 +246,46 @@ export function UsersPage() {
           allRoles={roles ?? []}
         />
       )}
+
+      {/* Suspend — needs a reason */}
+      <PromptDialog
+        open={!!suspending}
+        onOpenChange={(v) => !v && setSuspending(null)}
+        title={`Suspend ${suspending?.displayName ?? ""}`}
+        description="The user will be signed out and prevented from accessing the platform until restored."
+        label="Reason"
+        placeholder="What's the reason for the suspension?"
+        confirmLabel="Suspend"
+        destructive
+        onSubmit={doSuspend}
+      />
+
+      {/* Restore — simple yes/no */}
+      <ConfirmDialog
+        open={!!restoring}
+        onOpenChange={(v) => !v && setRestoring(null)}
+        title={`Restore ${restoring?.displayName ?? "user"}?`}
+        description="They will be able to sign in again immediately."
+        confirmLabel="Restore"
+        onConfirm={doRestore}
+      />
+
+      {/* Delete permanently — destructive, double-confirm via title wording */}
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(v) => !v && setDeleting(null)}
+        title={`Permanently delete ${deleting?.displayName ?? "user"}?`}
+        description={
+          <>
+            This will remove <span className="font-medium">{deleting?.email}</span> from the database entirely.
+            If the account has posts, orders, or listings linked to it the delete will fail and you'll need to suspend instead.
+            This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete permanently"
+        destructive
+        onConfirm={doDelete}
+      />
     </div>
   );
 }

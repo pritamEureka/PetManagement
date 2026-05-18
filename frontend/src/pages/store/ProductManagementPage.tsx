@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { productsV2Api } from "@/api/marketplace";
+import { productsV2Api, type ProductSummary } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 export function ProductManagementPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [deleting, setDeleting] = useState<ProductSummary | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["my-products", { search }],
@@ -26,8 +28,14 @@ export function ProductManagementPage() {
 
   const remove = useMutation({
     mutationFn: (id: string) => productsV2Api.remove(id),
-    onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["my-products"] }); }
+    onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["my-products"] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Delete failed.")
   });
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    await remove.mutateAsync(deleting.id);
+  }
 
   return (
     <div className="space-y-4">
@@ -105,7 +113,7 @@ export function ProductManagementPage() {
                             {p.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
                           <Button size="icon" variant="ghost" title="Delete"
-                            onClick={() => confirm(`Delete ${p.name}?`) && remove.mutate(p.id)}>
+                            onClick={() => setDeleting(p)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -118,6 +126,16 @@ export function ProductManagementPage() {
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(v) => !v && setDeleting(null)}
+        title={`Delete ${deleting?.name ?? "product"}?`}
+        description="This permanently removes the product from your catalog."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

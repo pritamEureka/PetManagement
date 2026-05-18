@@ -16,6 +16,8 @@ import { Can } from "@/components/auth/Can";
 import { EditPostDialog } from "./EditPostDialog";
 import { ReportPostDialog } from "./ReportPostDialog";
 import { CommentDrawer } from "./CommentDrawer";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { PromptDialog } from "@/components/common/PromptDialog";
 
 interface Props {
   post: FeedItem;
@@ -28,6 +30,8 @@ export function PostCard({ post, onChanged }: Props) {
   const [editing, setEditing] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [commenting, setCommenting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [hideOpen, setHideOpen] = useState(false);
 
   // Optimistic mirror — UI stays snappy while invalidations roll through.
   const [reactedType, setReactedType] = useState<string | null>(post.myReaction ?? null);
@@ -67,14 +71,14 @@ export function PostCard({ post, onChanged }: Props) {
     }
   }
 
-  async function onDelete() {
-    if (!confirm("Delete this post?")) return;
+  function onDelete() { setConfirmDelete(true); }
+  async function confirmDeletePost() {
     try { await postsApi.remove(post.id); toast.success("Deleted"); onChanged?.(); }
     catch (err: any) { toast.error(err?.response?.data?.error?.message ?? "Delete failed."); }
   }
 
-  async function onHide() {
-    const reason = prompt("Reason (visible in audit log)") ?? "";
+  function onHide() { setHideOpen(true); }
+  async function submitHide(reason: string) {
     try { await postsApi.hide(post.id, true, reason); toast.success("Post hidden"); onChanged?.(); }
     catch (err: any) { toast.error(err?.response?.data?.error?.message ?? "Couldn't hide."); }
   }
@@ -187,6 +191,27 @@ export function PostCard({ post, onChanged }: Props) {
         />
       )}
       {commenting && <CommentDrawer open={commenting} onOpenChange={setCommenting} postId={post.id} />}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete this post?"
+        description="The post is removed for everyone. This can't be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDeletePost}
+      />
+
+      <PromptDialog
+        open={hideOpen}
+        onOpenChange={setHideOpen}
+        title="Hide this post"
+        description="The post will be hidden from the feed. The reason is recorded in the audit log."
+        label="Reason (visible in audit log)"
+        confirmLabel="Hide"
+        destructive
+        onSubmit={submitHide}
+      />
     </Card>
   );
 }

@@ -13,6 +13,7 @@ import { Can } from "@/components/auth/Can";
 import { vetsApi, type DoctorSummary, type CredentialDocument } from "@/api/vets";
 import { toast } from "@/components/ui/sonner";
 import { RejectReasonModal } from "@/components/adoption/RejectReasonModal";
+import { PromptDialog } from "@/components/common/PromptDialog";
 
 export function DoctorApprovalPage() {
   const qc = useQueryClient();
@@ -25,6 +26,7 @@ export function DoctorApprovalPage() {
     queryFn: () => vetsApi.search({ pageSize: 50 })
   });
   const [rejectTarget, setRejectTarget] = useState<DoctorSummary | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<DoctorSummary | null>(null);
   const [credsForId, setCredsForId] = useState<string | null>(null);
   const { data: creds } = useQuery({
     queryKey: ["doctor-creds", credsForId],
@@ -36,8 +38,9 @@ export function DoctorApprovalPage() {
     try { await vetsApi.approve(d.id); toast.success(`Approved Dr. ${d.name}`); qc.invalidateQueries({ queryKey: ["admin-doctors"] }); }
     catch (err: any) { toast.error(err?.response?.data?.error?.message ?? "Failed."); }
   }
-  async function suspend(d: DoctorSummary) {
-    const reason = prompt("Reason for suspension?") ?? "";
+  async function doSuspend(reason: string) {
+    if (!suspendTarget) return;
+    const d = suspendTarget;
     try { await vetsApi.suspend(d.id, reason); toast.success(`Suspended Dr. ${d.name}`); qc.invalidateQueries({ queryKey: ["admin-doctors"] }); }
     catch (err: any) { toast.error(err?.response?.data?.error?.message ?? "Failed."); }
   }
@@ -88,7 +91,7 @@ export function DoctorApprovalPage() {
                   </Button>
                 </Can>
                 <Can permission="vets.suspend">
-                  <Button size="sm" variant="outline" onClick={() => suspend(d)}>
+                  <Button size="sm" variant="outline" onClick={() => setSuspendTarget(d)}>
                     <Ban className="h-3.5 w-3.5 mr-1" /> Suspend
                   </Button>
                 </Can>
@@ -131,6 +134,19 @@ export function DoctorApprovalPage() {
           }}
         />
       )}
+
+      <PromptDialog
+        open={!!suspendTarget}
+        onOpenChange={(v) => !v && setSuspendTarget(null)}
+        title={`Suspend Dr. ${suspendTarget?.name ?? ""}`}
+        description="The doctor will be prevented from accepting new appointments until restored."
+        label="Reason"
+        placeholder="What's the reason for the suspension?"
+        confirmLabel="Suspend"
+        destructive
+        multiline
+        onSubmit={doSuspend}
+      />
     </div>
   );
 }

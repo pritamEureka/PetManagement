@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { commissionsApi, type CommissionScope } from "@/api/marketplace";
+import { commissionsApi, type CommissionScope, type CommissionConfiguration } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 export function CommissionConfigPage() {
   const qc = useQueryClient();
@@ -20,6 +21,7 @@ export function CommissionConfigPage() {
   const [percent, setPercent] = useState("10");
   const [effectiveFrom, setEffectiveFrom] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
+  const [deleting, setDeleting] = useState<CommissionConfiguration | null>(null);
 
   const { data: configs } = useQuery({
     queryKey: ["commission-configs"], queryFn: () => commissionsApi.list()
@@ -48,6 +50,16 @@ export function CommissionConfigPage() {
     mutationFn: (id: string) => commissionsApi.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["commission-configs"] })
   });
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    try {
+      await remove.mutateAsync(deleting.id);
+      toast.success("Rule deleted.");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message ?? "Delete failed.");
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -113,7 +125,7 @@ export function CommissionConfigPage() {
                         {c.effectiveTo && <> → {new Date(c.effectiveTo).toLocaleDateString()}</>}
                       </td>
                       <td className="p-3 text-right">
-                        <Button size="icon" variant="ghost" onClick={() => confirm("Delete rule?") && remove.mutate(c.id)}>
+                        <Button size="icon" variant="ghost" onClick={() => setDeleting(c)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </td>
@@ -124,6 +136,16 @@ export function CommissionConfigPage() {
             </CardContent>
           </Card>
         )}
+
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(v) => !v && setDeleting(null)}
+        title="Delete rule?"
+        description="This commission rule will be permanently removed."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

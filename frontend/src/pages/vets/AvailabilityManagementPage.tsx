@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/common/PageHeader";
 import { availabilityRuleSchema, type AvailabilityRuleInput, consultationTypes } from "@/lib/schemas";
-import { vetsApi } from "@/api/vets";
+import { vetsApi, type AvailabilityRule } from "@/api/vets";
 import { toast } from "@/components/ui/sonner";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -38,10 +39,16 @@ export function AvailabilityManagementPage() {
       toast.error(err?.response?.data?.error?.message ?? "Failed to add.");
     }
   }
-  async function removeRule(id: string) {
-    if (!confirm("Remove this availability rule?")) return;
-    await vetsApi.removeRule(id);
-    qc.invalidateQueries({ queryKey: ["vet-rules"] });
+  const [deletingRule, setDeletingRule] = useState<AvailabilityRule | null>(null);
+  async function confirmRemoveRule() {
+    if (!deletingRule) return;
+    try {
+      await vetsApi.removeRule(deletingRule.id);
+      toast.success("Rule removed.");
+      qc.invalidateQueries({ queryKey: ["vet-rules"] });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Failed.");
+    }
   }
 
   const [holidayDate, setHolidayDate] = useState("");
@@ -115,7 +122,7 @@ export function AvailabilityManagementPage() {
                     <span className="font-medium">{DAYS[r.dayOfWeek]}</span>{" "}
                     <span className="text-muted-foreground">{r.startTime.slice(0, 5)} – {r.endTime.slice(0, 5)} · {r.slotMinutes}min · {r.consultationType}</span>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => removeRule(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => setDeletingRule(r)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>
               ))}
             </div>
@@ -143,6 +150,16 @@ export function AvailabilityManagementPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!deletingRule}
+        onOpenChange={(v) => !v && setDeletingRule(null)}
+        title="Remove this availability rule?"
+        description="Slots already generated from this rule stay, but no new slots will be created from it."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={confirmRemoveRule}
+      />
 
       <Card>
         <CardContent className="pt-6 space-y-3">

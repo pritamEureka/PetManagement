@@ -6,6 +6,7 @@ import { PawPrint, ShieldCheck, Hourglass, XCircle } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -89,7 +90,7 @@ export function LoginPage() {
               </div>
               <div>
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
+                <PasswordInput id="password" autoComplete="current-password" {...register("password")} />
                 {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>

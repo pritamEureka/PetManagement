@@ -10,21 +10,25 @@ import { Can } from "@/components/auth/Can";
 import { petsApi, type Pet } from "@/api/pets";
 import { toast } from "@/components/ui/sonner";
 import { PetFormDialog } from "./PetFormDialog";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 export function PetsPage() {
   const qc = useQueryClient();
   const { data: pets, isLoading } = useQuery({ queryKey: ["pets", "mine"], queryFn: petsApi.mine });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Pet | undefined>();
+  const [deleting, setDeleting] = useState<Pet | null>(null);
 
   function openCreate() { setEditing(undefined); setOpen(true); }
   function openEdit(p: Pet) { setEditing(p); setOpen(true); }
 
-  async function onDelete(p: Pet) {
-    if (!confirm(`Remove ${p.name} from your pets?`)) return;
+  function onDelete(p: Pet) { setDeleting(p); }
+
+  async function confirmDelete() {
+    if (!deleting) return;
     try {
-      await petsApi.remove(p.id);
-      toast.success(`${p.name} removed.`);
+      await petsApi.remove(deleting.id);
+      toast.success(`${deleting.name} removed.`);
       qc.invalidateQueries({ queryKey: ["pets", "mine"] });
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message ?? "Delete failed.");
@@ -91,6 +95,16 @@ export function PetsPage() {
         onOpenChange={setOpen}
         editing={editing}
         onSaved={() => qc.invalidateQueries({ queryKey: ["pets", "mine"] })}
+      />
+
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(v) => !v && setDeleting(null)}
+        title={`Remove ${deleting?.name ?? "pet"}?`}
+        description="This removes the pet from your account. Health records linked to this pet are removed too."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={confirmDelete}
       />
     </div>
   );

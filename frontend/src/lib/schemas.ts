@@ -6,6 +6,31 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+// Roles a user may pick at sign-up. Privileged roles (SuperAdmin / Admin /
+// Moderator / SupportAgent) are deliberately excluded — only a SuperAdmin can
+// grant those via the admin role-assignment surface. Kept in sync with
+// SelfRegisterRoles.Allowed on the backend.
+export const selfRegisterRoles = [
+  { value: "User",            label: "Pet Owner",
+    hint: "Adopt, manage pets, post in the feed, book vets and shop the marketplace." },
+  { value: "StoreOwner",      label: "Store Owner",
+    hint: "Run a marketplace store: list products, manage stock and orders." },
+  { value: "Veterinarian",    label: "Veterinarian (Vet Doctor)",
+    hint: "Offer consultations, manage availability, issue prescriptions." },
+  { value: "Seller",          label: "Individual Seller",
+    hint: "Sell pet items as an individual without a full store." },
+  { value: "ServiceProvider", label: "Service Provider",
+    hint: "Grooming, training, boarding, walking, etc." },
+  { value: "Breeder",         label: "Breeder",
+    hint: "Manage pets, list animals for adoption / sale." },
+  { value: "AdoptionCenter",  label: "Adoption Center / Shelter",
+    hint: "Rescues and shelters managing adoption listings." },
+  { value: "DeliveryUser",    label: "Delivery Partner",
+    hint: "Logistics / courier handling marketplace deliveries." },
+] as const;
+
+export type SelfRegisterRole = typeof selfRegisterRoles[number]["value"];
+
 export const registerSchema = z.object({
   displayName: z.string().min(2, "At least 2 characters.").max(128),
   email: z.string().email("Enter a valid email."),
@@ -13,7 +38,8 @@ export const registerSchema = z.object({
     .regex(/[A-Z]/, "Must contain an uppercase letter.")
     .regex(/[a-z]/, "Must contain a lowercase letter.")
     .regex(/[0-9]/, "Must contain a digit."),
-  phoneNumber: z.string().max(32).optional().or(z.literal(""))
+  phoneNumber: z.string().max(32).optional().or(z.literal("")),
+  requestedRole: z.enum(selfRegisterRoles.map((r) => r.value) as [string, ...string[]])
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

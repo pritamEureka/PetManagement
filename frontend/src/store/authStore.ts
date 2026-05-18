@@ -14,7 +14,7 @@ interface AuthState {
   suspensionMessage: string | null;
 
   login: (email: string, password: string, twoFactorCode?: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string, phoneNumber?: string) => Promise<RegistrationResult>;
+  register: (email: string, password: string, displayName: string, phoneNumber?: string, requestedRole?: string) => Promise<RegistrationResult>;
   refresh: () => Promise<string | null>;
   logout: () => Promise<void>;
   setSuspensionMessage: (msg: string | null) => void;
@@ -53,11 +53,11 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      async register(email, password, displayName, phoneNumber) {
+      async register(email, password, displayName, phoneNumber, requestedRole) {
         // Registration no longer issues tokens — the new account is Pending
         // approval. We return the server's status payload so the page can
         // route the user to a "request received" screen.
-        return await authApi.register(email, password, displayName, phoneNumber);
+        return await authApi.register(email, password, displayName, phoneNumber, requestedRole);
       },
 
       async refresh() {

@@ -38,8 +38,8 @@ export const authApi = {
       )
       .then((r) => r.data),
 
-  register: (email: string, password: string, displayName: string, phoneNumber?: string) =>
-    api.post<RegistrationResult>("/v1/auth/register", { email, password, displayName, phoneNumber }, noToast).then((r) => r.data),
+  register: (email: string, password: string, displayName: string, phoneNumber?: string, requestedRole?: string) =>
+    api.post<RegistrationResult>("/v1/auth/register", { email, password, displayName, phoneNumber, requestedRole }, noToast).then((r) => r.data),
 
   refresh: (refreshToken: string) =>
     api.post<AuthResponse>("/v1/auth/refresh", { refreshToken }, noToast).then((r) => r.data),

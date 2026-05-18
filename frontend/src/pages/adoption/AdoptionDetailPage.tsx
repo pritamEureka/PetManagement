@@ -20,6 +20,7 @@ import { MessageOwnerButton } from "@/components/adoption/MessageOwnerButton";
 import { EditAdoptionDialog } from "./EditAdoptionDialog";
 import { RejectReasonModal } from "@/components/adoption/RejectReasonModal";
 import { MarkAsAdoptedDialog } from "@/components/adoption/MarkAsAdoptedDialog";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 const STATUS_VARIANT: Record<AdoptionListingStatus, "default"|"secondary"|"muted"|"destructive"> = {
   Draft: "muted", PendingApproval: "secondary", Approved: "default",
@@ -40,6 +41,7 @@ export function AdoptionDetailPage() {
   const [editing, setEditing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [marking, setMarking] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [saved, setSaved] = useState<boolean | null>(null);
 
   function invalidate() { qc.invalidateQueries({ queryKey: ["adoption", id] }); }
@@ -67,8 +69,8 @@ export function AdoptionDetailPage() {
     }
   }
 
-  async function onDelete() {
-    if (!confirm("Delete this listing?")) return;
+  function onDelete() { setConfirmDelete(true); }
+  async function confirmDeleteListing() {
     try { await adoptionApi.remove(id); toast.success("Deleted."); window.history.back(); }
     catch (err: any) { toast.error(err?.response?.data?.error?.message ?? "Delete failed."); }
   }
@@ -262,6 +264,16 @@ export function AdoptionDetailPage() {
           onConfirm={async (reason) => { await adoptionApi.reject(id, reason); invalidate(); }}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete this listing?"
+        description="The listing is removed and applicants will no longer see it."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDeleteListing}
+      />
     </div>
   );
 }

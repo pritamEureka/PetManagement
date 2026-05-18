@@ -5,6 +5,7 @@ using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Common.Permissions;
 using Pawzaroo.Domain.Common;
 using Pawzaroo.Domain.Identity;
+using Pawzaroo.Domain.Notifications;
 using Pawzaroo.Shared.Exceptions;
 
 namespace Pawzaroo.Application.Modules.Identity.Features.Register;
@@ -16,8 +17,35 @@ namespace Pawzaroo.Application.Modules.Identity.Features.Register;
 /// </summary>
 public record RegistrationResult(Guid UserId, string Email, string Status, string Message);
 
-public record RegisterCommand(string Email, string Password, string DisplayName, string? PhoneNumber, string? Ip)
-    : IRequest<RegistrationResult>;
+/// <summary>
+/// Roles a registrant may pick at sign-up. Privileged roles (SuperAdmin / Admin /
+/// Moderator / SupportAgent) are intentionally NOT in this list — only a SuperAdmin
+/// can grant those through the role-assignment surface.
+/// </summary>
+public static class SelfRegisterRoles
+{
+    public static readonly string[] Allowed =
+    {
+        SystemRoles.User,            // Pet Owner (default)
+        SystemRoles.StoreOwner,
+        SystemRoles.Veterinarian,
+        SystemRoles.Seller,
+        SystemRoles.ServiceProvider,
+        SystemRoles.Breeder,
+        SystemRoles.AdoptionCenter,
+        SystemRoles.DeliveryUser,
+    };
+
+    public static bool IsAllowed(string role) => Array.IndexOf(Allowed, role) >= 0;
+}
+
+public record RegisterCommand(
+    string Email,
+    string Password,
+    string DisplayName,
+    string? PhoneNumber,
+    string? Ip,
+    string? RequestedRole = null) : IRequest<RegistrationResult>;
 
 public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
@@ -30,6 +58,10 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
             .Matches("[0-9]").WithMessage("Password must contain at least one digit.");
         RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(128);
         RuleFor(x => x.PhoneNumber).MaximumLength(32).When(x => !string.IsNullOrEmpty(x.PhoneNumber));
+        RuleFor(x => x.RequestedRole!)
+            .Must(SelfRegisterRoles.IsAllowed)
+            .When(x => !string.IsNullOrEmpty(x.RequestedRole))
+            .WithMessage("Selected role is not available for self-registration.");
     }
 }
 
@@ -71,17 +103,21 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Registrat
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
 
-        // Self-registration is always end-user role. Admin/SuperAdmin grants must
-        // go through the role-assignment surface (which is SuperAdmin-only for the
-        // admin tier — enforced in UsersAdminController).
-        var userRole = await _db.Roles.SingleOrDefaultAsync(r => r.Name == SystemRoles.User, ct)
-            ?? throw new ConflictException("System role 'User' is not seeded — contact an administrator.");
-        _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = userRole.Id });
+        // Pick the requested role if it's one the user is allowed to self-select;
+        // otherwise default to Pet Owner. SuperAdmin / Admin / Moderator /
+        // SupportAgent are not in SelfRegisterRoles.Allowed — only a SuperAdmin
+        // can grant those, and that goes through UsersAdminController.GrantRole.
+        var requested = (req.RequestedRole?.Trim() is { Length: > 0 } r && SelfRegisterRoles.IsAllowed(r))
+            ? r : SystemRoles.User;
+
+        var role = await _db.Roles.SingleOrDefaultAsync(x => x.Name == requested, ct)
+            ?? throw new ConflictException($"System role '{requested}' is not seeded — contact an administrator.");
+        _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
         await _db.SaveChangesAsync(ct);
 
         // Notify every admin / super-admin so the new account is visible in the
         // approval queue without polling. Best-effort: failures don't roll back.
-        await NotifyAdminsAsync(user, ct);
+        await NotifyAdminsAsync(user, requested, ct);
 
         // Confirmation email to the new user — only logged in the dev stub, but
         // the message itself is sized for real delivery.
@@ -99,7 +135,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Registrat
                      "we'll email you at the address you provided once it's approved.");
     }
 
-    private async Task NotifyAdminsAsync(User user, CancellationToken ct)
+    private async Task NotifyAdminsAsync(User user, string requestedRole, CancellationToken ct)
     {
         var adminIds = await _db.UserRoles.AsNoTracking()
             .Where(ur => ur.Role.Name == SystemRoles.SuperAdmin || ur.Role.Name == SystemRoles.Admin)
@@ -107,14 +143,41 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Registrat
             .Distinct()
             .ToListAsync(ct);
 
+        if (adminIds.Count == 0) return;
+
+        var title = "New registration awaiting approval";
+        var body = $"{user.DisplayName} ({user.Email}) signed up as {requestedRole}.";
+
+        // Persist one InAppNotification row per admin so the message survives a
+        // missed SignalR push (offline admin) and is visible from the bell list /
+        // /admin/notifications. The Url deep-links the bell into the queue.
+        foreach (var adminId in adminIds)
+        {
+            _db.Notifications.Add(new InAppNotification
+            {
+                UserId = adminId,
+                Title = title,
+                Body = body,
+                Url = "/admin/approvals",
+                Payload = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    kind = "registration_pending",
+                    userId = user.Id,
+                    email = user.Email,
+                    requestedRole
+                })
+            });
+        }
+        await _db.SaveChangesAsync(ct);
+
+        // Real-time push for any admins currently connected. Failures here are
+        // non-critical because the persisted row above is the durable channel.
         foreach (var adminId in adminIds)
         {
             try
             {
-                await _notify.NotifyUserAsync(adminId,
-                    "New registration awaiting approval",
-                    $"{user.DisplayName} ({user.Email}) just signed up.",
-                    new { userId = user.Id, email = user.Email }, ct);
+                await _notify.NotifyUserAsync(adminId, title, body,
+                    new { url = "/admin/approvals", userId = user.Id, email = user.Email, requestedRole }, ct);
             }
             catch { /* notification is non-critical */ }
         }

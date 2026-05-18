@@ -13,7 +13,7 @@ export function PetDetailPage() {
   const { id = "" } = useParams();
   const { data: pet, isLoading } = useQuery({
     queryKey: ["pets", id],
-    queryFn: () => api.get(`/pets/${id}`).then((r) => r.data.data ?? r.data),
+    queryFn: () => api.get(`/pets/${id}`).then((r) => r.data),
     enabled: !!id
   });
 

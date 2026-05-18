@@ -14,7 +14,19 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 let refreshing: Promise<string | null> | null = null;
 
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    // Backend wraps every action result in ApiResponse<T> { success, data, error, correlationId, timestamp }.
+    // Unwrap here so callers see the inner payload directly.
+    const body = r.data as Record<string, unknown> | undefined;
+    if (
+      body && typeof body === "object" &&
+      typeof body.success === "boolean" &&
+      "data" in body && "timestamp" in body
+    ) {
+      r.data = body.data as never;
+    }
+    return r;
+  },
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 

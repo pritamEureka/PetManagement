@@ -16,11 +16,9 @@ export interface Order {
   items: { productId: string; quantity: number; unitPrice: number; total: number }[];
 }
 
-const unwrap = <T,>(p: Promise<{ data: { data: T } }>) => p.then((r) => r.data.data);
-
 export const productsApi = {
   list: (params: { q?: string; categoryId?: string; brandId?: string; featured?: boolean; page?: number; pageSize?: number } = {}) =>
-    unwrap<Product[]>(api.get("/products", { params })),
+    api.get<Product[]>("/products", { params }).then((r) => r.data),
 
   /**
    * GET /products/{id} isn't exposed yet. Falls back to filtering the list call;
@@ -34,7 +32,7 @@ export const productsApi = {
 
 export const ordersApi = {
   checkout: (data: CheckoutInput) =>
-    unwrap<{ id: string; orderNumber: string; total: number }>(api.post("/orders/checkout", data)),
-  mine: () => unwrap<Order[]>(api.get("/orders/mine")),
+    api.post<{ id: string; orderNumber: string; total: number }>("/orders/checkout", data).then((r) => r.data),
+  mine: () => api.get<Order[]>("/orders/mine").then((r) => r.data),
   refund: (id: string) => api.post(`/orders/${id}/refund`)
 };

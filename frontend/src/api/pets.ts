@@ -18,12 +18,10 @@ export interface Pet {
   createdAt: string;
 }
 
-const unwrap = <T,>(p: Promise<{ data: { data: T } }>) => p.then((r) => r.data.data);
-
 export const petsApi = {
-  mine: () => unwrap<Pet[]>(api.get("/pets/mine")),
-  get: (id: string) => unwrap<Pet>(api.get(`/pets/${id}`)),
-  create: (data: PetInput) => unwrap<Pet>(api.post("/pets", data)),
+  mine: () => api.get<Pet[]>("/pets/mine").then((r) => r.data),
+  get: (id: string) => api.get<Pet>(`/pets/${id}`).then((r) => r.data),
+  create: (data: PetInput) => api.post<Pet>("/pets", data).then((r) => r.data),
   update: (id: string, data: PetInput) => api.put(`/pets/${id}`, data),
   remove: (id: string) => api.delete(`/pets/${id}`)
 };

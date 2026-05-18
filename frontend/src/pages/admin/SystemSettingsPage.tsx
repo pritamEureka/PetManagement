@@ -80,7 +80,7 @@ export function AdminSystemSettingsPage() {
         title={toDelete ? `Delete ${toDelete.key}?` : ""}
         description="This setting will be removed; defaults will apply."
         isLoading={remove.isPending}
-        onConfirm={() => toDelete && remove.mutateAsync(toDelete.key)}
+        onConfirm={async () => { if (toDelete) await remove.mutateAsync(toDelete.key); }}
       />
     </div>
   );
@@ -173,7 +173,7 @@ function NewSettingForm({
                     className="font-mono text-xs" />
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <Checkbox checked={isSecret} onCheckedChange={(v) => setIsSecret(!!v)} />
+          <Checkbox checked={isSecret} onChange={(e) => setIsSecret(e.currentTarget.checked)} />
           Treat value as secret (masked in list view)
         </label>
         <Button onClick={submit} disabled={pending || !key.trim()} className="w-full">

@@ -8,8 +8,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": { target: "http://localhost:5000", changeOrigin: true },
-      "/hubs": { target: "http://localhost:5000", ws: true, changeOrigin: true }
+      "/api": { target: process.env.VITE_PROXY_TARGET ?? "http://localhost:8080", changeOrigin: true },
+      "/hubs": { target: process.env.VITE_PROXY_TARGET ?? "http://localhost:8080", ws: true, changeOrigin: true }
     }
   }
 });

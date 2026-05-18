@@ -39,14 +39,7 @@ export function MarketplacePage() {
 
   const addToCart = useCartStore((s) => s.add);
   const onAdd = (p: ProductSummary) => {
-    addToCart({
-      id: p.id, name: p.name, sku: p.sku,
-      price: p.price, discountPrice: p.discountPrice,
-      stockQuantity: p.stockQuantity, isFeatured: p.isFeatured,
-      ratingAverage: p.ratingAverage, ratingCount: p.ratingCount,
-      store: { id: p.storeId, name: p.storeName },
-      images: p.imageUrls
-    });
+    addToCart(p);
     toast.success(`${p.name} added to cart`);
   };
 

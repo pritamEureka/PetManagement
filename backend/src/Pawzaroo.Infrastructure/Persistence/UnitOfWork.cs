@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Pawzaroo.Application.Common.Interfaces;
 
@@ -22,8 +23,12 @@ public class UnitOfWork : IUnitOfWork
     /// </summary>
     public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> work, CancellationToken ct = default)
     {
+        // EF Core 9's generic IExecutionStrategy.ExecuteAsync requires a
+        // verifySucceeded callback. The non-generic extension overload below
+        // accepts a plain Func<CancellationToken, Task> and handles the
+        // book-keeping internally.
         var strategy = _db.Database.CreateExecutionStrategy();
-        return strategy.ExecuteAsync(ct, async (token) =>
+        return strategy.ExecuteAsync(async (CancellationToken token) =>
         {
             await using var tx = await _db.Database.BeginTransactionAsync(token);
             try
@@ -37,7 +42,7 @@ public class UnitOfWork : IUnitOfWork
                 await tx.RollbackAsync(token);
                 throw;
             }
-        });
+        }, ct);
     }
 
     private sealed class TransactionScope : ITransactionScope

@@ -18,7 +18,7 @@ export interface AuthResponse {
 export const authApi = {
   login: (email: string, password: string, twoFactorCode?: string) =>
     api
-      .post<AuthResponse>("/auth/login", {
+      .post<AuthResponse>("/v1/auth/login", {
         email,
         password,
         twoFactorCode,
@@ -27,12 +27,12 @@ export const authApi = {
       .then((r) => r.data),
 
   register: (email: string, password: string, displayName: string, phoneNumber?: string) =>
-    api.post<AuthResponse>("/auth/register", { email, password, displayName, phoneNumber }).then((r) => r.data),
+    api.post<AuthResponse>("/v1/auth/register", { email, password, displayName, phoneNumber }).then((r) => r.data),
 
   refresh: (refreshToken: string) =>
-    api.post<AuthResponse>("/auth/refresh", { refreshToken }).then((r) => r.data),
+    api.post<AuthResponse>("/v1/auth/refresh", { refreshToken }).then((r) => r.data),
 
-  logout: (refreshToken: string) => api.post("/auth/logout", { refreshToken }),
+  logout: (refreshToken: string) => api.post("/v1/auth/logout", { refreshToken }),
 
-  me: () => api.get("/auth/me").then((r) => r.data)
+  me: () => api.get("/v1/auth/me").then((r) => r.data)
 };

@@ -48,16 +48,16 @@ public class AdminAppointmentsController : ControllerBase
         if (from.HasValue)   qry = qry.Where(a => a.ScheduledAt >= from);
         if (to.HasValue)     qry = qry.Where(a => a.ScheduledAt <  to);
         if (!string.IsNullOrWhiteSpace(q))
-            qry = qry.Where(a => a.User.Email.Contains(q)
-                              || a.User.DisplayName.Contains(q)
-                              || a.Doctor.DisplayName.Contains(q));
+            qry = qry.Where(a => a.PatientUser.Email.Contains(q)
+                              || a.PatientUser.DisplayName.Contains(q)
+                              || a.Doctor.User.DisplayName.Contains(q));
 
         var total = await qry.LongCountAsync(ct);
         var items = await qry.OrderByDescending(a => a.ScheduledAt)
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(a => new AppointmentRow(
-                a.Id, a.DoctorId, a.Doctor.DisplayName,
-                a.UserId, a.User.DisplayName,
+                a.Id, a.DoctorId, a.Doctor.User.DisplayName,
+                a.PatientUserId, a.PatientUser.DisplayName,
                 a.ScheduledAt, a.Status, a.PaymentStatus, a.Amount, a.CreatedAt))
             .ToListAsync(ct);
         return new AppointmentListResponse(items, total);

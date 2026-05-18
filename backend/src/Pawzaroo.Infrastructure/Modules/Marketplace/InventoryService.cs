@@ -62,7 +62,7 @@ public class InventoryService : IInventoryService
             await _kafka.PublishAsync(MarketplaceTopics.InventoryEvents,
                 new LowStockWarning(product.Id, product.StoreId, newQty, DateTime.UtcNow), product.Id.ToString(), ct);
 
-        await _audit.LogAsync("inventory.adjust", "Product", product.Id, $"{input.QuantityChange:+#;-#;0} ({input.Reason})", ct);
+        await _audit.LogAsync("inventory.adjust", "Product", product.Id.ToString(), $"{input.QuantityChange:+#;-#;0} ({input.Reason})", ct: ct);
         return new InventoryAdjustmentDto(adj.Id, product.Id, adj.QuantityChange, adj.QuantityAfter,
             adj.Reason, adj.Notes, adj.PerformedById, adj.CreatedAt);
     }

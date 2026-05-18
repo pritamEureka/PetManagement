@@ -35,8 +35,7 @@ LABEL org.opencontainers.image.title="pawzaroo-worker" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${GIT_SHA}"
 
-RUN groupadd --system --gid 1001 app \
- && useradd --system --uid 1001 --gid app --no-create-home --shell /sbin/nologin app
+# .NET 9 base images already ship an `app` user/group.
 COPY --from=build --chown=app:app /app/publish ./
 
 USER app

@@ -45,9 +45,12 @@ LABEL org.opencontainers.image.title="pawzaroo-api" \
       org.opencontainers.image.revision="${GIT_SHA}" \
       org.opencontainers.image.licenses="Proprietary"
 
-# Non-root user. App writes nothing under /app at runtime so chown is enough.
-RUN groupadd --system --gid 1001 app \
- && useradd --system --uid 1001 --gid app --no-create-home --shell /sbin/nologin app
+# wget is used by the HEALTHCHECK below; not in the slim base image.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends wget \
+ && rm -rf /var/lib/apt/lists/*
+
+# Non-root user. .NET 9 base images already ship an `app` user/group.
 COPY --from=build --chown=app:app /app/publish ./
 
 ENV ASPNETCORE_URLS=http://+:8080 \

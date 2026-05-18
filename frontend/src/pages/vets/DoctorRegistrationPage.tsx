@@ -86,7 +86,7 @@ export function DoctorRegistrationPage() {
   }
 
   const animals = watch("supportedAnimalTypes") ?? [];
-  function toggleAnimal(t: string) {
+  function toggleAnimal(t: (typeof animalTypes)[number]) {
     const next = new Set(animals);
     next.has(t) ? next.delete(t) : next.add(t);
     setValue("supportedAnimalTypes", Array.from(next) as any);

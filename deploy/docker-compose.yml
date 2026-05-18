@@ -53,7 +53,7 @@ services:
 
   # KRaft mode (no Zookeeper). Single broker is enough for dev.
   kafka:
-    image: bitnami/kafka:3.7
+    image: bitnamilegacy/kafka:3.7
     restart: unless-stopped
     environment:
       KAFKA_CFG_NODE_ID: "1"
@@ -83,33 +83,34 @@ services:
       retries: 15
 
   kafka-init:
-    image: bitnami/kafka:3.7
+    image: bitnamilegacy/kafka:3.7
     depends_on:
       kafka: { condition: service_healthy }
-    entrypoint: >
-      /bin/bash -c "
-      set -e;
-      BS=kafka:9092;
-      kafka-topics.sh --bootstrap-server $$BS --list >/dev/null;
-      for t in \
-        pawzaroo.user.events pawzaroo.rbac.events \
-        pawzaroo.feed.post.events pawzaroo.feed.comment.events \
-        pawzaroo.adoption.events pawzaroo.adoption.approvals \
-        pawzaroo.message.events \
-        pawzaroo.vet.events pawzaroo.appointment.events \
-        pawzaroo.marketplace.store pawzaroo.marketplace.product \
-        pawzaroo.marketplace.inventory pawzaroo.marketplace.order \
-        pawzaroo.marketplace.payment pawzaroo.marketplace.review \
-        pawzaroo.marketplace.admin \
-        pawzaroo.notifications pawzaroo.audit; do
-        kafka-topics.sh --bootstrap-server $$BS --create --if-not-exists \
-          --topic $$t --partitions 3 --replication-factor 1;
-        kafka-topics.sh --bootstrap-server $$BS --create --if-not-exists \
-          --topic $$t.dlq --partitions 1 --replication-factor 1 \
-          --config retention.ms=1209600000;
-      done;
-      echo 'topics provisioned';
-      "
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        BS=kafka:9092
+        kafka-topics.sh --bootstrap-server $$BS --list >/dev/null
+        for t in \
+          pawzaroo.user.events pawzaroo.rbac.events \
+          pawzaroo.feed.post.events pawzaroo.feed.comment.events \
+          pawzaroo.adoption.events pawzaroo.adoption.approvals \
+          pawzaroo.message.events \
+          pawzaroo.vet.events pawzaroo.appointment.events \
+          pawzaroo.marketplace.store pawzaroo.marketplace.product \
+          pawzaroo.marketplace.inventory pawzaroo.marketplace.order \
+          pawzaroo.marketplace.payment pawzaroo.marketplace.review \
+          pawzaroo.marketplace.admin \
+          pawzaroo.notifications pawzaroo.audit; do
+          kafka-topics.sh --bootstrap-server $$BS --create --if-not-exists \
+            --topic $$t --partitions 3 --replication-factor 1
+          kafka-topics.sh --bootstrap-server $$BS --create --if-not-exists \
+            --topic $$t.dlq --partitions 1 --replication-factor 1 \
+            --config retention.ms=1209600000
+        done
+        echo 'topics provisioned'
 
   kafka-ui:
     image: redpandadata/console:latest
@@ -118,7 +119,7 @@ services:
       kafka: { condition: service_healthy }
     environment:
       KAFKA_BROKERS: "kafka:9092"
-    ports: ["8085:8080"]
+    ports: ["${KAFKA_UI_PORT:-18085}:8080"]
 
   redis-ui:
     image: redislabs/redisinsight:latest
@@ -166,7 +167,7 @@ services:
       context: ..
       dockerfile: backend/src/Pawzaroo.Api/Dockerfile
       args:
-        VERSION: ${IMAGE_TAG:-local}
+        VERSION: ${VERSION:-0.0.0}
         GIT_SHA: ${GIT_SHA:-local}
     image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-your-org/pawzaroo}-api:${IMAGE_TAG:-local}
     restart: unless-stopped
@@ -191,7 +192,7 @@ services:
       context: ..
       dockerfile: backend/src/Pawzaroo.Worker/Dockerfile
       args:
-        VERSION: ${IMAGE_TAG:-local}
+        VERSION: ${VERSION:-0.0.0}
         GIT_SHA: ${GIT_SHA:-local}
     image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-your-org/pawzaroo}-worker:${IMAGE_TAG:-local}
     restart: unless-stopped
@@ -205,12 +206,16 @@ services:
       <<: *app-env
 
   web:
+    # Opt-in: the frontend dev loop uses `npm run dev` (Vite). Bring this
+    # container up only when you want the production-style nginx build:
+    #   docker compose --profile web up -d --build web
+    profiles: ["web"]
     build:
       context: ..
       dockerfile: frontend/Dockerfile
       args:
         VITE_API_BASE: ${VITE_API_BASE:-/api}
-        VERSION: ${IMAGE_TAG:-local}
+        VERSION: ${VERSION:-0.0.0}
         GIT_SHA: ${GIT_SHA:-local}
     image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-your-org/pawzaroo}-web:${IMAGE_TAG:-local}
     restart: unless-stopped

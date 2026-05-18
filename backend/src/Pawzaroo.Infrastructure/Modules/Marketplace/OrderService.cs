@@ -138,7 +138,7 @@ public class OrderService : IOrderService
                     $"Order {order.OrderNumber} placed.", new { orderId = order.Id }, ct);
         }
 
-        await _audit.LogAsync("order.checkout", "Order", order.Id, order.OrderNumber, ct);
+        await _audit.LogAsync("order.checkout", "Order", order.Id.ToString(), order.OrderNumber, ct: ct);
         return (await GetByIdAsync(order.Id, ct))!;
     }
 
@@ -267,7 +267,7 @@ public class OrderService : IOrderService
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new OrderCancelled(order.Id, order.OrderNumber, uid, reason, DateTime.UtcNow), order.Id.ToString(), ct);
-        await _audit.LogAsync("order.cancel", "Order", order.Id, reason, ct);
+        await _audit.LogAsync("order.cancel", "Order", order.Id.ToString(), reason, ct: ct);
     }
 
     public async Task RefundAsync(Guid orderId, decimal? amount, CancellationToken ct = default)
@@ -282,7 +282,7 @@ public class OrderService : IOrderService
         var refundAmount = amount ?? order.Total;
         await _kafka.PublishAsync(MarketplaceTopics.PaymentEvents,
             new OrderRefunded(order.Id, order.OrderNumber, refundAmount, DateTime.UtcNow), order.Id.ToString(), ct);
-        await _audit.LogAsync("order.refund", "Order", order.Id, refundAmount.ToString("0.00"), ct);
+        await _audit.LogAsync("order.refund", "Order", order.Id.ToString(), refundAmount.ToString("0.00"), ct: ct);
     }
 
     private async Task EnsureStoreOwnerOrAdmin(Order order, CancellationToken ct)

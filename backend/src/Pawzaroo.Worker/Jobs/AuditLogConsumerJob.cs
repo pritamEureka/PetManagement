@@ -23,7 +23,10 @@ public class AuditLogConsumerJob : KafkaConsumerBase
 
     protected override string GroupId => KafkaConsumerGroups.AuditWriter;
 
-    protected override IReadOnlyList<string> Topics => KafkaTopics.All();
+    // Subscribe to every domain topic via the canonical catalog. Fully qualified
+    // to disambiguate from Infrastructure's KafkaTopics options class.
+    protected override IReadOnlyList<string> Topics =>
+        Pawzaroo.Application.Common.Messaging.KafkaTopics.All();
 
     protected override async Task HandleAsync(string topic, JsonElement data, EventEnvelopeHeader header,
         IServiceProvider scope, CancellationToken ct)

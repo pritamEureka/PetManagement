@@ -304,7 +304,7 @@ public class ReturnService : IReturnService
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new ReturnDecided(r.Id, r.OrderItemId, status.ToString(), amount, DateTime.UtcNow), r.Id.ToString(), ct);
-        await _audit.LogAsync($"return.{status.ToString().ToLowerInvariant()}", "ReturnRequest", r.Id, notes ?? amount?.ToString("0.00"), ct);
+        await _audit.LogAsync($"return.{status.ToString().ToLowerInvariant()}", "ReturnRequest", r.Id.ToString(), notes ?? amount?.ToString("0.00"), ct: ct);
     }
 
     public async Task<PageResult<ReturnRequestDto>> ListAsync(int page, int pageSize, CancellationToken ct = default)

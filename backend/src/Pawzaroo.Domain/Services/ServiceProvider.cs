@@ -32,7 +32,7 @@ public class ServiceBooking : AuditableEntity
     public Guid? PetId { get; set; }
     public Pet? Pet { get; set; }
     public DateTime ScheduledAt { get; set; }
-    public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
+    public AppointmentStatus Status { get; set; } = AppointmentStatus.Draft;
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
     public decimal Amount { get; set; }
     public string? Notes { get; set; }

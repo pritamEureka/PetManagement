@@ -172,7 +172,7 @@ public class ProductService : IProductService
 
         await _kafka.PublishAsync(MarketplaceTopics.ProductEvents,
             new ProductCreated(product.Id, store.Id, DateTime.UtcNow), product.Id.ToString(), ct);
-        await _audit.LogAsync("product.create", "Product", product.Id, null, ct);
+        await _audit.LogAsync("product.create", "Product", product.Id.ToString(), ct: ct);
         return product.Id;
     }
 
@@ -205,7 +205,7 @@ public class ProductService : IProductService
 
         await _kafka.PublishAsync(MarketplaceTopics.ProductEvents,
             new ProductUpdated(product.Id, product.StoreId, DateTime.UtcNow), product.Id.ToString(), ct);
-        await _audit.LogAsync("product.update", "Product", product.Id, null, ct);
+        await _audit.LogAsync("product.update", "Product", product.Id.ToString(), ct: ct);
     }
 
     public async Task DeleteAsync(Guid productId, CancellationToken ct = default)
@@ -224,7 +224,7 @@ public class ProductService : IProductService
 
         await _kafka.PublishAsync(MarketplaceTopics.ProductEvents,
             new ProductDeleted(product.Id, product.StoreId, DateTime.UtcNow), product.Id.ToString(), ct);
-        await _audit.LogAsync("product.delete", "Product", product.Id, null, ct);
+        await _audit.LogAsync("product.delete", "Product", product.Id.ToString(), ct: ct);
     }
 
     public async Task SetFeaturedAsync(Guid productId, bool featured, CancellationToken ct = default)

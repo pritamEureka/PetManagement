@@ -80,7 +80,7 @@ public class StoreService : IStoreService
 
         await _kafka.PublishAsync(MarketplaceTopics.StoreEvents,
             new StoreRegistered(store.Id, uid, DateTime.UtcNow), store.Id.ToString(), ct);
-        await _audit.LogAsync("store.register", "Store", store.Id, null, ct);
+        await _audit.LogAsync("store.register", "Store", store.Id.ToString(), ct: ct);
         return store.Id;
     }
 
@@ -149,7 +149,7 @@ public class StoreService : IStoreService
             _ => new StoreUpdated(storeId, DateTime.UtcNow)
         };
         await _kafka.PublishAsync(MarketplaceTopics.AdminEvents, evt, storeId.ToString(), ct);
-        await _audit.LogAsync($"store.{status.ToString().ToLowerInvariant()}", "Store", storeId, notes, ct);
+        await _audit.LogAsync($"store.{status.ToString().ToLowerInvariant()}", "Store", storeId.ToString(), notes, ct: ct);
     }
 
     public async Task SetFeaturedAsync(Guid storeId, bool featured, CancellationToken ct = default)
@@ -159,7 +159,7 @@ public class StoreService : IStoreService
         // or extend the entity. Here we extend behavior by recording an audit event + Kafka.
         await _kafka.PublishAsync(MarketplaceTopics.AdminEvents,
             new StoreFeatured(storeId, featured, DateTime.UtcNow), storeId.ToString(), ct);
-        await _audit.LogAsync(featured ? "store.feature" : "store.unfeature", "Store", storeId, null, ct);
+        await _audit.LogAsync(featured ? "store.feature" : "store.unfeature", "Store", storeId.ToString(), ct: ct);
     }
 
     public async Task SetCommissionPercentAsync(Guid storeId, decimal percent, CancellationToken ct = default)
@@ -173,7 +173,7 @@ public class StoreService : IStoreService
         s.UpdatedBy = _current.UserId;
         await _db.SaveChangesAsync(ct);
         await _cache.InvalidateStoreAsync(storeId, ct);
-        await _audit.LogAsync("store.commission_changed", "Store", storeId, percent.ToString("0.##"), ct);
+        await _audit.LogAsync("store.commission_changed", "Store", storeId.ToString(), percent.ToString("0.##"), ct: ct);
     }
 
     private IQueryable<StoreDto> ProjectStore(IQueryable<Store> q) =>

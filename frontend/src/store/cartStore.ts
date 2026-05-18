@@ -33,7 +33,7 @@ export const useCartStore = create<CartState>()(
             productId: p.id, name: p.name,
             price: p.discountPrice ?? p.price,
             image: p.imageUrls[0], quantity: qty,
-            storeName: p.store.name,
+            storeName: p.storeName,
             stockAvailable: p.stockQuantity
           }]
         };

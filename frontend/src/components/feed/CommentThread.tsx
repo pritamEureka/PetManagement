@@ -3,7 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { postsApi } from "@/api/posts";
+import { commentsApi } from "@/api/posts";
 import { toast } from "@/components/ui/sonner";
 
 export interface CommentItem {
@@ -29,7 +29,7 @@ export function CommentThread({ postId, comments, onAdded }: Props) {
     if (!draft.trim()) return;
     setBusy(true);
     try {
-      await postsApi.comment(postId, draft.trim());
+      await commentsApi.add(postId, draft.trim());
       setDraft("");
       onAdded?.();
     } catch (err: any) {

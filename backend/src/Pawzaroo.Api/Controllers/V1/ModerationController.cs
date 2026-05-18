@@ -5,6 +5,7 @@ using Pawzaroo.Api.Authorization;
 using Pawzaroo.Application.Common.Permissions;
 using Pawzaroo.Application.Modules.Security.Dtos;
 using Pawzaroo.Application.Modules.Security.Services;
+using Pawzaroo.Domain.Identity;
 using Pawzaroo.Domain.Moderation;
 
 namespace Pawzaroo.Api.Controllers.V1;

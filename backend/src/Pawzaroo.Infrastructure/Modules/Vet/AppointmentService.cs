@@ -162,7 +162,7 @@ public class AppointmentService : IAppointmentService
             ?? throw new NotFoundException("Appointment", appointmentId);
         if (appt.PatientUserId != uid && (await _db.Doctors.AnyAsync(d => d.Id == appt.DoctorId && d.UserId == uid, ct)) == false)
             throw new ForbiddenException();
-        if (appt.Status is AppointmentStatus.Cancelled or AppointmentStatus.CancelledByDoctor
+        if (appt.Status is AppointmentStatus.CancelledByDoctor
             or AppointmentStatus.CancelledByUser or AppointmentStatus.Completed
             or AppointmentStatus.NoShow or AppointmentStatus.Refunded)
             throw new ConflictException("Cannot reschedule a closed appointment.");
@@ -223,7 +223,7 @@ public class AppointmentService : IAppointmentService
             if (appt.PatientUserId != uid) throw new ForbiddenException();
         }
 
-        if (appt.Status is AppointmentStatus.Cancelled or AppointmentStatus.CancelledByUser
+        if (appt.Status is AppointmentStatus.CancelledByUser
             or AppointmentStatus.CancelledByDoctor or AppointmentStatus.Completed
             or AppointmentStatus.NoShow or AppointmentStatus.Refunded)
             throw new ConflictException("Already closed.");

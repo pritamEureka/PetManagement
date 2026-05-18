@@ -77,7 +77,7 @@ public class Appointment : AuditableEntity
     public DateTime ScheduledAt { get; set; }
     public int DurationMinutes { get; set; } = 30;
     public ConsultationType Type { get; set; }
-    public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
+    public AppointmentStatus Status { get; set; } = AppointmentStatus.Draft;
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
     public decimal Amount { get; set; }
     public string? Symptoms { get; set; }

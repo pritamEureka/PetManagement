@@ -68,16 +68,7 @@ export function ProductDetailPage() {
 
   function onAdd() {
     if (!product) return;
-    for (let i = 0; i < qty; i++) {
-      add({
-        id: product.id, name: product.name, sku: product.sku,
-        price: product.price, discountPrice: product.discountPrice,
-        stockQuantity: product.stockQuantity, isFeatured: product.isFeatured,
-        ratingAverage: product.ratingAverage, ratingCount: product.ratingCount,
-        store: { id: product.storeId, name: product.storeName },
-        images: product.imageUrls
-      });
-    }
+    add(product, qty);
     toast.success(`${qty}× ${product.name} added to cart`);
   }
 

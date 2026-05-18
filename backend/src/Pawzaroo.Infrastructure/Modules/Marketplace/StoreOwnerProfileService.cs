@@ -89,7 +89,7 @@ public class StoreOwnerProfileService : IStoreOwnerProfileService
 
         await _kafka.PublishAsync(MarketplaceTopics.StoreEvents,
             new StoreOwnerKycSubmitted(existing.Id, uid, DateTime.UtcNow), uid.ToString(), ct);
-        await _audit.LogAsync("kyc.submit", "StoreOwnerProfile", existing.Id, null, ct);
+        await _audit.LogAsync("kyc.submit", "StoreOwnerProfile", existing.Id.ToString(), ct: ct);
 
         return ToDto(existing);
     }
@@ -133,7 +133,7 @@ public class StoreOwnerProfileService : IStoreOwnerProfileService
         await _notify.NotifyUserAsync(p.UserId,
             status == ApprovalStatus.Approved ? "Store KYC approved" : "Store KYC rejected",
             notes ?? string.Empty, new { profileId = p.Id }, ct);
-        await _audit.LogAsync($"kyc.{status.ToString().ToLowerInvariant()}", "StoreOwnerProfile", p.Id, notes, ct);
+        await _audit.LogAsync($"kyc.{status.ToString().ToLowerInvariant()}", "StoreOwnerProfile", p.Id.ToString(), notes, ct: ct);
     }
 
     private static StoreOwnerProfileDto ToDto(StoreOwnerProfile p) => new(

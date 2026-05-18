@@ -22,7 +22,7 @@ export function VetsPage() {
       city: city || undefined,
       animalType: animal || undefined,
       type: type || undefined,
-      page: 1, pageSize: 24
+      pageSize: 24
     })
   });
 
@@ -66,11 +66,11 @@ export function VetsPage() {
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32" />)}
         </div>
-      ) : !data || data.length === 0 ? (
+      ) : !data || data.items.length === 0 ? (
         <Card><CardContent className="py-16 text-center text-muted-foreground">No vets match those filters.</CardContent></Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {data.map((d) => (
+          {data.items.map((d) => (
             <Link key={d.id} to={`/vets/${d.id}`}>
               <Card className="hover:shadow-md transition-shadow h-full">
                 <CardContent className="pt-6 flex gap-3">
@@ -80,7 +80,7 @@ export function VetsPage() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">Dr. {d.name}</p>
-                    <p className="text-xs text-muted-foreground">{d.specialty ?? "General practice"}</p>
+                    <p className="text-xs text-muted-foreground">{d.primarySpecialty ?? "General practice"}</p>
                     <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                       <MapPin className="h-3 w-3" /> {d.city ?? "—"}{d.country ? `, ${d.country}` : ""}
                     </p>

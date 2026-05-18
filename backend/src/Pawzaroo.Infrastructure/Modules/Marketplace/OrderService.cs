@@ -255,7 +255,8 @@ public class OrderService : IOrderService
         {
             await _db.Products.Where(p => p.Id == item.ProductId)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.StockQuantity, p => p.StockQuantity + item.Quantity), ct);
-            var qty = await _db.Products.AsNoTracking().Where(p => p.Id == item.ProductId).Select(p => p.StockQuantity).FirstAsync(ct);
+            var qty = await _db.Products.AsNoTracking().Where(p => p.Id == item.ProductId).Select(p => (int?)p.StockQuantity).FirstOrDefaultAsync(ct)
+                      ?? throw new NotFoundException("Product", item.ProductId);
             _db.InventoryAdjustments.Add(new InventoryAdjustment
             {
                 ProductId = item.ProductId, OrderId = order.Id,

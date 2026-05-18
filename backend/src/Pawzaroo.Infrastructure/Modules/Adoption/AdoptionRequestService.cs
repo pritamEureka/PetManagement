@@ -60,7 +60,8 @@ public class AdoptionRequestService : IAdoptionRequestService
         await _kafka.PublishAsync(AdoptionTopics.Events,
             new AdoptionRequestCreated(req.Id, listingId, uid, DateTime.UtcNow), req.Id.ToString(), ct);
 
-        var requesterName = await _db.Users.Where(u => u.Id == uid).Select(u => u.DisplayName).SingleAsync(ct);
+        var requesterName = await _db.Users.Where(u => u.Id == uid).Select(u => u.DisplayName).SingleOrDefaultAsync(ct)
+                            ?? throw new NotFoundException("User", uid);
         return new AdoptionRequestDto(req.Id, listingId, uid, requesterName, req.Message, req.Status, req.CreatedAt);
     }
 

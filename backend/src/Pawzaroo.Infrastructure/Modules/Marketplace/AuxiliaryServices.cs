@@ -113,7 +113,8 @@ public class ProductReviewService : IProductReviewService
         await _kafka.PublishAsync(MarketplaceTopics.ReviewEvents,
             new ProductReviewCreated(review.Id, productId, uid, review.Rating, DateTime.UtcNow), productId.ToString(), ct);
 
-        var user = await _db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => new { u.DisplayName, u.AvatarUrl }).FirstAsync(ct);
+        var user = await _db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => new { u.DisplayName, u.AvatarUrl }).FirstOrDefaultAsync(ct)
+                   ?? throw new NotFoundException("User", uid);
         return new ProductReviewDto(review.Id, productId, uid, user.DisplayName, user.AvatarUrl, review.Rating, review.Comment, review.CreatedAt);
     }
 
@@ -177,7 +178,8 @@ public class StoreReviewService : IStoreReviewService
         await _kafka.PublishAsync(MarketplaceTopics.ReviewEvents,
             new StoreReviewCreated(rv.Id, storeId, uid, rv.Rating, DateTime.UtcNow), storeId.ToString(), ct);
 
-        var user = await _db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => new { u.DisplayName, u.AvatarUrl }).FirstAsync(ct);
+        var user = await _db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => new { u.DisplayName, u.AvatarUrl }).FirstOrDefaultAsync(ct)
+                   ?? throw new NotFoundException("User", uid);
         return new StoreReviewDto(rv.Id, storeId, uid, user.DisplayName, user.AvatarUrl,
             rv.Rating, rv.Comment, rv.IsVerifiedPurchase, rv.CreatedAt);
     }

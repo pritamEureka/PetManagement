@@ -122,7 +122,8 @@ public class DoctorReviewService : IDoctorReviewService
         _db.DoctorReviews.Add(review);
 
         // Recompute rating average + count.
-        var doctor = await _db.Doctors.SingleAsync(d => d.Id == appt.DoctorId, ct);
+        var doctor = await _db.Doctors.SingleOrDefaultAsync(d => d.Id == appt.DoctorId, ct)
+                     ?? throw new NotFoundException("Doctor", appt.DoctorId);
         var newCount = doctor.RatingCount + 1;
         doctor.RatingAverage = ((doctor.RatingAverage * doctor.RatingCount) + input.Rating) / newCount;
         doctor.RatingCount = newCount;

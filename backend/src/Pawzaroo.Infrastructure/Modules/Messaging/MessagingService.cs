@@ -256,7 +256,8 @@ public class MessagingService : IMessagingService
                 new { conversationId = conv.Id, messageId = msg.Id }, ct);
 
         var sender = await _db.Users.Where(u => u.Id == uid)
-            .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleAsync(ct);
+            .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleOrDefaultAsync(ct)
+            ?? throw new NotFoundException("User", uid);
 
         return new MessageDto(msg.Id, conv.Id, uid, sender.DisplayName, sender.AvatarUrl,
             msg.Type.ToString(), msg.Content, msg.MediaUrl, msg.ReplyToMessageId,

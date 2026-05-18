@@ -75,7 +75,8 @@ public class FeedCommentService : IFeedCommentService
             c.Id.ToString(), ct);
 
         var author = await _db.Users.Where(u => u.Id == uid)
-            .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleAsync(ct);
+            .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleOrDefaultAsync(ct)
+            ?? throw new NotFoundException("User", uid);
         return new CommentDto(c.Id, c.PostId, c.ParentCommentId, c.AuthorId,
             author.DisplayName, author.AvatarUrl, c.Content, c.CreatedAt, c.UpdatedAt, true);
     }
@@ -91,7 +92,8 @@ public class FeedCommentService : IFeedCommentService
         await _db.SaveChangesAsync(ct);
 
         var author = await _db.Users.Where(u => u.Id == c.AuthorId)
-            .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleAsync(ct);
+            .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleOrDefaultAsync(ct)
+            ?? throw new NotFoundException("User", c.AuthorId);
         return new CommentDto(c.Id, c.PostId, c.ParentCommentId, c.AuthorId,
             author.DisplayName, author.AvatarUrl, c.Content, c.CreatedAt, c.UpdatedAt,
             c.AuthorId == uid);

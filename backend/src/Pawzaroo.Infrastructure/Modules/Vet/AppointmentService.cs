@@ -104,7 +104,8 @@ public class AppointmentService : IAppointmentService
             if (slot.Status != SlotStatus.Available)
                 throw new ConflictException("Slot is no longer available.");
 
-            var doctor = await _db.Doctors.SingleAsync(d => d.Id == input.DoctorId, token);
+            var doctor = await _db.Doctors.SingleOrDefaultAsync(d => d.Id == input.DoctorId, token)
+                         ?? throw new NotFoundException("Doctor", input.DoctorId);
             if (doctor.ApprovalStatus != ApprovalStatus.Approved)
                 throw new ForbiddenException("Doctor is not currently accepting bookings.");
 
@@ -238,7 +239,9 @@ public class AppointmentService : IAppointmentService
 
         _db.Notifications.Add(new InAppNotification
         {
-            UserId = byDoctor ? appt.PatientUserId : (await _db.Doctors.Where(d => d.Id == appt.DoctorId).Select(d => d.UserId).SingleAsync(ct)),
+            UserId = byDoctor ? appt.PatientUserId
+                : (await _db.Doctors.Where(d => d.Id == appt.DoctorId).Select(d => (Guid?)d.UserId).SingleOrDefaultAsync(ct)
+                   ?? throw new NotFoundException("Doctor", appt.DoctorId)),
             Title = byDoctor ? "Your appointment was cancelled by the doctor" : "Patient cancelled the appointment",
             Body = input.Reason ?? "—",
             Url = "/appointments"
@@ -296,7 +299,8 @@ public class AppointmentService : IAppointmentService
         if (appt.PaymentStatus == PaymentStatus.Paid) return;
         appt.PaymentStatus = PaymentStatus.Paid;
 
-        var doctor = await _db.Doctors.SingleAsync(d => d.Id == appt.DoctorId, ct);
+        var doctor = await _db.Doctors.SingleOrDefaultAsync(d => d.Id == appt.DoctorId, ct)
+                     ?? throw new NotFoundException("Doctor", appt.DoctorId);
         appt.Status = doctor.AutoConfirmAppointments ? AppointmentStatus.Confirmed : AppointmentStatus.PendingConfirmation;
         if (appt.Status == AppointmentStatus.Confirmed) appt.ConfirmedAt = DateTime.UtcNow;
 

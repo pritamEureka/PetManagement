@@ -78,8 +78,11 @@ public class DoctorAvailabilityService : IDoctorAvailabilityService
     public async Task<Guid> AddHolidayAsync(HolidayInput input, CancellationToken ct = default)
     {
         var doctor = await RequireOwnDoctorAsync(ct);
-        if (await _db.DoctorHolidays.AnyAsync(h => h.DoctorId == doctor.Id && h.Date == input.Date, ct))
-            return (await _db.DoctorHolidays.Where(h => h.DoctorId == doctor.Id && h.Date == input.Date).Select(h => h.Id).SingleAsync(ct));
+        var existingId = await _db.DoctorHolidays
+            .Where(h => h.DoctorId == doctor.Id && h.Date == input.Date)
+            .Select(h => (Guid?)h.Id)
+            .FirstOrDefaultAsync(ct);
+        if (existingId is not null) return existingId.Value;
         var h = new DoctorHoliday { DoctorId = doctor.Id, Date = input.Date, Reason = input.Reason };
         _db.DoctorHolidays.Add(h);
 

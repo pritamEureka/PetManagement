@@ -85,7 +85,8 @@ public class UserDisciplineService : IUserDisciplineService
             .AnyAsync(s => s.UserId == hold.UserId && s.Status == SuspensionStatus.Active && s.Id != hold.Id, ct);
         if (!stillSuspended)
         {
-            var user = await _db.Users.FirstAsync(u => u.Id == hold.UserId, ct);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == hold.UserId, ct)
+                       ?? throw new NotFoundException("User", hold.UserId);
             user.IsSuspended = false;
         }
 

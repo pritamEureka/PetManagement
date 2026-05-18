@@ -1,9 +1,18 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 
 export const apiBase = import.meta.env.VITE_API_BASE ?? "/api";
 
 export const api = axios.create({ baseURL: apiBase });
+
+// Set `skipErrorToast: true` on a request config to opt out of the global error toast
+// (use when the caller wants to render its own error UI, e.g. inline form errors).
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    skipErrorToast?: boolean;
+  }
+}
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().accessToken;
@@ -56,6 +65,17 @@ api.interceptors.response.use(
         useAuthStore.getState().logout();
       }
     }
+
+    // Global error toast: surface the backend's ApiError.message for every
+    // failed request except 401 (handled above) and opt-outs (skipErrorToast).
+    const status = error.response?.status;
+    const shouldToast = status !== 401 && !original?.skipErrorToast;
+    if (shouldToast) {
+      const body = error.response?.data as { error?: { message?: string; code?: string } } | undefined;
+      const msg = body?.error?.message ?? error.message ?? "Request failed.";
+      toast.error(msg, { id: `api:${original?.method ?? ""}:${original?.url ?? ""}:${status ?? ""}` });
+    }
+
     return Promise.reject(error);
   }
 );

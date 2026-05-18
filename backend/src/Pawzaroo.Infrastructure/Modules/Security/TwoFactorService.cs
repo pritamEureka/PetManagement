@@ -113,7 +113,8 @@ public class TwoFactorService : ITwoFactorService
             {
                 // Burn the matched code so it can't be reused.
                 var remaining = codes.Where(h => !_hasher.Verify(code, h)).ToArray();
-                var tracked = await _db.TwoFactorSettings.FirstAsync(t => t.UserId == userId, ct);
+                var tracked = await _db.TwoFactorSettings.FirstOrDefaultAsync(t => t.UserId == userId, ct)
+                              ?? throw new NotFoundException("TwoFactorSettings", userId);
                 tracked.RecoveryCodesHash = System.Text.Json.JsonSerializer.Serialize(remaining);
                 await _db.SaveChangesAsync(ct);
                 return true;

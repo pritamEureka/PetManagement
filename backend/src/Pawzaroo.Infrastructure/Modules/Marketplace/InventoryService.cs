@@ -99,7 +99,8 @@ public class InventoryService : IInventoryService
         if (rows == 0)
             throw new ConflictException($"Insufficient stock for product {productId}.");
 
-        var newQty = await _db.Products.AsNoTracking().Where(p => p.Id == productId).Select(p => p.StockQuantity).FirstAsync(ct);
+        var newQty = await _db.Products.AsNoTracking().Where(p => p.Id == productId).Select(p => (int?)p.StockQuantity).FirstOrDefaultAsync(ct)
+                     ?? throw new NotFoundException("Product", productId);
         _db.InventoryAdjustments.Add(new InventoryAdjustment
         {
             ProductId = productId,
@@ -111,7 +112,8 @@ public class InventoryService : IInventoryService
         });
         await _db.SaveChangesAsync(ct);
 
-        var storeId = await _db.Products.AsNoTracking().Where(p => p.Id == productId).Select(p => p.StoreId).FirstAsync(ct);
+        var storeId = await _db.Products.AsNoTracking().Where(p => p.Id == productId).Select(p => (Guid?)p.StoreId).FirstOrDefaultAsync(ct)
+                      ?? throw new NotFoundException("Product", productId);
         await _kafka.PublishAsync(MarketplaceTopics.InventoryEvents,
             new InventoryAdjusted(productId, storeId, -quantity, newQty, "Sale", orderId, DateTime.UtcNow),
             productId.ToString(), ct);
@@ -124,7 +126,8 @@ public class InventoryService : IInventoryService
     {
         var uid = _current.UserId ?? throw new ForbiddenException();
         if (_current.Permissions.Contains(Permissions.Products.Edit)) return;
-        var ownerId = await _db.Stores.AsNoTracking().Where(s => s.Id == p.StoreId).Select(s => s.OwnerUserId).FirstAsync(ct);
+        var ownerId = await _db.Stores.AsNoTracking().Where(s => s.Id == p.StoreId).Select(s => (Guid?)s.OwnerUserId).FirstOrDefaultAsync(ct)
+                      ?? throw new NotFoundException("Store", p.StoreId);
         if (ownerId != uid) throw new ForbiddenException();
     }
 }

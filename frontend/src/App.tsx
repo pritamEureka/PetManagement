@@ -154,6 +154,7 @@ export default function App() {
               </Route>
 
               <Route path="/appointments" element={<MyAppointmentsPage />} />
+              <Route path="/notifications" element={<PlaceholderPage title="Notifications" />} />
 
               <Route element={<ProtectedRoute permission="vets.edit" />}>
                 <Route path="/dashboard/vet/profile" element={<DoctorRegistrationPage />} />

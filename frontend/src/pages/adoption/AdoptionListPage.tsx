@@ -73,7 +73,7 @@ export function AdoptionListPage() {
 
       <Card>
         <CardContent className="pt-6 flex flex-wrap gap-3 items-center">
-          <div className="w-44">
+          <div className="w-full sm:w-44">
             <Select value={animal} onValueChange={setAnimal}>
               <SelectTrigger><SelectValue placeholder="Any animal" /></SelectTrigger>
               <SelectContent>
@@ -82,7 +82,7 @@ export function AdoptionListPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <Select value={size} onValueChange={setSize}>
               <SelectTrigger><SelectValue placeholder="Any size" /></SelectTrigger>
               <SelectContent>
@@ -91,7 +91,7 @@ export function AdoptionListPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <div className="relative flex-1 min-w-[140px]">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="pl-8" placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
           </div>

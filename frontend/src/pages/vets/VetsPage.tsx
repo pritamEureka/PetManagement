@@ -40,11 +40,11 @@ export function VetsPage() {
 
       <Card>
         <CardContent className="pt-6 flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-[140px]">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="pl-8" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
           </div>
-          <div className="w-44">
+          <div className="w-full sm:w-44">
             <Select value={animal} onValueChange={setAnimal}>
               <SelectTrigger><SelectValue placeholder="Animal type" /></SelectTrigger>
               <SelectContent>
@@ -53,7 +53,7 @@ export function VetsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-44">
+          <div className="w-full sm:w-44">
             <Select value={type} onValueChange={setType}>
               <SelectTrigger><SelectValue placeholder="Consultation" /></SelectTrigger>
               <SelectContent>

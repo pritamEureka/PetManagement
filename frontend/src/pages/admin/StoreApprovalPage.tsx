@@ -107,7 +107,7 @@ export function StoreApprovalPage() {
             <div className="flex gap-2 flex-wrap">
               <Input className="max-w-xs" placeholder="Search stores..." value={search} onChange={(e) => setSearch(e.target.value)} />
               <Select value={storeStatus} onValueChange={(v) => setStoreStatus(v as any)}>
-                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>

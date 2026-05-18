@@ -114,7 +114,7 @@ export function AdoptionDetailPage() {
                 : <div className="flex items-center justify-center h-full text-muted-foreground"><HeartHandshake className="h-16 w-16" /></div>}
             </div>
             {listing.photoUrls.length > 1 && (
-              <div className="grid grid-cols-5 gap-1 p-2 bg-muted/40">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1 p-2 bg-muted/40">
                 {listing.photoUrls.slice(0, 5).map((src, i) => (
                   <div key={i} className="aspect-square rounded overflow-hidden">
                     <img src={src} className="object-cover w-full h-full" />

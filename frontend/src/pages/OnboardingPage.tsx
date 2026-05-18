@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { petsApi } from "@/api/pets";
 import { animalTypes } from "@/lib/schemas";
@@ -105,11 +106,12 @@ export function OnboardingPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="ptype">Type</Label>
-                      <select id="ptype" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                              value={pet.animalType}
-                              onChange={(e) => setPet({ ...pet, animalType: e.target.value })}>
-                        {animalTypes.map((t) => <option key={t}>{t}</option>)}
-                      </select>
+                      <Select value={pet.animalType} onValueChange={(v) => setPet({ ...pet, animalType: v })}>
+                        <SelectTrigger id="ptype"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {animalTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Label htmlFor="pbreed">Breed</Label>

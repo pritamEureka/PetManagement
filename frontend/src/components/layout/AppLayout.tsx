@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -5,12 +6,16 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import {
   Home, PawPrint, HeartHandshake, MessageSquare, Stethoscope, ShoppingBag,
-  ShieldCheck, LogOut, Truck, Package, Bookmark, User as UserIcon
+  ShieldCheck, LogOut, Truck, Package, Bookmark, User as UserIcon,
+  Bell, Menu, PanelLeftClose, PanelLeft, Search
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface NavItem { to: string; label: string; icon: LucideIcon; perm?: string; anyOf?: string[]; }
 
@@ -24,6 +29,7 @@ const USER_NAV: NavItem[] = [
   { to: "/adoption/mine",  label: "My adoption listings", icon: HeartHandshake, perm: "adoption.create" },
   { to: "/adoption/saved", label: "Saved pets",          icon: Bookmark,       perm: "adoption.view" },
   { to: "/messages", label: "Messages",  icon: MessageSquare,  perm: "messaging.view" },
+  { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/vets",     label: "Vets",      icon: Stethoscope,    perm: "vets.view" },
   { to: "/appointments", label: "My appointments", icon: Stethoscope, perm: "appointments.view" },
   { to: "/store",    label: "Store",     icon: ShoppingBag,    perm: "products.view" },
@@ -48,80 +54,141 @@ const DELIVERY_NAV: NavItem[] = [
   { to: "/delivery", label: "Deliveries", icon: Truck, perm: "delivery.view" }
 ];
 
-function navLinkClass({ isActive }: { isActive: boolean }) {
-  return `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent ${
-    isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
-  }`;
+function SidebarNavItem({ to, label, icon: Icon, collapsed, onNavigate }: NavItem & { collapsed: boolean; onNavigate?: () => void }) {
+  return (
+    <NavLink
+      to={to}
+      onClick={onNavigate}
+      title={collapsed ? label : undefined}
+      className={({ isActive }) => cn(
+        "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent transition-colors",
+        collapsed ? "justify-center" : "gap-3",
+        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className={cn(
+        "truncate whitespace-nowrap transition-all duration-300 overflow-hidden",
+        collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+      )}>
+        {label}
+      </span>
+    </NavLink>
+  );
 }
 
-export function AppLayout() {
-  const { user, logout } = useAuthStore();
-  const { can, canAny, roles } = usePermissions();
-  const nav = useNavigate();
+function SidebarNavGroup({ items, heading, collapsed, onNavigate }: { items: NavItem[]; heading?: string; collapsed: boolean; onNavigate?: () => void }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="space-y-1">
+      {heading && (
+        <p className={cn(
+          "px-3 text-[10px] uppercase tracking-wider text-muted-foreground transition-all duration-300 overflow-hidden whitespace-nowrap",
+          collapsed ? "opacity-0 h-0 m-0" : "opacity-100 h-auto"
+        )}>
+          {heading}
+        </p>
+      )}
+      {items.map((item) => (
+        <SidebarNavItem key={item.to} {...item} collapsed={collapsed} onNavigate={onNavigate} />
+      ))}
+    </div>
+  );
+}
 
-  async function onLogout() { await logout(); nav("/login", { replace: true }); }
+function SidebarContent({ collapsed, onNavigate, search }: { collapsed: boolean; onNavigate?: () => void; search?: string }) {
+  const { can, canAny } = usePermissions();
 
   const visible = (items: NavItem[]) => items.filter((i) =>
     (i.perm ? can(i.perm) : true) && (i.anyOf ? canAny(i.anyOf) : true));
 
-  const userVisible = visible(USER_NAV);
-  const proVisible = visible(PRO_NAV);
-  const adminVisible = visible(ADMIN_NAV);
-  const deliveryVisible = visible(DELIVERY_NAV);
+  const filterBySearch = (items: NavItem[]) => {
+    if (!search) return items;
+    const q = search.toLowerCase();
+    return items.filter((i) => i.label.toLowerCase().includes(q));
+  };
+
+  const userVisible = filterBySearch(visible(USER_NAV));
+  const proVisible = filterBySearch(visible(PRO_NAV));
+  const adminVisible = filterBySearch(visible(ADMIN_NAV));
+  const deliveryVisible = filterBySearch(visible(DELIVERY_NAV));
 
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-64 border-r bg-card/40 flex flex-col">
-        <Link to="/feed" className="flex items-center gap-2 px-6 py-5 text-xl font-bold">
-          <PawPrint className="h-6 w-6 text-primary" /> Pawzaroo
-        </Link>
-        <nav className="flex-1 px-3 space-y-4 overflow-y-auto">
-          {userVisible.length > 0 && (
-            <div className="space-y-1">
-              {userVisible.map(({ to, label, icon: Icon }) => (
-                <NavLink key={to} to={to} className={navLinkClass}>
-                  <Icon className="h-4 w-4" /> {label}
-                </NavLink>
-              ))}
-            </div>
-          )}
-          {proVisible.length > 0 && (
-            <div className="space-y-1">
-              <p className="px-3 text-[10px] uppercase tracking-wider text-muted-foreground">Pro</p>
-              {proVisible.map(({ to, label, icon: Icon }) => (
-                <NavLink key={to} to={to} className={navLinkClass}>
-                  <Icon className="h-4 w-4" /> {label}
-                </NavLink>
-              ))}
-            </div>
-          )}
-          {deliveryVisible.length > 0 && (
-            <div className="space-y-1">
-              <p className="px-3 text-[10px] uppercase tracking-wider text-muted-foreground">Logistics</p>
-              {deliveryVisible.map(({ to, label, icon: Icon }) => (
-                <NavLink key={to} to={to} className={navLinkClass}>
-                  <Icon className="h-4 w-4" /> {label}
-                </NavLink>
-              ))}
-            </div>
-          )}
-          {adminVisible.length > 0 && (
-            <div className="space-y-1">
-              <p className="px-3 text-[10px] uppercase tracking-wider text-muted-foreground">Admin</p>
-              {adminVisible.map(({ to, label, icon: Icon }) => (
-                <NavLink key={to} to={to} className={navLinkClass}>
-                  <Icon className="h-4 w-4" /> {label}
-                </NavLink>
-              ))}
-            </div>
-          )}
-        </nav>
-        <div className="p-3 border-t flex items-center gap-3">
-          <Avatar>
+    <div className={cn("flex-1 space-y-4 overflow-y-auto transition-all duration-300", collapsed ? "px-2" : "px-3")}>
+      <SidebarNavGroup items={userVisible} collapsed={collapsed} onNavigate={onNavigate} />
+      <SidebarNavGroup items={proVisible} heading="Pro" collapsed={collapsed} onNavigate={onNavigate} />
+      <SidebarNavGroup items={deliveryVisible} heading="Logistics" collapsed={collapsed} onNavigate={onNavigate} />
+      <SidebarNavGroup items={adminVisible} heading="Admin" collapsed={collapsed} onNavigate={onNavigate} />
+    </div>
+  );
+}
+
+export function AppLayout() {
+  const { user, logout } = useAuthStore();
+  const { roles } = usePermissions();
+  const nav = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarSearch, setSidebarSearch] = useState("");
+  const [mobileSidebarSearch, setMobileSidebarSearch] = useState("");
+
+  async function onLogout() { await logout(); nav("/login", { replace: true }); }
+
+  return (
+    <div className="h-screen flex overflow-hidden">
+      {/* Desktop sidebar */}
+      <aside className={cn(
+        "hidden md:flex flex-col border-r bg-card/40 transition-all duration-300 ease-in-out overflow-hidden h-screen",
+        collapsed ? "w-[4.5rem]" : "w-64"
+      )}>
+        {/* Brand */}
+        <div className={cn(
+          "flex items-center py-5 shrink-0 transition-all duration-300",
+          collapsed ? "px-3 justify-center" : "px-6 gap-2"
+        )}>
+          <Link to="/feed" className="flex items-center gap-2 text-xl font-bold">
+            <PawPrint className="h-6 w-6 text-primary shrink-0" />
+            <span className={cn(
+              "whitespace-nowrap transition-all duration-300 overflow-hidden",
+              collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+            )}>
+              Pawzaroo
+            </span>
+          </Link>
+        </div>
+
+        {/* Search */}
+        <div className={cn(
+          "shrink-0 transition-all duration-300 overflow-hidden",
+          collapsed ? "h-0 opacity-0 px-2" : "h-auto opacity-100 px-3 pb-3"
+        )}>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              className="pl-8 h-9 text-sm"
+              placeholder="Search menu..."
+              value={sidebarSearch}
+              onChange={(e) => setSidebarSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Nav (scrollable) */}
+        <SidebarContent collapsed={collapsed} search={sidebarSearch} />
+
+        {/* User footer */}
+        <div className={cn(
+          "p-3 border-t flex items-center shrink-0 transition-all duration-300",
+          collapsed ? "justify-center" : "gap-3"
+        )}>
+          <Avatar className={cn("shrink-0 transition-all duration-300", collapsed ? "h-8 w-8" : "h-9 w-9")}>
             <AvatarImage src={user?.avatarUrl ?? undefined} />
             <AvatarFallback>{user?.displayName?.[0] ?? "?"}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
+          <div className={cn(
+            "transition-all duration-300 overflow-hidden",
+            collapsed ? "w-0 opacity-0" : "w-auto opacity-100 flex-1 min-w-0"
+          )}>
             <p className="text-sm font-medium truncate">{user?.displayName}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             {roles.length > 0 && (
@@ -131,7 +198,10 @@ export function AppLayout() {
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-1">
+          <div className={cn(
+            "flex flex-col gap-1 transition-all duration-300 overflow-hidden",
+            collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+          )}>
             <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={onLogout} title="Log out">
               <LogOut className="h-4 w-4" />
@@ -139,13 +209,90 @@ export function AppLayout() {
           </div>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto">
-        <div className="container py-6">
-          <ErrorBoundary>
-            <Outlet />
-          </ErrorBoundary>
-        </div>
-      </main>
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col h-screen min-w-0">
+        {/* Top navbar */}
+        <header className="sticky top-0 z-30 h-14 shrink-0 flex items-center gap-2 px-4 md:px-6 border-b bg-background/95 backdrop-blur">
+          {/* Mobile hamburger */}
+          <Sheet open={mobileOpen} onOpenChange={(open) => { setMobileOpen(open); if (!open) setMobileSidebarSearch(""); }}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <SheetHeader className="px-6 py-4 border-b">
+                <SheetTitle className="flex items-center gap-2">
+                  <PawPrint className="h-5 w-5 text-primary" /> Pawzaroo
+                </SheetTitle>
+              </SheetHeader>
+              {/* Mobile search */}
+              <div className="px-3 pt-3 pb-1 shrink-0">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    className="pl-8 h-9 text-sm"
+                    placeholder="Search menu..."
+                    value={mobileSidebarSearch}
+                    onChange={(e) => setMobileSidebarSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto py-2">
+                <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} search={mobileSidebarSearch} />
+              </div>
+              <div className="p-3 border-t flex items-center gap-3 shrink-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.avatarUrl ?? undefined} />
+                  <AvatarFallback>{user?.displayName?.[0] ?? "?"}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{user?.displayName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={onLogout} title="Log out">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Desktop sidebar collapse toggle */}
+          <Button variant="ghost" size="icon" className="hidden md:inline-flex" onClick={() => setCollapsed((c) => !c)} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Notification bell */}
+          <Button variant="ghost" size="icon" asChild title="Notifications">
+            <Link to="/notifications">
+              <Bell className="h-5 w-5" />
+            </Link>
+          </Button>
+
+          <ThemeToggle />
+
+          {/* User avatar (mobile) */}
+          <Link to="/profile" className="md:hidden">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user?.avatarUrl ?? undefined} />
+              <AvatarFallback>{user?.displayName?.[0] ?? "?"}</AvatarFallback>
+            </Avatar>
+          </Link>
+        </header>
+
+        {/* Page content (independently scrollable) */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="container py-4 md:py-6 px-4 md:px-6">
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

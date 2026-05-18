@@ -56,14 +56,14 @@ export function MarketplacePage() {
       </div>
 
       <div className="flex flex-wrap gap-3 items-end">
-        <div className="relative flex-1 min-w-[12rem]">
+        <div className="relative flex-1 min-w-[10rem]">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8" placeholder="Search products..." value={search}
                  onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
 
         <Select value={categoryId ?? "all"} onValueChange={(v) => { setCategoryId(v === "all" ? undefined : v); setPage(1); }}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Category" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Category" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
             {categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -71,7 +71,7 @@ export function MarketplacePage() {
         </Select>
 
         <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Sort" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Sort" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="newest">Newest</SelectItem>
             <SelectItem value="price_asc">Price: low → high</SelectItem>
@@ -83,9 +83,9 @@ export function MarketplacePage() {
 
         <div className="flex items-center gap-1 text-sm">
           <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-          <Input className="w-20" placeholder="Min $" value={minPrice} onChange={(e) => { setMinPrice(e.target.value); setPage(1); }} />
+          <Input className="w-16 sm:w-20" placeholder="Min $" value={minPrice} onChange={(e) => { setMinPrice(e.target.value); setPage(1); }} />
           <span className="text-muted-foreground">–</span>
-          <Input className="w-20" placeholder="Max $" value={maxPrice} onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }} />
+          <Input className="w-16 sm:w-20" placeholder="Max $" value={maxPrice} onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }} />
         </div>
       </div>
 

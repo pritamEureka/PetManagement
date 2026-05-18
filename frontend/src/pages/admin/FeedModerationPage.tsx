@@ -114,7 +114,7 @@ export function AdminFeedModerationPage() {
         <CardContent className="pt-6 space-y-4">
           <FilterBar onReset={() => setMode("reported")}>
             <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
-              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="reported">Reported only</SelectItem>
                 <SelectItem value="hidden">Hidden</SelectItem>

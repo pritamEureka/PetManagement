@@ -13,7 +13,10 @@ const Overlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out", className)}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-300",
+      className
+    )}
     {...props}
   />
 ));
@@ -26,21 +29,25 @@ interface SheetContentProps extends React.ComponentPropsWithoutRef<typeof Dialog
 export const SheetContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, SheetContentProps>(
   ({ className, side = "right", children, ...props }, ref) => {
     const sideClass = {
-      right: "inset-y-0 right-0 h-full w-full sm:max-w-md border-l data-[state=open]:slide-in-from-right",
-      left: "inset-y-0 left-0 h-full w-full sm:max-w-md border-r data-[state=open]:slide-in-from-left",
-      top: "inset-x-0 top-0 w-full border-b data-[state=open]:slide-in-from-top",
-      bottom: "inset-x-0 bottom-0 w-full border-t data-[state=open]:slide-in-from-bottom"
+      right: "inset-y-0 right-0 h-full w-full sm:max-w-md border-l data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
+      left: "inset-y-0 left-0 h-full w-full sm:max-w-md border-r data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
+      top: "inset-x-0 top-0 w-full border-b data-[state=open]:slide-in-from-top data-[state=closed]:slide-out-to-top",
+      bottom: "inset-x-0 bottom-0 w-full border-t data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
     }[side];
     return (
       <DialogPrimitive.Portal>
         <Overlay />
         <DialogPrimitive.Content
           ref={ref}
-          className={cn("fixed z-50 bg-background shadow-lg flex flex-col", sideClass, className)}
+          className={cn(
+            "fixed z-50 bg-background shadow-lg flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out duration-300 ease-in-out",
+            sideClass,
+            className
+          )}
           {...props}
         >
           {children}
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>

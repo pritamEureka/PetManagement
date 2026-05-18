@@ -52,7 +52,7 @@ export function AdminOrderManagementPage() {
         <CardContent className="pt-6 space-y-4">
           <FilterBar onReset={() => { setStatus("all"); setPage(1); }}>
             <Select value={status} onValueChange={(v) => { setStatus(v as any); setPage(1); }}>
-              <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
                 {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}

@@ -78,7 +78,7 @@ export function AdminNotificationsPage() {
           <Card>
             <CardContent className="pt-6 space-y-4">
               <Select value={unreadOnly} onValueChange={(v) => setUnreadOnly(v as any)}>
-                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="unread">Unread only</SelectItem>

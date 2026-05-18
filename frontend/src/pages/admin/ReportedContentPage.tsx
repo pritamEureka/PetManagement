@@ -53,17 +53,17 @@ export function ReportedContentPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Flag className="h-6 w-6 text-primary" /> Reported content
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={status} onValueChange={(v) => setStatus(v as any)}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={targetType} onValueChange={(v) => setTargetType(v as any)}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Target" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Target" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All targets</SelectItem>
               {TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}

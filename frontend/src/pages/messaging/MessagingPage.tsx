@@ -15,6 +15,7 @@ import {
 import { messagesApi, type ChatMessage, type ConversationSummary, type Attachment } from "@/api/messages";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 import { useChatHub } from "@/hooks/useChatHub";
 import { PresenceDot } from "@/components/messaging/PresenceDot";
 import { TypingIndicator } from "@/components/messaging/TypingIndicator";
@@ -181,8 +182,8 @@ export function MessagingPage() {
     active?.participants.find((p) => p.userId === uid)?.displayName ?? "Someone");
 
   return (
-    <div className="h-[calc(100vh-6rem)] grid grid-cols-[20rem_1fr] gap-3">
-      <Card className="flex flex-col">
+    <div className="h-[calc(100vh-6rem)] grid grid-cols-1 md:grid-cols-[18rem_1fr] lg:grid-cols-[20rem_1fr] gap-3">
+      <Card className={cn("flex flex-col", activeId ? "hidden md:flex" : "flex")}>
         <div className="p-3 border-b space-y-2">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -210,7 +211,7 @@ export function MessagingPage() {
         </ScrollArea>
       </Card>
 
-      <Card className="flex flex-col overflow-hidden">
+      <Card className={cn("flex flex-col overflow-hidden", !activeId ? "hidden md:flex" : "flex")}>
         {!active ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center space-y-2">
@@ -220,6 +221,11 @@ export function MessagingPage() {
           </div>
         ) : (
           <>
+            <div className="md:hidden p-2 border-b">
+              <Button variant="ghost" size="sm" onClick={() => setSearchParams({}, { replace: true })}>
+                ← Back
+              </Button>
+            </div>
             <ConversationHeader
               c={active}
               presence={presence}

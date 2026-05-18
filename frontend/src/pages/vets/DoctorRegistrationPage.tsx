@@ -111,7 +111,7 @@ export function DoctorRegistrationPage() {
             {/* Credentials */}
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">Practice credentials</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="lic">License number</Label>
                   <Input id="lic" {...register("licenseNumber")} disabled={!!existing} />
@@ -262,9 +262,9 @@ function CredentialAdder({ onAdded }: { onAdded: () => void }) {
     } finally { setBusy(false); }
   }
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-md border p-3">
-      <div className="col-span-2"><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-      <div className="col-span-2"><Label>File URL</Label><Input placeholder="Use /api/media/presign first" value={form.fileUrl} onChange={(e) => setForm({ ...form, fileUrl: e.target.value })} /></div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border p-3">
+      <div className="sm:col-span-2"><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+      <div className="sm:col-span-2"><Label>File URL</Label><Input placeholder="Use /api/media/presign first" value={form.fileUrl} onChange={(e) => setForm({ ...form, fileUrl: e.target.value })} /></div>
       <div>
         <Label>Kind</Label>
         <Select value={String(form.kind)} onValueChange={(v) => setForm({ ...form, kind: Number(v) })}>

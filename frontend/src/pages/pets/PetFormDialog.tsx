@@ -92,7 +92,7 @@ export function PetFormDialog({ open, onOpenChange, editing, onSaved }: Props) {
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="breed">Breed</Label>
               <Input id="breed" {...register("breed")} />

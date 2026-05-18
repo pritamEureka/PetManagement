@@ -16,10 +16,13 @@ import { adoptionApi } from "@/api/adoption";
 import { animalTypes, animalSizes } from "@/lib/schemas";
 import { CreateAdoptionDialog } from "./CreateAdoptionDialog";
 
+// Sentinel for "no filter" Select items — Radix Select disallows empty-string values.
+const ANY = "any";
+
 export function AdoptionListPage() {
   const qc = useQueryClient();
-  const [animal, setAnimal] = useState("");
-  const [size, setSize] = useState("");
+  const [animal, setAnimal] = useState<string>(ANY);
+  const [size, setSize] = useState<string>(ANY);
   const [location, setLocation] = useState("");
   const [vaccinated, setVaccinated] = useState(false);
   const [neutered, setNeutered] = useState(false);
@@ -28,8 +31,8 @@ export function AdoptionListPage() {
   const [open, setOpen] = useState(false);
 
   const params = useMemo(() => ({
-    animalType: animal || undefined,
-    size: size || undefined,
+    animalType: animal === ANY ? undefined : animal,
+    size: size === ANY ? undefined : size,
     location: location || undefined,
     vaccinatedOnly: vaccinated || undefined,
     neuteredOnly: neutered || undefined,
@@ -74,7 +77,7 @@ export function AdoptionListPage() {
             <Select value={animal} onValueChange={setAnimal}>
               <SelectTrigger><SelectValue placeholder="Any animal" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any animal</SelectItem>
+                <SelectItem value={ANY}>Any animal</SelectItem>
                 {animalTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -83,7 +86,7 @@ export function AdoptionListPage() {
             <Select value={size} onValueChange={setSize}>
               <SelectTrigger><SelectValue placeholder="Any size" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any size</SelectItem>
+                <SelectItem value={ANY}>Any size</SelectItem>
                 {animalSizes.map((s) => <SelectItem key={s} value={s}>{s.replace("ExtraLarge", "Extra large")}</SelectItem>)}
               </SelectContent>
             </Select>

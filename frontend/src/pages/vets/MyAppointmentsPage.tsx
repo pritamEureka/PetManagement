@@ -13,8 +13,12 @@ import { appointmentsApi, type Appointment, type AppointmentStatus } from "@/api
 import { AppointmentStatusBadge } from "@/components/vet/AppointmentStatusBadge";
 import { toast } from "@/components/ui/sonner";
 
-const FILTER_STATUSES: { label: string; value: AppointmentStatus | "" }[] = [
-  { label: "All",                  value: "" },
+// Radix Select disallows empty-string item values (it reserves "" to mean "cleared").
+// "all" is the sentinel for the no-filter case, converted to `undefined` at the API.
+type StatusFilter = AppointmentStatus | "all";
+
+const FILTER_STATUSES: { label: string; value: StatusFilter }[] = [
+  { label: "All",                  value: "all" },
   { label: "Pending payment",      value: "PendingPayment" },
   { label: "Pending confirmation", value: "PendingConfirmation" },
   { label: "Confirmed",            value: "Confirmed" },
@@ -25,7 +29,7 @@ const FILTER_STATUSES: { label: string; value: AppointmentStatus | "" }[] = [
 
 export function MyAppointmentsPage() {
   const qc = useQueryClient();
-  const [status, setStatus] = useState<AppointmentStatus | "">("");
+  const [status, setStatus] = useState<StatusFilter>("all");
   const sentinel = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -33,7 +37,8 @@ export function MyAppointmentsPage() {
   } = useInfiniteQuery({
     queryKey: ["appointments", "mine", status],
     queryFn: ({ pageParam }) => appointmentsApi.mine({
-      cursor: pageParam, pageSize: 20, status: (status || undefined) as any
+      cursor: pageParam, pageSize: 20,
+      status: status === "all" ? undefined : (status as AppointmentStatus)
     }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined
@@ -83,7 +88,7 @@ export function MyAppointmentsPage() {
         description="Upcoming, past, and pending vet bookings." />
 
       <div className="w-64">
-        <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+        <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
           <SelectTrigger><SelectValue placeholder="Filter status" /></SelectTrigger>
           <SelectContent>
             {FILTER_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}

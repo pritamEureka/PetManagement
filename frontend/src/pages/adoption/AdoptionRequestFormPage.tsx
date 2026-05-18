@@ -70,10 +70,13 @@ export function AdoptionRequestFormPage() {
                 </div>
                 <div>
                   <Label>Preferred size</Label>
-                  <Select value={watch("preferredSize") ?? ""} onValueChange={(v) => setValue("preferredSize", v as any)}>
+                  <Select
+                    value={watch("preferredSize") ?? "__any__"}
+                    onValueChange={(v) => setValue("preferredSize", v === "__any__" ? undefined : (v as any))}
+                  >
                     <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="__any__">Any</SelectItem>
                       {animalSizes.map((s) => <SelectItem key={s} value={s}>{s.replace("ExtraLarge", "Extra large")}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -96,10 +99,13 @@ export function AdoptionRequestFormPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Home environment</Label>
-                  <Select value={watch("homeEnvironment") ?? ""} onValueChange={(v) => setValue("homeEnvironment", v as any)}>
+                  <Select
+                    value={watch("homeEnvironment") ?? "__unspecified__"}
+                    onValueChange={(v) => setValue("homeEnvironment", v === "__unspecified__" ? undefined : (v as any))}
+                  >
                     <SelectTrigger><SelectValue placeholder="Pick one" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unspecified</SelectItem>
+                      <SelectItem value="__unspecified__">Unspecified</SelectItem>
                       {homeEnvironments.map((h) =>
                         <SelectItem key={h} value={h}>
                           {h === "HouseWithYard" ? "House with yard" : h}

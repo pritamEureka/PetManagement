@@ -29,7 +29,9 @@ export function AppointmentBookingPage() {
   });
   const { data: myPets } = useQuery({ queryKey: ["pets", "mine"], queryFn: petsApi.mine });
 
-  const [petId, setPetId] = useState<string>("");
+  // Sentinel for "no pet selected" — Radix Select disallows empty-string values.
+  const NO_PET = "__no_pet__";
+  const [petId, setPetId] = useState<string>(NO_PET);
   const [type, setType]   = useState<ConsultType>("Online");
   const [symptoms, setSymptoms] = useState("");
   const [slot, setSlot]   = useState<TimeSlot | null>(null);
@@ -41,7 +43,7 @@ export function AppointmentBookingPage() {
     try {
       const appt = await appointmentsApi.book({
         doctorId, timeSlotId: slot.id,
-        petId: petId || undefined,
+        petId: petId === NO_PET ? undefined : petId,
         type, symptoms: symptoms || undefined
       });
       toast.success("Appointment requested.");
@@ -82,7 +84,7 @@ export function AppointmentBookingPage() {
               <Select value={petId} onValueChange={setPetId}>
                 <SelectTrigger><SelectValue placeholder="Choose a pet" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No specific pet</SelectItem>
+                  <SelectItem value={NO_PET}>No specific pet</SelectItem>
                   {(myPets ?? []).map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.animalType})</SelectItem>)}
                 </SelectContent>
               </Select>

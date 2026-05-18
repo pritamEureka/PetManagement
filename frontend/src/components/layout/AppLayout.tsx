@@ -1,14 +1,14 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { usePermissions } from "@/hooks/usePermissions";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import {
   Home, PawPrint, HeartHandshake, MessageSquare, Stethoscope, ShoppingBag,
-  ShieldCheck, LogOut, Users, KeyRound, Flag, Truck, Package, BarChart3, Check,
-  Bookmark, User as UserIcon
+  ShieldCheck, LogOut, Truck, Package, Bookmark, User as UserIcon
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -37,14 +37,11 @@ const PRO_NAV: NavItem[] = [
   { to: "/dashboard/store",            label: "My store",      icon: ShoppingBag, perm: "products.edit" }
 ];
 
+// Single entry into the admin section. The admin area has its own layout
+// (AdminLayout) with a richer sidebar — having sub-entries here too caused a
+// jarring full-sidebar swap on click. One CTA makes the layout switch explicit.
 const ADMIN_NAV: NavItem[] = [
-  { to: "/admin",            label: "Dashboard",  icon: ShieldCheck, perm: "users.view" },
-  { to: "/admin/users",      label: "Users",      icon: Users,       perm: "users.view" },
-  { to: "/admin/roles",      label: "Roles",      icon: KeyRound,    perm: "roles.view" },
-  { to: "/admin/approvals",  label: "Approvals",  icon: Check,       anyOf: ["adoption.approve","vets.approve","stores.approve","moderation.moderate"] },
-  { to: "/admin/adoption-approvals", label: "Adoption queue", icon: HeartHandshake, anyOf: ["adoption.approve","adoption.reject"] },
-  { to: "/admin/doctor-approvals",   label: "Vet approvals",  icon: Stethoscope,    anyOf: ["vets.approve","vets.reject","vets.suspend"] },
-  { to: "/admin/reports",    label: "Reports",    icon: BarChart3,   perm: "reports.view" },
+  { to: "/admin", label: "Admin panel", icon: ShieldCheck, anyOf: ["users.view", "roles.view", "moderation.view"] },
 ];
 
 const DELIVERY_NAV: NavItem[] = [
@@ -144,7 +141,9 @@ export function AppLayout() {
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="container py-6">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
     </div>

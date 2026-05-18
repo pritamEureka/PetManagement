@@ -11,17 +11,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { vetsApi } from "@/api/vets";
 import { animalTypes, consultationTypes } from "@/lib/schemas";
 
+// "any" is the sentinel for no-filter — Radix Select disallows empty-string values.
+const ANY = "any";
+
 export function VetsPage() {
   const [city, setCity] = useState("");
-  const [animal, setAnimal] = useState("");
-  const [type, setType] = useState("");
+  const [animal, setAnimal] = useState<string>(ANY);
+  const [type, setType] = useState<string>(ANY);
 
   const { data, isLoading } = useQuery({
     queryKey: ["vets", { city, animal, type }],
     queryFn: () => vetsApi.search({
       city: city || undefined,
-      animalType: animal || undefined,
-      type: type || undefined,
+      animalType: animal === ANY ? undefined : animal,
+      type: type === ANY ? undefined : type,
       pageSize: 24
     })
   });
@@ -45,7 +48,7 @@ export function VetsPage() {
             <Select value={animal} onValueChange={setAnimal}>
               <SelectTrigger><SelectValue placeholder="Animal type" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any</SelectItem>
+                <SelectItem value={ANY}>Any</SelectItem>
                 {animalTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -54,7 +57,7 @@ export function VetsPage() {
             <Select value={type} onValueChange={setType}>
               <SelectTrigger><SelectValue placeholder="Consultation" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any</SelectItem>
+                <SelectItem value={ANY}>Any</SelectItem>
                 {consultationTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
             </Select>

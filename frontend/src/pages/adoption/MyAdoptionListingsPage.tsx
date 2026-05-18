@@ -20,7 +20,8 @@ const STATUS_VARIANT: Record<AdoptionListingStatus, "default"|"secondary"|"muted
 
 export function MyAdoptionListingsPage() {
   const qc = useQueryClient();
-  const [status, setStatus] = useState<AdoptionListingStatus | "">("");
+  // "all" is the sentinel for no-filter — Radix Select disallows empty-string values.
+  const [status, setStatus] = useState<AdoptionListingStatus | "all">("all");
   const [open, setOpen] = useState(false);
 
   const queryKey = ["adoption", "mine", status];
@@ -30,7 +31,7 @@ export function MyAdoptionListingsPage() {
     queryKey,
     queryFn: ({ pageParam }) => adoptionApi.mine({
       cursor: pageParam, pageSize: 20,
-      status: status || undefined
+      status: status === "all" ? undefined : status
     }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined
@@ -58,10 +59,10 @@ export function MyAdoptionListingsPage() {
         } />
 
       <div className="w-52">
-        <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+        <Select value={status} onValueChange={(v) => setStatus(v as AdoptionListingStatus | "all")}>
           <SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All statuses</SelectItem>
+            <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="Draft">Draft</SelectItem>
             <SelectItem value="PendingApproval">Pending approval</SelectItem>
             <SelectItem value="Approved">Approved</SelectItem>

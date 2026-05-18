@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -170,7 +171,9 @@ export function AdminLayout() {
         </header>
 
         <div className="flex-1 p-6 overflow-y-auto">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </div>
 
         {roles.length > 0 && (

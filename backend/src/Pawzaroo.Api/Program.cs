@@ -117,6 +117,9 @@ builder.Services.AddControllers(o =>
         o.Filters.Add<Pawzaroo.Api.Filters.AuditActionFilter>();
         o.Filters.Add<Pawzaroo.Api.Filters.ApiResponseWrappingFilter>();
     })
+    // Register controllers in DI so the legacy /api/admin shim can inject the V1
+    // controllers it delegates to (AdminController -> {Dashboard,Users}AdminController).
+    .AddControllersAsServices()
     .AddJsonOptions(o =>
     {
         o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;

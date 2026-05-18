@@ -110,9 +110,15 @@ public static class DependencyInjection
         // Dev: log-only OTP transport. Swap in SES/Twilio adapter for prod.
         services.AddScoped<Application.Modules.Security.Services.IOtpDeliveryService,    Modules.Security.ConsoleOtpDelivery>();
 
-        // Generic transactional email (registration approval, etc.) — log + in-app
-        // notification fallback. Swap in MailKit/SendGrid for prod.
-        services.AddScoped<IEmailService, Modules.Identity.ConsoleEmailService>();
+        // Generic transactional email: SMTP via MailKit when Smtp:Host + Smtp:User
+        // are configured (Gmail App Password works directly), console-only stub
+        // otherwise so local dev without credentials still functions.
+        services.Configure<Modules.Identity.SmtpOptions>(config.GetSection("Smtp"));
+        var smtp = config.GetSection("Smtp").Get<Modules.Identity.SmtpOptions>();
+        if (!string.IsNullOrWhiteSpace(smtp?.Host) && !string.IsNullOrWhiteSpace(smtp.User))
+            services.AddScoped<IEmailService, Modules.Identity.SmtpEmailService>();
+        else
+            services.AddScoped<IEmailService, Modules.Identity.ConsoleEmailService>();
 
         return services;
     }

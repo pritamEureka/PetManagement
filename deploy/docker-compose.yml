@@ -17,6 +17,18 @@ x-app-env: &app-env
   Jwt__SigningKey: "${JWT_SIGNING_KEY:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS_xxxxxxxxxxxxx}"
   Jwt__Issuer: "${JWT_ISSUER:-pawzaroo}"
   Jwt__Audience: "${JWT_AUDIENCE:-pawzaroo.clients}"
+  # SMTP transport for transactional email (registration approval, suspend, etc.).
+  # For Gmail, generate an App Password (Google Account → Security → 2-Step
+  # Verification → App passwords) and set SMTP_USER + SMTP_PASSWORD in a .env
+  # file next to this docker-compose.yml. Leave them blank to fall back to the
+  # console-only stub (logs the email instead of sending it).
+  Smtp__Host: "${SMTP_HOST:-smtp.gmail.com}"
+  Smtp__Port: "${SMTP_PORT:-587}"
+  Smtp__User: "${SMTP_USER:-}"
+  Smtp__Password: "${SMTP_PASSWORD:-}"
+  Smtp__FromAddress: "${SMTP_FROM_ADDRESS:-}"
+  Smtp__FromName: "${SMTP_FROM_NAME:-Pawzaroo}"
+  Smtp__UseStartTls: "${SMTP_USE_STARTTLS:-true}"
 
 services:
   postgres:

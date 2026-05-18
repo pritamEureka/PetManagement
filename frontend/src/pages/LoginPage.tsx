@@ -10,6 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { AuthPawTrail } from "@/components/auth/AuthPawTrail";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 import { toast } from "@/components/ui/sonner";
 
@@ -65,9 +66,10 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-primary/5 to-background">
-      <div className="absolute top-4 right-4"><ThemeToggle /></div>
-      <Card className="w-full max-w-md">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden p-4 bg-gradient-to-b from-primary/5 to-background">
+      <AuthPawTrail />
+      <div className="absolute top-4 right-4 z-10"><ThemeToggle /></div>
+      <Card className="relative z-10 w-full max-w-md" data-auth-card="true">
         <CardHeader className="space-y-1">
           <Link to="/" className="flex items-center gap-2 text-primary font-bold">
             <PawPrint className="h-5 w-5" /> Pawzaroo

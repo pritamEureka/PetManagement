@@ -24,5 +24,8 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.405.7" />
     <PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
+    <!-- TODO: bump to MailKit >= 4.10.0 when there's disk space to restore.
+         4.7.1.1 has GHSA-9j88-vvj5-vhgr (moderate). -->
+    <PackageReference Include="MailKit" Version="4.7.1.1" />
   </ItemGroup>
 </Project>

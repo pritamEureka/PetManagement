@@ -19,14 +19,16 @@ public class UserDisciplineService : IUserDisciplineService
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _current;
     private readonly INotificationService _notify;
+    private readonly IEmailService _email;
     private readonly IAdminActionLogger _adminLog;
 
     public UserDisciplineService(ApplicationDbContext db, ICurrentUserService current,
-        INotificationService notify, IAdminActionLogger adminLog)
+        INotificationService notify, IEmailService email, IAdminActionLogger adminLog)
     {
         _db = db;
         _current = current;
         _notify = notify;
+        _email = email;
         _adminLog = adminLog;
     }
 
@@ -61,8 +63,23 @@ public class UserDisciplineService : IUserDisciplineService
         user.IsSuspended = true;
         await _db.SaveChangesAsync(ct);
 
-        await _notify.NotifyUserAsync(userId, isBan ? "Account banned" : "Account suspended",
-            reason, new { hold.Id }, ct);
+        var verb = isBan ? "banned" : "suspended";
+        var title = isBan ? "Account banned" : "Account suspended";
+        await _notify.NotifyUserAsync(userId, title, reason, new { hold.Id }, ct);
+
+        var until = expiresAt.HasValue
+            ? $"This {verb} is active until {expiresAt.Value:yyyy-MM-dd HH:mm} UTC.\n\n"
+            : "";
+        await _email.SendAsync(user.Email,
+            $"Your Pawzaroo account has been {verb}",
+            $"Hi {user.DisplayName},\n\n" +
+            $"An administrator has {verb} your account.\n\n" +
+            $"Reason: {reason}\n" +
+            (string.IsNullOrWhiteSpace(details) ? "" : $"Details: {details}\n") +
+            "\n" + until +
+            "If you believe this is a mistake, please reply to this email to contact support.\n\n— Pawzaroo",
+            userId, ct);
+
         await _adminLog.LogAsync(isBan ? "user.ban" : "user.suspend", "User", userId.ToString(),
             reason, new { hold.Id, expiresAt, isBan }, ct);
         return hold;
@@ -92,6 +109,25 @@ public class UserDisciplineService : IUserDisciplineService
 
         await _db.SaveChangesAsync(ct);
         await _notify.NotifyUserAsync(hold.UserId, "Account restored", notes ?? string.Empty, new { hold.Id }, ct);
+
+        // Look up the email + display name for the restore notification. Pull
+        // fresh from the DB rather than caching above since we may have not
+        // touched the user entity in this transaction.
+        var restored = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == hold.UserId)
+            .Select(u => new { u.Email, u.DisplayName })
+            .FirstOrDefaultAsync(ct);
+        if (restored is not null)
+        {
+            await _email.SendAsync(restored.Email,
+                "Your Pawzaroo account has been restored",
+                $"Hi {restored.DisplayName},\n\n" +
+                "Good news — an administrator has restored your account. You can sign in again immediately.\n\n" +
+                (string.IsNullOrWhiteSpace(notes) ? "" : $"Notes from the administrator: {notes}\n\n") +
+                "— Pawzaroo",
+                hold.UserId, ct);
+        }
+
         await _adminLog.LogAsync("user.restore", "User", hold.UserId.ToString(), notes, new { suspensionId }, ct);
     }
 

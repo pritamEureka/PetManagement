@@ -48,3 +48,24 @@
   }
   body { @apply bg-background text-foreground; font-family: ui-sans-serif, system-ui, sans-serif; }
 }
+
+@layer utilities {
+  @keyframes auth-paw-trail-fade {
+    0% {
+      opacity: 0;
+      scale: 0.75;
+    }
+    15% {
+      opacity: 1;
+      scale: 1;
+    }
+    100% {
+      opacity: 0;
+      scale: 0.6;
+    }
+  }
+
+  .auth-paw-trail-item {
+    animation: auth-paw-trail-fade 1s ease-out forwards;
+  }
+}

@@ -249,7 +249,9 @@ public class UsersAdminController : ControllerBase
             new Dictionary<string, string[]> { ["displayName"] = new[] { "Display name is required." } });
 
         var email = body.Email.Trim().ToLowerInvariant();
-        if (await _db.Users.AnyAsync(u => u.Email == email, ct))
+        // IgnoreQueryFilters so a soft-deleted user with the same email is also
+        // treated as a conflict — the unique DB index doesn't honour soft-delete.
+        if (await _db.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
             throw new ConflictException("Email already registered.");
 
         var requestedRoles = (body.Roles ?? Array.Empty<string>())
@@ -346,14 +348,25 @@ public class UsersAdminController : ControllerBase
         if (_current.UserId == id)
             throw new ConflictException("You cannot delete your own account while signed in as it.");
 
-        // IgnoreQueryFilters so soft-deleted rows can also be hard-deleted.
-        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == id, ct)
-                   ?? throw new NotFoundException("User", id);
+        // Fetch the row (ignoring soft-delete filter) just to grab the audit-log
+        // fields. We don't use Users.Remove(user) because the SaveChangesAsync
+        // override in ApplicationDbContext rewrites EntityState.Deleted into a
+        // soft delete for every AuditableEntity — so "Remove" wouldn't actually
+        // remove anything. ExecuteDeleteAsync issues a real SQL DELETE that
+        // bypasses change tracking entirely.
+        var snapshot = await _db.Users.IgnoreQueryFilters()
+            .Where(u => u.Id == id)
+            .Select(u => new { u.Email, u.DisplayName })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException("User", id);
 
-        _db.Users.Remove(user);
         try
         {
-            await _db.SaveChangesAsync(ct);
+            var deleted = await _db.Users.IgnoreQueryFilters()
+                .Where(u => u.Id == id)
+                .ExecuteDeleteAsync(ct);
+
+            if (deleted == 0) throw new NotFoundException("User", id);
         }
         catch (DbUpdateException ex)
         {
@@ -366,7 +379,7 @@ public class UsersAdminController : ControllerBase
         }
 
         await _adminLog.LogAsync("user.delete", "User", id.ToString(), null,
-            new { user.Email, user.DisplayName }, ct);
+            new { snapshot.Email, snapshot.DisplayName }, ct);
         return NoContent();
     }
 }

@@ -43,11 +43,27 @@ const PRO_NAV: NavItem[] = [
   { to: "/dashboard/store",            label: "My store",      icon: ShoppingBag, perm: "products.edit" }
 ];
 
+const ADMIN_ACCESS_PERMISSIONS = [
+  "users.view",
+  "roles.view",
+  "moderation.view",
+  "users.approve",
+  "users.reject",
+  "adoption.approve",
+  "adoption.reject",
+  "vets.approve",
+  "vets.reject",
+  "vets.suspend",
+  "stores.approve",
+  "stores.reject",
+  "sellers.approve"
+];
+
 // Single entry into the admin section. The admin area has its own layout
 // (AdminLayout) with a richer sidebar — having sub-entries here too caused a
 // jarring full-sidebar swap on click. One CTA makes the layout switch explicit.
 const ADMIN_NAV: NavItem[] = [
-  { to: "/admin", label: "Admin panel", icon: ShieldCheck, anyOf: ["users.view", "roles.view", "moderation.view"] },
+  { to: "/admin", label: "Admin panel", icon: ShieldCheck, anyOf: ADMIN_ACCESS_PERMISSIONS },
 ];
 
 const DELIVERY_NAV: NavItem[] = [

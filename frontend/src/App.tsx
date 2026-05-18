@@ -97,6 +97,36 @@ const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } }
 });
 
+const ADMIN_ACCESS_PERMISSIONS = [
+  "users.view",
+  "roles.view",
+  "moderation.view",
+  "users.approve",
+  "users.reject",
+  "adoption.approve",
+  "adoption.reject",
+  "vets.approve",
+  "vets.reject",
+  "vets.suspend",
+  "stores.approve",
+  "stores.reject",
+  "sellers.approve"
+];
+
+const APPROVAL_PERMISSIONS = [
+  "users.approve",
+  "users.reject",
+  "adoption.approve",
+  "adoption.reject",
+  "moderation.moderate",
+  "vets.approve",
+  "vets.reject",
+  "vets.suspend",
+  "stores.approve",
+  "stores.reject",
+  "sellers.approve"
+];
+
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
@@ -196,7 +226,7 @@ export default function App() {
           </Route>
 
           {/* Admin — dedicated layout with its own sidebar / topbar. */}
-          <Route element={<ProtectedRoute anyOf={["users.view", "roles.view", "moderation.view"]} />}>
+          <Route element={<ProtectedRoute anyOf={ADMIN_ACCESS_PERMISSIONS} />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<AdminDashboardPage />} />
 
@@ -208,7 +238,7 @@ export default function App() {
               </Route>
 
               {/* Approvals */}
-              <Route element={<ProtectedRoute anyOf={["users.approve", "adoption.approve", "moderation.moderate", "vets.approve", "stores.approve"]} />}>
+              <Route element={<ProtectedRoute anyOf={APPROVAL_PERMISSIONS} />}>
                 <Route path="/admin/approvals" element={<ApprovalsPage />} />
               </Route>
               <Route element={<ProtectedRoute anyOf={["adoption.approve", "adoption.reject"]} />}>

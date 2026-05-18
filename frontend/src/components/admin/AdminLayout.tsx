@@ -24,6 +24,20 @@ interface NavItem {
   anyOf?: string[];
 }
 
+const APPROVAL_PERMISSIONS = [
+  "users.approve",
+  "users.reject",
+  "adoption.approve",
+  "adoption.reject",
+  "moderation.moderate",
+  "vets.approve",
+  "vets.reject",
+  "vets.suspend",
+  "stores.approve",
+  "stores.reject",
+  "sellers.approve"
+];
+
 /**
  * Sidebar entries grouped by domain. Each line declares the permission gate
  * the user must satisfy — invisible items still get blocked by ProtectedRoute,
@@ -48,6 +62,7 @@ const NAV: { heading: string; items: NavItem[] }[] = [
   {
     heading: "Approvals",
     items: [
+      { to: "/admin/approvals",          label: "All approvals", icon: ShieldCheck,     anyOf: APPROVAL_PERMISSIONS },
       { to: "/admin/doctor-approvals",   label: "Vets",        icon: Stethoscope,    anyOf: ["vets.approve","vets.reject","vets.suspend"] },
       { to: "/admin/store-approvals",    label: "Stores",      icon: ShoppingBag,    anyOf: ["stores.approve","stores.reject","sellers.approve"] },
       { to: "/admin/adoption-approvals", label: "Adoption",    icon: HeartHandshake, anyOf: ["adoption.approve","adoption.reject"] }

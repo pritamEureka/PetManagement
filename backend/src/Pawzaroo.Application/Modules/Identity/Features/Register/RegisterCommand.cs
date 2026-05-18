@@ -84,7 +84,12 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Registrat
     public async Task<RegistrationResult> HandleAsync(RegisterCommand req, CancellationToken ct)
     {
         var email = req.Email.Trim().ToLowerInvariant();
-        if (await _db.Users.AnyAsync(u => u.Email == email, ct))
+
+        // IgnoreQueryFilters so soft-deleted accounts also surface as duplicates —
+        // the unique DB index ix_users_email doesn't honour the soft-delete filter,
+        // so a naive AnyAsync would miss the conflict and let the insert blow up
+        // with a Postgres 23505 (which the global handler reports as a generic 500).
+        if (await _db.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
             throw new ConflictException("Email already registered.");
 
         // Pending until an admin approves. IsActive stays true so that admins can
@@ -101,7 +106,16 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Registrat
             ApprovalStatus = ApprovalStatus.Pending
         };
         _db.Users.Add(user);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (IsUniqueEmailViolation(ex))
+        {
+            // Defence-in-depth: race condition between the pre-check above and the
+            // insert (e.g. two registrations with the same email submitted at once).
+            throw new ConflictException("Email already registered.");
+        }
 
         // Pick the requested role if it's one the user is allowed to self-select;
         // otherwise default to Pet Owner. SuperAdmin / Admin / Moderator /
@@ -181,5 +195,16 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Registrat
             }
             catch { /* notification is non-critical */ }
         }
+    }
+
+    // Postgres SQLSTATE 23505 = unique_violation. We only translate the specific
+    // ix_users_email index (and the Application layer can't reference Npgsql, so
+    // we sniff the message text rather than typing the exception).
+    private static bool IsUniqueEmailViolation(DbUpdateException ex)
+    {
+        var msg = ex.GetBaseException().Message ?? "";
+        return msg.Contains("ix_users_email", StringComparison.OrdinalIgnoreCase)
+            || (msg.Contains("23505", StringComparison.OrdinalIgnoreCase)
+                && msg.Contains("email", StringComparison.OrdinalIgnoreCase));
     }
 }

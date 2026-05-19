@@ -19,15 +19,15 @@ import { cn } from "@/lib/utils";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useNotifications } from "@/hooks/useNotifications";
 
-interface NavItem { to: string; label: string; icon: LucideIcon; perm?: string; anyOf?: string[]; badgeKey?: "unreadMessages" | "unreadNotifications"; }
+interface NavItem { to: string; label: string; icon: LucideIcon; perm?: string; anyOf?: string[]; badgeKey?: "unreadMessages" | "unreadNotifications"; end?: boolean; }
 
 const USER_NAV: NavItem[] = [
   { to: "/home",     label: "Dashboard", icon: Home },
-  { to: "/feed",     label: "Feed",      icon: Home,           perm: "posts.view" },
+  { to: "/feed",     label: "Feed",      icon: Home,           perm: "posts.view", end: true },
   { to: "/feed/mine",  label: "My posts", icon: UserIcon,      perm: "posts.view" },
   { to: "/feed/saved", label: "Saved",    icon: Bookmark,      perm: "posts.view" },
   { to: "/pets",     label: "My Pets",   icon: PawPrint,       perm: "pets.view" },
-  { to: "/adoption", label: "Adoption",  icon: HeartHandshake, perm: "adoption.view" },
+  { to: "/adoption", label: "Adoption",  icon: HeartHandshake, perm: "adoption.view", end: true },
   { to: "/adoption/mine",  label: "My adoption listings", icon: HeartHandshake, perm: "adoption.create" },
   { to: "/adoption/saved", label: "Saved pets",          icon: Bookmark,       perm: "adoption.view" },
   { to: "/messages", label: "Messages",  icon: MessageSquare,  perm: "messaging.view", badgeKey: "unreadMessages" },
@@ -72,7 +72,7 @@ const DELIVERY_NAV: NavItem[] = [
   { to: "/delivery", label: "Deliveries", icon: Truck, perm: "delivery.view" }
 ];
 
-function SidebarNavItem({ to, label, icon: Icon, badgeKey, collapsed, onNavigate, badges }: NavItem & {
+function SidebarNavItem({ to, label, icon: Icon, badgeKey, collapsed, onNavigate, badges, end }: NavItem & {
   collapsed: boolean; onNavigate?: () => void; badges: { unreadMessages: number; unreadNotifications: number };
 }) {
   const badgeCount = badgeKey ? badges[badgeKey] : 0;
@@ -81,12 +81,13 @@ function SidebarNavItem({ to, label, icon: Icon, badgeKey, collapsed, onNavigate
   return (
     <NavLink
       to={to}
+      end={end}
       onClick={onNavigate}
       title={collapsed ? `${label}${showBadge ? ` (${badgeCount} unread)` : ""}` : undefined}
       className={({ isActive }) => cn(
-        "relative flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent transition-colors",
+        "relative flex items-center rounded-md px-3 py-2 text-sm font-semibold hover:bg-accent transition-colors",
         collapsed ? "justify-center" : "gap-3",
-        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+        isActive ? "bg-accent text-accent-foreground" : "text-slate-950 dark:text-muted-foreground"
       )}
     >
       <span className="relative shrink-0">
@@ -119,7 +120,7 @@ function SidebarNavGroup({ items, heading, collapsed, onNavigate, badges }: {
     <div className="space-y-1">
       {heading && (
         <p className={cn(
-          "px-3 text-[10px] uppercase tracking-wider text-muted-foreground transition-all duration-300 overflow-hidden whitespace-nowrap",
+          "px-3 text-[10px] font-bold uppercase tracking-wider text-slate-800 dark:text-muted-foreground transition-all duration-300 overflow-hidden whitespace-nowrap",
           collapsed ? "opacity-0 h-0 m-0" : "opacity-100 h-auto"
         )}>
           {heading}
@@ -240,7 +241,7 @@ export function AppLayout() {
             collapsed ? "w-0 opacity-0" : "w-auto opacity-100 flex-1 min-w-0"
           )}>
             <p className="text-sm font-medium truncate">{user?.displayName}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            <p className="text-xs font-medium text-slate-700 dark:text-muted-foreground truncate">{user?.email}</p>
             {roles.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {roles.slice(0, 2).map((r) => <Badge key={r} variant="outline" className="text-[9px] px-1.5 py-0">{r}</Badge>)}
@@ -299,7 +300,7 @@ export function AppLayout() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{user?.displayName}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  <p className="text-xs font-medium text-slate-700 dark:text-muted-foreground truncate">{user?.email}</p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={onLogout} title="Log out">
                   <LogOut className="h-4 w-4" />

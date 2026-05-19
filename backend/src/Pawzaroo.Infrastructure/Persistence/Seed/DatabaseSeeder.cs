@@ -23,6 +23,7 @@ public static class DatabaseSeeder
         await SeedRolesAsync(db, ct);
         await SeedSuperAdminAsync(db, hasher, configuration, logger ?? NullLogger.Instance, ct);
         await CatalogSeeder.SeedAsync(db, ct);
+        await DemoDataSeeder.SeedAsync(db, hasher, ct);
         await db.SaveChangesAsync(ct);
     }
 

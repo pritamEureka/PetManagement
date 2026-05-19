@@ -4,10 +4,12 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 203 100% 87.6%;
     --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
+    --card: 201 100% 95.9%;
     --card-foreground: 240 10% 3.9%;
+    --card-border: 203 72% 77%;
+    --card-shadow: 0 18px 35px -22px rgba(15, 23, 42, 0.55), 0 8px 18px -14px rgba(15, 23, 42, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.9);
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
     --primary: 24 95% 53%;
@@ -26,10 +28,12 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 262 35.8% 10.4%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 5%;
+    --card: 262 30% 15%;
     --card-foreground: 0 0% 98%;
+    --card-border: 262 24% 24%;
+    --card-shadow: 0 20px 42px -24px rgba(0, 0, 0, 0.85), 0 8px 18px -14px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     --popover: 240 10% 5%;
     --popover-foreground: 0 0% 98%;
     --primary: 24 95% 53%;
@@ -46,7 +50,10 @@
     --input: 240 3.7% 15.9%;
     --ring: 24 95% 53%;
   }
-  body { @apply bg-background text-foreground; font-family: ui-sans-serif, system-ui, sans-serif; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
 }
 
 @layer utilities {

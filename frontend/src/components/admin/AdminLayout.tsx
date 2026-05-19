@@ -115,7 +115,7 @@ function AdminSidebarNav({ collapsed, onNavigate, search }: { collapsed: boolean
         return (
           <div key={group.heading} className="space-y-1">
             <p className={cn(
-              "px-3 text-[10px] uppercase tracking-wider text-muted-foreground transition-all duration-300 overflow-hidden whitespace-nowrap",
+              "px-3 text-[10px] font-bold uppercase tracking-wider text-slate-800 dark:text-muted-foreground transition-all duration-300 overflow-hidden whitespace-nowrap",
               collapsed ? "opacity-0 h-0 m-0" : "opacity-100 h-auto"
             )}>
               {group.heading}
@@ -124,9 +124,9 @@ function AdminSidebarNav({ collapsed, onNavigate, search }: { collapsed: boolean
               <NavLink key={to} to={to} end={to === "/admin"} onClick={onNavigate}
                 title={collapsed ? label : undefined}
                 className={({ isActive }) => cn(
-                  "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center rounded-md px-3 py-2 text-sm font-semibold transition-colors",
                   collapsed ? "justify-center" : "gap-3",
-                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  isActive ? "bg-primary/10 text-primary" : "text-slate-950 hover:bg-accent hover:text-foreground dark:text-muted-foreground"
                 )}>
                 <Icon className="h-4 w-4 shrink-0" />
                 <span className={cn(
@@ -179,7 +179,7 @@ export function AdminLayout() {
               collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
             )}>
               Pawzaroo
-              <span className="text-xs font-normal text-muted-foreground">admin</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-muted-foreground">admin</span>
             </span>
           </Link>
         </div>
@@ -217,7 +217,7 @@ export function AdminLayout() {
             collapsed ? "w-0 opacity-0" : "w-auto opacity-100 flex-1 min-w-0"
           )}>
             <p className="text-sm font-medium truncate">{user?.displayName}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            <p className="text-xs font-medium text-slate-700 dark:text-muted-foreground truncate">{user?.email}</p>
           </div>
           <div className={cn(
             "transition-all duration-300 overflow-hidden",
@@ -242,7 +242,7 @@ export function AdminLayout() {
             <SheetContent side="left" className="w-72 p-0">
               <SheetHeader className="px-6 py-4 border-b">
                 <SheetTitle className="flex items-center gap-2">
-                  <PawPrint className="h-5 w-5 text-primary" /> Pawzaroo <span className="text-xs font-normal text-muted-foreground">admin</span>
+                  <PawPrint className="h-5 w-5 text-primary" /> Pawzaroo <span className="text-xs font-semibold text-slate-700 dark:text-muted-foreground">admin</span>
                 </SheetTitle>
               </SheetHeader>
               {/* Mobile search */}
@@ -267,7 +267,7 @@ export function AdminLayout() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{user?.displayName}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  <p className="text-xs font-medium text-slate-700 dark:text-muted-foreground truncate">{user?.email}</p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={onLogout} title="Log out">
                   <LogOut className="h-4 w-4" />

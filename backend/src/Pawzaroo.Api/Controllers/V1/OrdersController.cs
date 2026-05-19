@@ -78,6 +78,20 @@ public class OrdersController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Server-rendered printable invoice. Returns text/html so the browser can
+    /// open in a new tab and use the native Print → Save as PDF path — avoids
+    /// pulling in a PDF library for what's essentially a styled receipt.
+    /// </summary>
+    [HttpGet("{id:guid}/invoice")]
+    [Produces("text/html")]
+    public async Task<IActionResult> Invoice(Guid id, CancellationToken ct)
+    {
+        var order = await _orders.GetByIdAsync(id, ct);
+        if (order is null) return NotFound();
+        return Content(InvoiceRenderer.Render(order), "text/html");
+    }
+
     [HttpPost("{id:guid}/refund")]
     [Permission(Permissions.Orders.Refund)]
     public async Task<IActionResult> Refund(Guid id, [FromBody] RefundBody? body, CancellationToken ct)

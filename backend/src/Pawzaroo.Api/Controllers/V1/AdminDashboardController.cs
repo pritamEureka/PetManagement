@@ -26,13 +26,19 @@ public class AdminDashboardController : ControllerBase
     private readonly ApplicationDbContext _db;
     public AdminDashboardController(ApplicationDbContext db) => _db = db;
 
+    public record ShipmentBreakdown(
+        long NotShipped, long Processing, long InTransit,
+        long OutForDelivery, long Delivered, long Failed);
+
     public record OverviewDto(
         long TotalUsers, long ActiveUsers, long NewUsersToday,
         long PendingDoctorApprovals, long PendingStoreApprovals, long PendingAdoptionListings,
         long NewFeedPostsToday, long OpenReports,
         long TotalAppointments, long AppointmentsToday,
-        long TotalOrders, decimal TotalRevenue, decimal CommissionEarned,
-        long ActiveStores, long ActiveDoctors);
+        long TotalOrders, long PendingOrders, decimal TotalRevenue, decimal CommissionEarned,
+        long ActiveStores, long ActiveDoctors,
+        long TotalProducts, long ActiveProducts, long LowStockProducts,
+        ShipmentBreakdown ShipmentStatusBreakdown);
 
     [HttpGet("overview")]
     [Permission(Permissions.Users.View)]
@@ -63,19 +69,36 @@ public class AdminDashboardController : ControllerBase
         var totalAptT         = appointments.LongCountAsync(ct);
         var aptTodayT         = appointments.LongCountAsync(a => a.ScheduledAt >= today && a.ScheduledAt < tomorrow, ct);
         var totalOrdersT      = orders.LongCountAsync(ct);
-        var revenueT          = orders.Where(o => o.Status != OrderStatus.Cancelled)
+        var pendingOrdersT    = orders.LongCountAsync(o => o.Status == OrderStatus.Created || o.Status == OrderStatus.Confirmed, ct);
+        var revenueT          = orders.Where(o => o.Status != OrderStatus.Cancelled && o.Status != OrderStatus.Denied)
                                        .SumAsync(o => (decimal?)o.Total, ct);
         var commissionT       = items.SumAsync(i => (decimal?)i.CommissionAmount, ct);
         var activeStoresT     = stores.LongCountAsync(s => s.ApprovalStatus == ApprovalStatus.Approved, ct);
         var activeDoctorsT    = doctors.LongCountAsync(d => d.ApprovalStatus == ApprovalStatus.Approved, ct);
+
+        var products          = _db.Products.AsNoTracking();
+        var totalProductsT    = products.LongCountAsync(ct);
+        var activeProductsT   = products.LongCountAsync(p => p.IsActive, ct);
+        var lowStockT         = products.LongCountAsync(p => p.IsActive && p.StockQuantity <= 5, ct);
+
+        // Shipment breakdown — six independent counts derived from the same orders set.
+        var shipNotShippedT  = orders.LongCountAsync(o => o.ShipmentStatus == ShipmentStatus.NotShipped, ct);
+        var shipProcessingT  = orders.LongCountAsync(o => o.ShipmentStatus == ShipmentStatus.Processing, ct);
+        var shipInTransitT   = orders.LongCountAsync(o => o.ShipmentStatus == ShipmentStatus.InTransit, ct);
+        var shipOutForDelT   = orders.LongCountAsync(o => o.ShipmentStatus == ShipmentStatus.OutForDelivery, ct);
+        var shipDeliveredT   = orders.LongCountAsync(o => o.ShipmentStatus == ShipmentStatus.Delivered, ct);
+        var shipFailedT      = orders.LongCountAsync(o => o.ShipmentStatus == ShipmentStatus.Failed, ct);
 
         await Task.WhenAll(
             totalUsersT, activeUsersT, newUsersTodayT,
             pendingVetsT, pendingStoresT, pendingListingsT,
             newPostsTodayT, openReportsT,
             totalAptT, aptTodayT,
-            totalOrdersT, revenueT, commissionT,
-            activeStoresT, activeDoctorsT);
+            totalOrdersT, pendingOrdersT, revenueT, commissionT,
+            activeStoresT, activeDoctorsT,
+            totalProductsT, activeProductsT, lowStockT,
+            shipNotShippedT, shipProcessingT, shipInTransitT,
+            shipOutForDelT, shipDeliveredT, shipFailedT);
 
         return new OverviewDto(
             TotalUsers: totalUsersT.Result,
@@ -89,10 +112,17 @@ public class AdminDashboardController : ControllerBase
             TotalAppointments: totalAptT.Result,
             AppointmentsToday: aptTodayT.Result,
             TotalOrders: totalOrdersT.Result,
+            PendingOrders: pendingOrdersT.Result,
             TotalRevenue: revenueT.Result ?? 0m,
             CommissionEarned: commissionT.Result ?? 0m,
             ActiveStores: activeStoresT.Result,
-            ActiveDoctors: activeDoctorsT.Result);
+            ActiveDoctors: activeDoctorsT.Result,
+            TotalProducts: totalProductsT.Result,
+            ActiveProducts: activeProductsT.Result,
+            LowStockProducts: lowStockT.Result,
+            ShipmentStatusBreakdown: new ShipmentBreakdown(
+                shipNotShippedT.Result, shipProcessingT.Result, shipInTransitT.Result,
+                shipOutForDelT.Result, shipDeliveredT.Result, shipFailedT.Result));
     }
 
     public record DailyPoint(string Date, long Users, long Orders, decimal Revenue);

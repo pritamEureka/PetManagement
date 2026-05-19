@@ -131,6 +131,19 @@ public interface IWishlistService
     Task<bool> IsWishlistedAsync(Guid productId, CancellationToken ct = default);
 }
 
+public interface IDeliveryService
+{
+    // Admin
+    Task<Guid> AssignAsync(Guid orderId, AssignDeliveryInput input, CancellationToken ct = default);
+    Task<IReadOnlyList<DeliveryUserSummaryDto>> ListDeliveryUsersAsync(CancellationToken ct = default);
+    Task<PageResult<DeliveryAssignmentDto>> ListAdminAsync(DeliveryAssignmentStatus? status, int page, int pageSize, CancellationToken ct = default);
+
+    // Delivery user
+    Task<IReadOnlyList<DeliveryAssignmentDto>> ListMineActiveAsync(CancellationToken ct = default);
+    Task<PageResult<DeliveryAssignmentDto>> ListMineHistoryAsync(int page, int pageSize, CancellationToken ct = default);
+    Task UpdateStatusAsync(Guid assignmentId, UpdateDeliveryStatusInput input, CancellationToken ct = default);
+}
+
 public interface ICouponService
 {
     Task<ApplyCouponResult> ApplyAsync(ApplyCouponInput input, CancellationToken ct = default);

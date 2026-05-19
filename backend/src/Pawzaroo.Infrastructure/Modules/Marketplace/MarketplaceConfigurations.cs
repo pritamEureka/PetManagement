@@ -156,6 +156,22 @@ public class CouponConfiguration : IEntityTypeConfiguration<Coupon>
     }
 }
 
+public class DeliveryAssignmentConfiguration : IEntityTypeConfiguration<DeliveryAssignment>
+{
+    public void Configure(EntityTypeBuilder<DeliveryAssignment> b)
+    {
+        b.ToTable("delivery_assignments");
+        // One active assignment per order. If we ever support reassignment we'll
+        // soft-delete the old row rather than relax this constraint.
+        b.HasIndex(a => a.OrderId).IsUnique();
+        b.HasIndex(a => new { a.DeliveryUserId, a.Status });
+        b.Property(a => a.Notes).HasMaxLength(1024);
+
+        b.HasOne(a => a.Order).WithOne(o => o.DeliveryAssignment).HasForeignKey<DeliveryAssignment>(a => a.OrderId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(a => a.DeliveryUser).WithMany().HasForeignKey(a => a.DeliveryUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class StoreReviewConfiguration : IEntityTypeConfiguration<StoreReview>
 {
     public void Configure(EntityTypeBuilder<StoreReview> b)

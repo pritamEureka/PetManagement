@@ -41,6 +41,8 @@ public enum OrderStatus { Created = 0, Confirmed = 1, Packed = 2, Shipped = 3, D
 
 public enum ShipmentStatus { NotShipped = 0, Processing = 1, InTransit = 2, OutForDelivery = 3, Delivered = 4, Failed = 5 }
 
+public enum DeliveryAssignmentStatus { Assigned = 0, PickedUp = 1, InTransit = 2, OutForDelivery = 3, Delivered = 4, Failed = 5 }
+
 public enum ServiceProviderType { Grooming = 0, Training = 1, Boarding = 2, Walking = 3 }
 
 public enum AnimalSize { Tiny = 1, Small = 2, Medium = 3, Large = 4, ExtraLarge = 5 }

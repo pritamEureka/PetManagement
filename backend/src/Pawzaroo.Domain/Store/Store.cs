@@ -125,6 +125,7 @@ public class Order : AuditableEntity
 
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public DeliveryAssignment? DeliveryAssignment { get; set; }
 }
 
 public class OrderItem : BaseEntity

@@ -4,6 +4,8 @@ import { api } from "./client";
 
 export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Suspended";
 export type OrderStatus = "Created" | "Confirmed" | "Packed" | "Shipped" | "Delivered" | "Cancelled" | "Returned" | "Denied";
+export type DeliveryAssignmentStatus =
+  | "Assigned" | "PickedUp" | "InTransit" | "OutForDelivery" | "Delivered" | "Failed";
 export type PaymentStatusT = "Unpaid" | "Pending" | "Paid" | "Refunded" | "Failed";
 export type ShipmentStatus = "NotShipped" | "Processing" | "InTransit" | "OutForDelivery" | "Delivered" | "Failed";
 export type InventoryReason = "Purchase" | "Sale" | "Return" | "Adjustment" | "Damage" | "Restock";
@@ -127,12 +129,33 @@ export interface Order {
   shippingAddress: string; shippingCity?: string | null; shippingCountry?: string | null;
   trackingNumber?: string | null;
   items: OrderItem[]; createdAt: string;
-  /**
-   * When set (only on the response from POST /v1/orders/checkout for hosted-payment
-   * methods like sslcommerz), the client should redirect the browser here to
-   * complete payment. Successful payment lands the user on /checkout/success.
-   */
+  discountAmount?: number;
+  couponCode?: string | null;
   paymentCheckoutUrl?: string | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+  deliveryAssignmentId?: string | null;
+  deliveryUserId?: string | null;
+  deliveryUserName?: string | null;
+  deliveryStatus?: DeliveryAssignmentStatus | null;
+}
+
+// ---------- Deliveries ----------------------------------------------------
+
+export interface DeliveryAssignment {
+  id: string;
+  orderId: string; orderNumber: string; orderTotal: number;
+  deliveryUserId: string; deliveryUserName: string; deliveryUserPhone?: string | null;
+  status: DeliveryAssignmentStatus; notes?: string | null;
+  shippingAddress: string; shippingCity?: string | null; shippingCountry?: string | null;
+  customerName: string; customerPhone?: string | null;
+  assignedAt: string; pickedUpAt?: string | null; deliveredAt?: string | null; failedAt?: string | null;
+}
+
+export interface DeliveryUserSummary {
+  userId: string; displayName: string; email: string; phoneNumber?: string | null;
+  activeAssignmentsCount: number; completedDeliveriesCount: number;
 }
 
 export type PaymentMethod = "sslcommerz" | "cod";
@@ -329,6 +352,8 @@ export const ordersV2Api = {
   cancel: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/cancel`, { reason }),
   deny: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/deny`, { reason }),
   refund: (id: string, amount?: number) => api.post(`${V1}/orders/${id}/refund`, { amount }),
+  /** Absolute path the browser can open in a new tab — server renders text/html. */
+  invoiceUrl: (id: string) => `/api${V1}/orders/${id}/invoice`,
 
   createReturn: (orderItemId: string, reason: string) =>
     api.post(`${V1}/orders/returns`, { orderItemId, reason }).then((r) => r.data),
@@ -349,6 +374,27 @@ export const commissionsApi = {
   upsert: (input: Omit<CommissionConfiguration, "id" | "storeName" | "categoryName">) =>
     api.post<{ id: string }>(`${V1}/admin/commissions`, input).then((r) => r.data),
   remove: (id: string) => api.delete(`${V1}/admin/commissions/${id}`),
+};
+
+export const deliveriesApi = {
+  // Admin
+  listDeliveryUsers: () =>
+    api.get<DeliveryUserSummary[]>(`${V1}/deliveries/admin/users`).then((r) => r.data),
+  adminList: (status?: DeliveryAssignmentStatus, page = 1, pageSize = 50) =>
+    api.get<PageResult<DeliveryAssignment>>(`${V1}/deliveries/admin/assignments`, { params: { status, page, pageSize } })
+       .then((r) => r.data),
+  assign: (orderId: string, deliveryUserId: string, notes?: string) =>
+    api.post<{ id: string }>(`${V1}/deliveries/admin/orders/${orderId}/assign`, { deliveryUserId, notes })
+       .then((r) => r.data),
+
+  // Delivery user
+  mineActive: () =>
+    api.get<DeliveryAssignment[]>(`${V1}/deliveries/mine/active`).then((r) => r.data),
+  mineHistory: (page = 1, pageSize = 30) =>
+    api.get<PageResult<DeliveryAssignment>>(`${V1}/deliveries/mine/history`, { params: { page, pageSize } })
+       .then((r) => r.data),
+  updateStatus: (assignmentId: string, status: DeliveryAssignmentStatus, notes?: string) =>
+    api.put(`${V1}/deliveries/${assignmentId}/status`, { status, notes }),
 };
 
 export const wishlistApi = {

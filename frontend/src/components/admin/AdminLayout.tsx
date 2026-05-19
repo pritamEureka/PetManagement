@@ -3,7 +3,8 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import {
   ShieldCheck, Users, KeyRound, Stethoscope, ShoppingBag, HeartHandshake,
   Flag, Package, Calendar, Percent, Star, Bell, History, BarChart3,
-  Settings, LayoutGrid, Home, LogOut, PawPrint, Search, Menu, PanelLeftClose, PanelLeft
+  Settings, LayoutGrid, Home, LogOut, PawPrint, Search, Menu, PanelLeftClose, PanelLeft,
+  Ticket, Truck
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
@@ -82,6 +83,8 @@ const NAV: { heading: string; items: NavItem[] }[] = [
     items: [
       { to: "/admin/categories",   label: "Categories",     icon: ShoppingBag, perm: "settings.edit" },
       { to: "/admin/orders",       label: "Orders",         icon: Package,     perm: "orders.view" },
+      { to: "/admin/coupons",      label: "Coupons",        icon: Ticket,      perm: "stores.approve" },
+      { to: "/admin/deliveries",   label: "Deliveries",     icon: Truck,       anyOf: ["delivery.view","delivery.assign","delivery.edit","orders.view"] },
       { to: "/admin/appointments", label: "Appointments",   icon: Calendar,    perm: "appointments.view" },
       { to: "/admin/commissions",  label: "Commission",     icon: Percent,     perm: "settings.view" }
     ]

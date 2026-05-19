@@ -127,7 +127,14 @@ public record OrderDto(
     DateTime CreatedAt,
     decimal DiscountAmount = 0m,
     string? CouponCode = null,
-    string? PaymentCheckoutUrl = null);
+    string? PaymentCheckoutUrl = null,
+    string? CustomerName = null,
+    string? CustomerEmail = null,
+    string? CustomerPhone = null,
+    Guid? DeliveryAssignmentId = null,
+    Guid? DeliveryUserId = null,
+    string? DeliveryUserName = null,
+    DeliveryAssignmentStatus? DeliveryStatus = null);
 
 public record UpdateOrderStatusInput(OrderStatus Status);
 public record UpdateShipmentStatusInput(ShipmentStatus Status, string? TrackingNumber);
@@ -198,6 +205,24 @@ public record StoreSalesReportDto(
 
 public record DailySalesPoint(DateOnly Date, decimal Revenue, int Orders);
 public record TopProductDto(Guid ProductId, string Name, int UnitsSold, decimal Revenue);
+
+// ----- Delivery assignments ---------------------------------------------------
+
+public record DeliveryAssignmentDto(
+    Guid Id, Guid OrderId, string OrderNumber, decimal OrderTotal,
+    Guid DeliveryUserId, string DeliveryUserName, string? DeliveryUserPhone,
+    DeliveryAssignmentStatus Status, string? Notes,
+    string ShippingAddress, string? ShippingCity, string? ShippingCountry,
+    string CustomerName, string? CustomerPhone,
+    DateTime AssignedAt, DateTime? PickedUpAt, DateTime? DeliveredAt, DateTime? FailedAt);
+
+public record AssignDeliveryInput(Guid DeliveryUserId, string? Notes);
+
+public record UpdateDeliveryStatusInput(DeliveryAssignmentStatus Status, string? Notes);
+
+public record DeliveryUserSummaryDto(
+    Guid UserId, string DisplayName, string Email, string? PhoneNumber,
+    int ActiveAssignmentsCount, int CompletedDeliveriesCount);
 
 // ----- Wishlist ---------------------------------------------------------------
 

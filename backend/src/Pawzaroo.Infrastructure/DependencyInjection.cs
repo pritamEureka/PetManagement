@@ -92,6 +92,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Modules.Marketplace.Services.ISalesReportService,             Modules.Marketplace.SalesReportService>();
         services.AddScoped<Application.Modules.Marketplace.Services.IWishlistService,                Modules.Marketplace.WishlistService>();
         services.AddScoped<Application.Modules.Marketplace.Services.ICouponService,                  Modules.Marketplace.CouponService>();
+        services.AddScoped<Application.Modules.Marketplace.Services.IDeliveryService,                Modules.Marketplace.DeliveryService>();
 
         services.Configure<KafkaOptions>(config.GetSection("Kafka"));
         services.AddSingleton<IKafkaProducer, KafkaProducer>();

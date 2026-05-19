@@ -85,6 +85,13 @@ import { AdminNotificationsPage } from "@/pages/admin/NotificationsAdminPage";
 import { AdminAuditLogPage } from "@/pages/admin/AuditLogPage";
 import { AdminAnalyticsPage } from "@/pages/admin/AnalyticsPage";
 import { AdminSystemSettingsPage } from "@/pages/admin/SystemSettingsPage";
+import { CouponManagementPage } from "@/pages/admin/CouponManagementPage";
+import { DeliveryManagementPage } from "@/pages/admin/DeliveryManagementPage";
+
+// Delivery panel
+import { DeliveryLayout } from "@/components/layout/DeliveryLayout";
+import { MyDeliveriesPage } from "@/pages/delivery/MyDeliveriesPage";
+import { DeliveryHistoryPage } from "@/pages/delivery/DeliveryHistoryPage";
 
 // Dashboards
 import { VetDashboardPage } from "@/pages/dashboards/VetDashboardPage";
@@ -279,6 +286,12 @@ export default function App() {
               <Route element={<ProtectedRoute permission="orders.view" />}>
                 <Route path="/admin/orders" element={<AdminOrderManagementPage />} />
               </Route>
+              <Route element={<ProtectedRoute permission="stores.approve" />}>
+                <Route path="/admin/coupons" element={<CouponManagementPage />} />
+              </Route>
+              <Route element={<ProtectedRoute anyOf={["delivery.view", "delivery.assign", "delivery.edit", "orders.view"]} />}>
+                <Route path="/admin/deliveries" element={<DeliveryManagementPage />} />
+              </Route>
               <Route element={<ProtectedRoute permission="appointments.view" />}>
                 <Route path="/admin/appointments" element={<AdminAppointmentManagementPage />} />
               </Route>
@@ -300,6 +313,14 @@ export default function App() {
               <Route element={<ProtectedRoute permission="settings.view" />}>
                 <Route path="/admin/settings" element={<AdminSystemSettingsPage />} />
               </Route>
+            </Route>
+          </Route>
+
+          {/* Delivery panel — DeliveryUser role (admins can also view for support) */}
+          <Route element={<ProtectedRoute roles={["DeliveryUser", "Admin", "SuperAdmin"]} />}>
+            <Route element={<DeliveryLayout />}>
+              <Route path="/delivery" element={<MyDeliveriesPage />} />
+              <Route path="/delivery/history" element={<DeliveryHistoryPage />} />
             </Route>
           </Route>
 

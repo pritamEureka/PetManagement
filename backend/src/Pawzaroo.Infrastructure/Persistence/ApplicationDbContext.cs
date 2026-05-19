@@ -108,6 +108,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<ProductReviewImage> ProductReviewImages => Set<ProductReviewImage>();
+    public DbSet<DeliveryAssignment> DeliveryAssignments => Set<DeliveryAssignment>();
 
     // Services
     public DbSet<ServiceProviderProfile> ServiceProviders => Set<ServiceProviderProfile>();

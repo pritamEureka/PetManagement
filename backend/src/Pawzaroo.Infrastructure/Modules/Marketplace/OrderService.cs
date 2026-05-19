@@ -513,6 +513,9 @@ public class OrderService : IOrderService
         if (!owns) throw new ForbiddenException();
     }
 
+    // Used inside LINQ-to-SQL projections (.Select(o => ToDto(o))) — every
+    // expression below must be EF-translatable. The two navigation accesses
+    // (o.User and o.DeliveryAssignment) both have FKs and configured nav props.
     private static OrderDto ToDto(Order o) => new(
         o.Id, o.OrderNumber, o.UserId,
         o.Subtotal, o.ShippingFee, o.Tax, o.Total,
@@ -526,5 +529,13 @@ public class OrderService : IOrderService
             i.Quantity, i.UnitPrice, i.Total, i.CommissionAmount)).ToList(),
         o.CreatedAt,
         o.DiscountAmount,
-        o.CouponCode);
+        o.CouponCode,
+        null,
+        o.User.DisplayName,
+        o.User.Email,
+        o.User.PhoneNumber,
+        o.DeliveryAssignment != null ? (Guid?)o.DeliveryAssignment.Id : null,
+        o.DeliveryAssignment != null ? (Guid?)o.DeliveryAssignment.DeliveryUserId : null,
+        o.DeliveryAssignment != null ? o.DeliveryAssignment.DeliveryUser.DisplayName : null,
+        o.DeliveryAssignment != null ? (DeliveryAssignmentStatus?)o.DeliveryAssignment.Status : null);
 }

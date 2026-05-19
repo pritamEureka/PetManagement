@@ -40,6 +40,8 @@ public static class DependencyInjection
         services.AddSingleton<ISessionCache, SessionCache>();
         services.AddSingleton<IOtpCache, OtpCache>();
         services.AddSingleton<INotificationCountCache, NotificationCountCache>();
+        services.AddSingleton<INotificationProducerRateLimiter, NotificationProducerRateLimiter>();
+        services.AddSingleton<IConsumerDeduplicator, ConsumerDeduplicator>();
         services.AddSingleton<IRedisRateLimiter, RedisRateLimiter>();
         services.AddSingleton<IDoctorAvailabilityCache, DoctorAvailabilityCache>();
         services.AddSingleton<IFeedCache, Modules.Feed.FeedCache>();

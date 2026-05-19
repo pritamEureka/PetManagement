@@ -9,6 +9,11 @@ namespace Pawzaroo.Api.Controllers.V1;
 
 /// <summary>
 /// User-facing notifications: list own notifications, get unread count, and mark as read.
+///
+/// Unread count reads come from a Redis counter maintained by
+/// <c>NotificationCountCache</c> (bumped by the notification producer, reset on
+/// mark-all-read). DB COUNT(*) only runs as a cold-start hydration fallback —
+/// hot path is sub-millisecond.
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
@@ -18,11 +23,14 @@ public class NotificationsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _current;
+    private readonly INotificationCountCache _counter;
 
-    public NotificationsController(ApplicationDbContext db, ICurrentUserService current)
+    public NotificationsController(ApplicationDbContext db, ICurrentUserService current,
+        INotificationCountCache counter)
     {
         _db = db;
         _current = current;
+        _counter = counter;
     }
 
     public record NotificationDto(
@@ -54,8 +62,16 @@ public class NotificationsController : ControllerBase
     public async Task<UnreadCountDto> UnreadCount(CancellationToken ct)
     {
         var uid = _current.UserId!.Value;
-        var count = await _db.Notifications.CountAsync(n => n.UserId == uid && !n.IsRead, ct);
-        return new UnreadCountDto(count);
+
+        // Fast path: Redis counter. If the key is unset (cold cache, fresh user,
+        // TTL eviction) the counter returns 0 — we hydrate from the DB and
+        // backfill so subsequent reads stay on the cache.
+        var cached = await _counter.GetUnreadAsync(uid, ct);
+        if (cached > 0) return new UnreadCountDto((int)cached);
+
+        var dbCount = await _db.Notifications.CountAsync(n => n.UserId == uid && !n.IsRead, ct);
+        if (dbCount > 0) await _counter.BumpUnreadAsync(uid, dbCount, ct);
+        return new UnreadCountDto(dbCount);
     }
 
     [HttpPost("{id:guid}/read")]
@@ -71,6 +87,7 @@ public class NotificationsController : ControllerBase
             notification.IsRead = true;
             notification.ReadAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
+            await _counter.DecrementUnreadAsync(uid, 1, ct);
         }
         return NoContent();
     }
@@ -84,6 +101,7 @@ public class NotificationsController : ControllerBase
             .ExecuteUpdateAsync(s => s
                 .SetProperty(n => n.IsRead, true)
                 .SetProperty(n => n.ReadAt, DateTime.UtcNow), ct);
+        await _counter.ResetUnreadAsync(uid, ct);
         return NoContent();
     }
 }

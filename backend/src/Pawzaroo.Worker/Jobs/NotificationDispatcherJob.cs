@@ -6,16 +6,24 @@ using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Common.Messaging;
 using Pawzaroo.Domain.Notifications;
+using Pawzaroo.Infrastructure.Caching;
 using Pawzaroo.Infrastructure.Messaging;
 using Pawzaroo.Infrastructure.Persistence;
 
 namespace Pawzaroo.Worker.Jobs;
 
 /// <summary>
-/// Consumes pawzaroo.notifications and:
-///   1) persists an <see cref="InAppNotification"/> for the recipient,
-///   2) bumps the per-user unread counter in Redis (fast bell-icon read),
-///   3) (TODO) hands off to an email/push provider for out-of-band channels.
+/// Consumes pawzaroo.notifications and writes the durable
+/// <see cref="InAppNotification"/> row for the recipient.
+///
+/// Idempotency: two-stage. A Redis SET NX claim on the NotificationId stops
+/// re-deliveries cheaply within the dedup window; the DB AnyAsync guard catches
+/// the cold-start case after Redis TTL. The unread counter is NOT touched here
+/// — the producer already bumped it on the hot path so the bell icon updates
+/// without waiting on this consumer (see SignalRNotificationService).
+///
+/// Future hook: email / push fan-out lives here. Add a per-channel preference
+/// check (NotificationPreference entity) before invoking those adapters.
 /// </summary>
 public class NotificationDispatcherJob : KafkaConsumerBase
 {
@@ -34,27 +42,38 @@ public class NotificationDispatcherJob : KafkaConsumerBase
         var ev = data.Deserialize<NotificationCreated>(new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
         if (ev is null) return;
 
-        var db = scope.GetRequiredService<ApplicationDbContext>();
-        var counter = scope.GetRequiredService<INotificationCountCache>();
-
-        // Idempotency: if a row with this NotificationId already exists, skip.
-        var exists = await db.Notifications.AnyAsync(n => n.Id == ev.NotificationId, ct);
-        if (!exists)
+        var dedup = scope.GetRequiredService<IConsumerDeduplicator>();
+        var claimed = await dedup.TryClaimAsync(GroupId, ev.NotificationId.ToString(), RedisTtls.NotifyConsumerSeen, ct);
+        if (!claimed)
         {
-            db.Notifications.Add(new InAppNotification
-            {
-                Id = ev.NotificationId,
-                UserId = ev.UserId,
-                Title = ev.Title,
-                Body = ev.Body,
-                Payload = ev.Payload is null ? null : JsonSerializer.Serialize(ev.Payload),
-                IsRead = false,
-                CreatedAt = ev.OccurredAt
-            });
-            await db.SaveChangesAsync(ct);
+            Logger.LogDebug("[notify] dedup skipped {NotificationId}", ev.NotificationId);
+            return;
         }
 
-        await counter.BumpUnreadAsync(ev.UserId, 1, ct);
-        Logger.LogInformation("[notify] persisted + bumped counter for {UserId} ({Title})", ev.UserId, ev.Title);
+        var db = scope.GetRequiredService<ApplicationDbContext>();
+
+        // DB-level idempotency fallback in case the dedup TTL already expired
+        // on a very late re-delivery.
+        var exists = await db.Notifications.AnyAsync(n => n.Id == ev.NotificationId, ct);
+        if (exists)
+        {
+            Logger.LogDebug("[notify] already persisted {NotificationId}", ev.NotificationId);
+            return;
+        }
+
+        db.Notifications.Add(new InAppNotification
+        {
+            Id = ev.NotificationId,
+            UserId = ev.UserId,
+            Title = ev.Title,
+            Body = ev.Body,
+            Payload = ev.Payload is null ? null : JsonSerializer.Serialize(ev.Payload),
+            IsRead = false,
+            CreatedAt = ev.OccurredAt
+        });
+        await db.SaveChangesAsync(ct);
+
+        Logger.LogInformation("[notify] persisted {NotificationId} for {UserId} ({Title})",
+            ev.NotificationId, ev.UserId, ev.Title);
     }
 }

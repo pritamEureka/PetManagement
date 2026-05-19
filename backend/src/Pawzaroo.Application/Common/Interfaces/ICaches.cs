@@ -34,10 +34,33 @@ public interface INotificationCountCache
 {
     Task<long> GetUnreadAsync(Guid userId, CancellationToken ct = default);
     Task<long> BumpUnreadAsync(Guid userId, int delta = 1, CancellationToken ct = default);
+    Task DecrementUnreadAsync(Guid userId, int delta = 1, CancellationToken ct = default);
     Task ResetUnreadAsync(Guid userId, CancellationToken ct = default);
 
     Task<DateTime?> GetLastFetchAsync(Guid userId, CancellationToken ct = default);
     Task SetLastFetchAsync(Guid userId, DateTime at, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Producer-side throttle for notification fan-out. Caps "N notifications per
+/// minute per (recipient, title)" so a buggy or malicious caller can't flood a
+/// single user. Independent from the HTTP request rate limit — this applies to
+/// notification *production*, not request acceptance.
+/// </summary>
+public interface INotificationProducerRateLimiter
+{
+    Task<bool> ShouldThrottleAsync(Guid recipientId, string title, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Idempotency gate for Kafka consumers. Wraps a Redis <c>SET key value NX EX</c>
+/// so re-delivered events (consumer crash, partition rebalance) are processed
+/// at-most-once within the configured dedup window.
+/// </summary>
+public interface IConsumerDeduplicator
+{
+    /// <summary>Returns true if this event hasn't been seen yet (proceed to handle).</summary>
+    Task<bool> TryClaimAsync(string scope, string key, TimeSpan window, CancellationToken ct = default);
 }
 
 /// <summary>

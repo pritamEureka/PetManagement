@@ -18,3 +18,8 @@ appsettings.Local.json
 # os
 .DS_Store
 Thumbs.db
+
+#developer report
+design-upgrade.md
+vulnerabilities.md
+multiple-worker-suggestions.md

@@ -118,7 +118,20 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
      .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
      .AllowCredentials()));
 
-builder.Services.AddSignalR();
+// SignalR + Redis backplane. The backplane fans messages out across API pods so
+// a user connected to instance A still receives notifications produced by
+// instance B (or by the Worker, via the producer side of the same channel).
+// Without it, NotificationHub groups are per-process and cross-instance pushes
+// silently disappear.
+var signalRBuilder = builder.Services.AddSignalR();
+var redisConn = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConn))
+{
+    signalRBuilder.AddStackExchangeRedis(redisConn, opts =>
+    {
+        opts.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("pawzaroo:signalr:");
+    });
+}
 
 builder.Services.AddControllers(o =>
     {

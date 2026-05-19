@@ -59,8 +59,11 @@ public static class RedisKeys
     public static string SlotLock(Guid doctorId, Guid slotId)             => $"lock:slot:{doctorId}:{slotId}";
 
     // ---- Notifications ------------------------------------------------------
-    public static string NotifyUnread(Guid userId) => $"{Notify}:unread:{userId}";
-    public static string NotifyLast(Guid userId)   => $"{Notify}:last:{userId}";
+    public static string NotifyUnread(Guid userId)              => $"{Notify}:unread:{userId}";
+    public static string NotifyLast(Guid userId)                => $"{Notify}:last:{userId}";
+    public static string NotifyProducerRl(Guid userId, string h) => $"{Notify}:rl:{userId}:{h}";
+    public static string NotifyConsumerSeen(string scope, Guid notificationId)
+        => $"{Notify}:seen:{scope}:{notificationId}";
 
     // ---- Messaging ----------------------------------------------------------
     public static string MsgUnread(Guid userId)                          => $"msg:unread:{userId}";
@@ -93,6 +96,8 @@ public static class RedisTtls
     public static readonly TimeSpan MarketProductPage  = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan DoctorAvailability = TimeSpan.FromMinutes(2);
     public static readonly TimeSpan NotifyUnread       = TimeSpan.FromDays(7);
+    public static readonly TimeSpan NotifyProducerRl   = TimeSpan.FromMinutes(1);  // window for per-user producer throttle
+    public static readonly TimeSpan NotifyConsumerSeen = TimeSpan.FromHours(1);    // dedup window for re-delivered events
     public static readonly TimeSpan Inboxed            = TimeSpan.FromDays(3);
     public static readonly TimeSpan OutboxLeader       = TimeSpan.FromSeconds(15);
 }

@@ -71,6 +71,13 @@ public class OrdersController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/deny")]
+    public async Task<IActionResult> Deny(Guid id, [FromBody] CancelOrderBody? body, CancellationToken ct)
+    {
+        await _orders.DenyAsync(id, body?.Reason, ct);
+        return NoContent();
+    }
+
     [HttpPost("{id:guid}/refund")]
     [Permission(Permissions.Orders.Refund)]
     public async Task<IActionResult> Refund(Guid id, [FromBody] RefundBody? body, CancellationToken ct)

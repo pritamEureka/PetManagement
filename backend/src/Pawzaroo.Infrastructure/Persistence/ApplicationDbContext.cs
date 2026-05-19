@@ -105,6 +105,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
     public DbSet<CommissionConfiguration> CommissionConfigurations => Set<CommissionConfiguration>();
     public DbSet<ShippingAddress> ShippingAddresses => Set<ShippingAddress>();
+    public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
+    public DbSet<Coupon> Coupons => Set<Coupon>();
+    public DbSet<ProductReviewImage> ProductReviewImages => Set<ProductReviewImage>();
 
     // Services
     public DbSet<ServiceProviderProfile> ServiceProviders => Set<ServiceProviderProfile>();

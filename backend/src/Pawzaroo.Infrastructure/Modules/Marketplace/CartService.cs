@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Modules.Marketplace.Dtos;
 using Pawzaroo.Application.Modules.Marketplace.Events;
@@ -14,12 +15,15 @@ public class CartService : ICartService
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _current;
     private readonly IKafkaProducer _kafka;
+    private readonly MarketplaceOptions _market;
 
-    public CartService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka)
+    public CartService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
+        IOptions<MarketplaceOptions> market)
     {
         _db = db;
         _current = current;
         _kafka = kafka;
+        _market = market.Value;
     }
 
     private Guid Uid() => _current.UserId ?? throw new ForbiddenException();
@@ -148,6 +152,8 @@ public class CartService : ICartService
             .ToListAsync(ct);
 
         var currency = await _db.Carts.AsNoTracking().Where(c => c.Id == cartId).Select(c => c.Currency).FirstOrDefaultAsync(ct) ?? "USD";
-        return new CartDto(cartId, currency, items, items.Sum(i => i.Total), items.Sum(i => i.Quantity));
+        var subtotal = items.Sum(i => i.Total);
+        var (shipping, tax, total) = FeeCalculator.Compute(subtotal, _market);
+        return new CartDto(cartId, currency, items, subtotal, items.Sum(i => i.Quantity), shipping, tax, total);
     }
 }

@@ -3,7 +3,7 @@ import { api } from "./client";
 // ---------- Shared types --------------------------------------------------
 
 export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Suspended";
-export type OrderStatus = "Created" | "Confirmed" | "Packed" | "Shipped" | "Delivered" | "Cancelled" | "Returned";
+export type OrderStatus = "Created" | "Confirmed" | "Packed" | "Shipped" | "Delivered" | "Cancelled" | "Returned" | "Denied";
 export type PaymentStatusT = "Unpaid" | "Pending" | "Paid" | "Refunded" | "Failed";
 export type ShipmentStatus = "NotShipped" | "Processing" | "InTransit" | "OutForDelivery" | "Delivered" | "Failed";
 export type InventoryReason = "Purchase" | "Sale" | "Return" | "Adjustment" | "Damage" | "Restock";
@@ -67,6 +67,7 @@ export interface ProductReview {
   id: string; productId: string; userId: string;
   userDisplayName: string; userAvatarUrl?: string | null;
   rating: number; comment?: string | null; createdAt: string;
+  imageUrls: string[];
 }
 
 export interface ProductDetail extends Omit<ProductSummary, "imageUrls"> {
@@ -105,7 +106,11 @@ export interface ServerCartItem {
   storeId: string; storeName: string;
   quantity: number; unitPrice: number; total: number; stockAvailable: number;
 }
-export interface ServerCart { id: string; currency: string; items: ServerCartItem[]; subtotal: number; totalItems: number }
+export interface ServerCart {
+  id: string; currency: string; items: ServerCartItem[];
+  subtotal: number; totalItems: number;
+  shippingFee: number; tax: number; total: number;
+}
 
 // ---------- Orders ---------------------------------------------------------
 
@@ -132,10 +137,42 @@ export interface Order {
 
 export type PaymentMethod = "sslcommerz" | "cod";
 
+// ---------- Wishlist ------------------------------------------------------
+
+export interface WishlistEntry {
+  id: string; productId: string; productName: string;
+  imageUrl?: string | null;
+  price: number; discountPrice?: number | null;
+  stockQuantity: number;
+  storeId: string; storeName: string;
+  createdAt: string;
+}
+
+// ---------- Coupons -------------------------------------------------------
+
+export type CouponType = "Percent" | "Fixed";
+
+export interface Coupon {
+  id: string; code: string; type: CouponType; value: number;
+  minOrderAmount: number;
+  maxRedemptions?: number | null; redemptionsCount: number;
+  expiresAt?: string | null; isActive: boolean; createdAt: string;
+}
+
+export interface CouponInput {
+  code: string; type: CouponType; value: number;
+  minOrderAmount: number;
+  maxRedemptions?: number | null;
+  expiresAt?: string | null; isActive: boolean;
+}
+
+export interface ApplyCouponResult { code: string; discount: number; newTotal: number }
+
 export interface CheckoutPayload {
   shippingAddressId?: string;
   shippingAddress?: string; shippingCity?: string; shippingCountry?: string;
   paymentMethod?: string;
+  couponCode?: string;
 }
 
 // ---------- Shipping address ----------------------------------------------
@@ -251,8 +288,12 @@ export const productsV2Api = {
 
   listReviews: (id: string, page = 1, pageSize = 20) =>
     api.get<PageResult<ProductReview>>(`${V1}/products/${id}/reviews`, { params: { page, pageSize } }).then((r) => r.data),
-  createReview: (id: string, payload: { rating: number; comment?: string }) =>
+  createReview: (id: string, payload: { rating: number; comment?: string; imageUrls?: string[] }) =>
     api.post<ProductReview>(`${V1}/products/${id}/reviews`, payload).then((r) => r.data),
+  updateReview: (reviewId: string, payload: { rating: number; comment?: string; imageUrls?: string[] }) =>
+    api.put<ProductReview>(`${V1}/products/reviews/${reviewId}`, payload).then((r) => r.data),
+  deleteReview: (reviewId: string) =>
+    api.delete(`${V1}/products/reviews/${reviewId}`),
 
   categories: () => api.get<ProductCategory[]>(`${V1}/products/categories`).then((r) => r.data),
   createCategory: (input: { name: string; slug: string; parentCategoryId?: string }) =>
@@ -286,6 +327,7 @@ export const ordersV2Api = {
   updateShipment: (id: string, status: ShipmentStatus, trackingNumber?: string) =>
     api.put(`${V1}/orders/${id}/shipment`, { status, trackingNumber }),
   cancel: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/cancel`, { reason }),
+  deny: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/deny`, { reason }),
   refund: (id: string, amount?: number) => api.post(`${V1}/orders/${id}/refund`, { amount }),
 
   createReturn: (orderItemId: string, reason: string) =>
@@ -307,4 +349,23 @@ export const commissionsApi = {
   upsert: (input: Omit<CommissionConfiguration, "id" | "storeName" | "categoryName">) =>
     api.post<{ id: string }>(`${V1}/admin/commissions`, input).then((r) => r.data),
   remove: (id: string) => api.delete(`${V1}/admin/commissions/${id}`),
+};
+
+export const wishlistApi = {
+  list: () => api.get<WishlistEntry[]>(`${V1}/wishlist`).then((r) => r.data),
+  add: (productId: string) => api.post(`${V1}/wishlist/${productId}`),
+  remove: (productId: string) => api.delete(`${V1}/wishlist/${productId}`),
+  status: (productId: string) =>
+    api.get<{ wishlisted: boolean }>(`${V1}/wishlist/${productId}/status`).then((r) => r.data),
+};
+
+export const couponsApi = {
+  apply: (code: string, subtotal: number) =>
+    api.post<ApplyCouponResult>(`${V1}/coupons/apply`, { code, subtotal }, { skipErrorToast: true }).then((r) => r.data),
+
+  // Admin
+  list: () => api.get<Coupon[]>(`${V1}/coupons`).then((r) => r.data),
+  create: (input: CouponInput) => api.post<{ id: string }>(`${V1}/coupons`, input).then((r) => r.data),
+  update: (id: string, input: CouponInput) => api.put(`${V1}/coupons/${id}`, input),
+  remove: (id: string) => api.delete(`${V1}/coupons/${id}`),
 };

@@ -37,7 +37,7 @@ public enum AppointmentDisputeStatus { Open = 0, UnderReview = 1, Resolved = 2, 
 
 public enum PaymentStatus { Unpaid = 0, Pending = 1, Paid = 2, Refunded = 3, Failed = 4 }
 
-public enum OrderStatus { Created = 0, Confirmed = 1, Packed = 2, Shipped = 3, Delivered = 4, Cancelled = 5, Returned = 6 }
+public enum OrderStatus { Created = 0, Confirmed = 1, Packed = 2, Shipped = 3, Delivered = 4, Cancelled = 5, Returned = 6, Denied = 7 }
 
 public enum ShipmentStatus { NotShipped = 0, Processing = 1, InTransit = 2, OutForDelivery = 3, Delivered = 4, Failed = 5 }
 

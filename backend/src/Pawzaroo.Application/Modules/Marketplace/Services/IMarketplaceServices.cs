@@ -102,6 +102,9 @@ public interface IOrderService
     Task CancelAsync(Guid orderId, string? reason, CancellationToken ct = default);
     Task RefundAsync(Guid orderId, decimal? amount, CancellationToken ct = default);
 
+    /// <summary>Store owner / admin rejects an order pre-fulfilment. Sets status to Denied and restocks inventory. Distinct from buyer Cancel.</summary>
+    Task DenyAsync(Guid orderId, string? reason, CancellationToken ct = default);
+
     /// <summary>
     /// Called by the payments controller after a gateway success/IPN is verified.
     /// Idempotent: a second call on an already-paid order is a no-op.
@@ -116,7 +119,27 @@ public interface IProductReviewService
 {
     Task<PageResult<ProductReviewDto>> ListAsync(Guid productId, int page, int pageSize, CancellationToken ct = default);
     Task<ProductReviewDto> CreateAsync(Guid productId, CreateProductReviewInput input, CancellationToken ct = default);
+    Task<ProductReviewDto> UpdateAsync(Guid reviewId, UpdateProductReviewInput input, CancellationToken ct = default);
     Task DeleteAsync(Guid reviewId, CancellationToken ct = default);
+}
+
+public interface IWishlistService
+{
+    Task<IReadOnlyList<WishlistItemDto>> ListMineAsync(CancellationToken ct = default);
+    Task AddAsync(Guid productId, CancellationToken ct = default);
+    Task RemoveAsync(Guid productId, CancellationToken ct = default);
+    Task<bool> IsWishlistedAsync(Guid productId, CancellationToken ct = default);
+}
+
+public interface ICouponService
+{
+    Task<ApplyCouponResult> ApplyAsync(ApplyCouponInput input, CancellationToken ct = default);
+
+    // Admin
+    Task<IReadOnlyList<CouponDto>> ListAsync(CancellationToken ct = default);
+    Task<Guid> CreateAsync(UpsertCouponInput input, CancellationToken ct = default);
+    Task UpdateAsync(Guid id, UpsertCouponInput input, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
 }
 
 public interface IStoreReviewService

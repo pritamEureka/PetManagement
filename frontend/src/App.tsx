@@ -54,6 +54,7 @@ import { CartPage } from "@/pages/store/CartPage";
 import { CheckoutPage } from "@/pages/store/CheckoutPage";
 import { CheckoutSuccessPage } from "@/pages/store/CheckoutSuccessPage";
 import { CheckoutCancelPage } from "@/pages/store/CheckoutCancelPage";
+import { WishlistPage } from "@/pages/store/WishlistPage";
 import { OrdersPage } from "@/pages/store/OrdersPage";
 import { OrderDetailPage } from "@/pages/store/OrderDetailPage";
 import { AddressBookPage } from "@/pages/store/AddressBookPage";
@@ -206,6 +207,7 @@ export default function App() {
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
                 <Route path="/checkout/cancel" element={<CheckoutCancelPage />} />
+                <Route path="/wishlist" element={<WishlistPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
                 <Route path="/orders/:id" element={<OrderDetailPage />} />
                 <Route path="/account/addresses" element={<AddressBookPage />} />

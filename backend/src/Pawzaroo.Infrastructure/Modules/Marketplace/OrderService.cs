@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Common.Permissions;
 using Pawzaroo.Application.Modules.Marketplace.Dtos;
@@ -21,10 +22,11 @@ public class OrderService : IOrderService
     private readonly ICommissionConfigurationService _commission;
     private readonly INotificationService _notify;
     private readonly IPaymentGateway _paymentGateway;
+    private readonly MarketplaceOptions _market;
 
     public OrderService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
         IAuditLogger audit, IInventoryService inventory, ICommissionConfigurationService commission,
-        INotificationService notify, IPaymentGateway paymentGateway)
+        INotificationService notify, IPaymentGateway paymentGateway, IOptions<MarketplaceOptions> market)
     {
         _db = db;
         _current = current;
@@ -34,6 +36,7 @@ public class OrderService : IOrderService
         _commission = commission;
         _notify = notify;
         _paymentGateway = paymentGateway;
+        _market = market.Value;
     }
 
     private Guid Uid() => _current.UserId ?? throw new ForbiddenException();
@@ -105,9 +108,37 @@ public class OrderService : IOrderService
         }
 
         order.Subtotal = order.Items.Sum(i => i.Total);
-        order.ShippingFee = 0m; // pluggable
-        order.Tax = 0m;
-        order.Total = order.Subtotal + order.ShippingFee + order.Tax;
+
+        // Resolve coupon (if any) within the transaction so the redemption
+        // counter increments atomically with the order being placed.
+        decimal discount = 0m;
+        if (!string.IsNullOrWhiteSpace(input.CouponCode))
+        {
+            var coupon = await _db.Coupons
+                .FirstOrDefaultAsync(c => c.Code == input.CouponCode, ct);
+            if (coupon is null) throw new ValidationException(new Dictionary<string, string[]> { ["couponCode"] = new[] { "Unknown coupon code." } });
+            if (!coupon.IsActive) throw new ValidationException(new Dictionary<string, string[]> { ["couponCode"] = new[] { "Coupon is inactive." } });
+            if (coupon.ExpiresAt.HasValue && coupon.ExpiresAt.Value < DateTime.UtcNow)
+                throw new ValidationException(new Dictionary<string, string[]> { ["couponCode"] = new[] { "Coupon has expired." } });
+            if (order.Subtotal < coupon.MinOrderAmount)
+                throw new ValidationException(new Dictionary<string, string[]> { ["couponCode"] = new[] { $"Minimum order subtotal {coupon.MinOrderAmount:0.00} not met." } });
+            if (coupon.MaxRedemptions.HasValue && coupon.RedemptionsCount >= coupon.MaxRedemptions.Value)
+                throw new ValidationException(new Dictionary<string, string[]> { ["couponCode"] = new[] { "Coupon redemption limit reached." } });
+
+            discount = coupon.Type == CouponType.Percent
+                ? Math.Round(order.Subtotal * coupon.Value / 100m, 2, MidpointRounding.AwayFromZero)
+                : Math.Min(coupon.Value, order.Subtotal);
+
+            order.CouponCode = coupon.Code;
+            order.DiscountAmount = discount;
+            coupon.RedemptionsCount += 1;
+        }
+
+        var subtotalAfterDiscount = order.Subtotal - discount;
+        var (shipping, tax, total) = FeeCalculator.Compute(subtotalAfterDiscount, _market);
+        order.ShippingFee = shipping;
+        order.Tax = tax;
+        order.Total = total;
 
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(ct);
@@ -324,6 +355,48 @@ public class OrderService : IOrderService
         await _audit.LogAsync("order.cancel", "Order", order.Id.ToString(), reason, ct: ct);
     }
 
+    /// <summary>
+    /// Store owner / admin denies an order (vs buyer Cancel). Restocks inventory
+    /// like CancelAsync but sets Status=Denied so downstream consumers can tell
+    /// the two apart for analytics & buyer-facing messaging.
+    /// </summary>
+    public async Task DenyAsync(Guid orderId, string? reason, CancellationToken ct = default)
+    {
+        var order = await _db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == orderId, ct)
+                    ?? throw new NotFoundException("Order", orderId);
+        await EnsureStoreOwnerOrAdmin(order, ct);
+        if (order.Status is OrderStatus.Shipped or OrderStatus.Delivered)
+            throw new ConflictException("Cannot deny a shipped or delivered order.");
+        if (order.Status is OrderStatus.Cancelled or OrderStatus.Denied)
+            throw new ConflictException("Order is already closed.");
+
+        order.Status = OrderStatus.Denied;
+        order.UpdatedAt = DateTime.UtcNow;
+        order.UpdatedBy = _current.UserId;
+
+        foreach (var item in order.Items)
+        {
+            await _db.Products.Where(p => p.Id == item.ProductId)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.StockQuantity, p => p.StockQuantity + item.Quantity), ct);
+            var qty = await _db.Products.AsNoTracking().Where(p => p.Id == item.ProductId).Select(p => (int?)p.StockQuantity).FirstOrDefaultAsync(ct)
+                      ?? throw new NotFoundException("Product", item.ProductId);
+            _db.InventoryAdjustments.Add(new InventoryAdjustment
+            {
+                ProductId = item.ProductId, OrderId = order.Id,
+                QuantityChange = item.Quantity, QuantityAfter = qty,
+                Reason = InventoryReason.Return, Notes = reason
+            });
+        }
+        await _db.SaveChangesAsync(ct);
+
+        await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
+            new OrderStatusChanged(order.Id, order.OrderNumber, OrderStatus.Denied.ToString(), DateTime.UtcNow),
+            order.Id.ToString(), ct);
+        await _notify.NotifyUserAsync(order.UserId, "Order denied",
+            $"{order.OrderNumber} was denied. {reason}", new { orderId = order.Id, reason }, ct);
+        await _audit.LogAsync("order.deny", "Order", order.Id.ToString(), reason, ct: ct);
+    }
+
     public async Task RefundAsync(Guid orderId, decimal? amount, CancellationToken ct = default)
     {
         if (!_current.Permissions.Contains(Permissions.Orders.Refund)) throw new ForbiddenException();
@@ -451,5 +524,7 @@ public class OrderService : IOrderService
             i.Product.Images.OrderBy(x => x.OrderIndex).Select(x => x.Url).FirstOrDefault(),
             i.StoreId, i.Store.Name,
             i.Quantity, i.UnitPrice, i.Total, i.CommissionAmount)).ToList(),
-        o.CreatedAt);
+        o.CreatedAt,
+        o.DiscountAmount,
+        o.CouponCode);
 }

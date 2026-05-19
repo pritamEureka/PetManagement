@@ -79,6 +79,16 @@ public class ProductReview : AuditableEntity
     public User User { get; set; } = default!;
     public int Rating { get; set; }
     public string? Comment { get; set; }
+
+    public ICollection<ProductReviewImage> Images { get; set; } = new List<ProductReviewImage>();
+}
+
+public class ProductReviewImage : BaseEntity
+{
+    public Guid ProductReviewId { get; set; }
+    public ProductReview ProductReview { get; set; } = default!;
+    public string Url { get; set; } = default!;
+    public int OrderIndex { get; set; }
 }
 
 public class CartItem : BaseEntity
@@ -102,6 +112,8 @@ public class Order : AuditableEntity
     public decimal Subtotal { get; set; }
     public decimal ShippingFee { get; set; }
     public decimal Tax { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public string? CouponCode { get; set; }
     public decimal Total { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Created;
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;

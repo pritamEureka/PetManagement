@@ -80,7 +80,8 @@ public class ProductReviewService : IProductReviewService
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(r => new ProductReviewDto(
                 r.Id, r.ProductId, r.UserId, r.User.DisplayName, r.User.AvatarUrl,
-                r.Rating, r.Comment, r.CreatedAt)).ToListAsync(ct);
+                r.Rating, r.Comment, r.CreatedAt,
+                r.Images.OrderBy(i => i.OrderIndex).Select(i => i.Url).ToList())).ToListAsync(ct);
         return new PageResult<ProductReviewDto>(items, total, page, pageSize);
     }
 
@@ -96,6 +97,7 @@ public class ProductReviewService : IProductReviewService
             throw new ConflictException("You have already reviewed this product.");
 
         var review = new ProductReview { ProductId = productId, UserId = uid, Rating = input.Rating, Comment = input.Comment };
+        AttachImages(review, input.ImageUrls);
         _db.ProductReviews.Add(review);
 
         var stats = await _db.ProductReviews.AsNoTracking().Where(r => r.ProductId == productId)
@@ -115,7 +117,52 @@ public class ProductReviewService : IProductReviewService
 
         var user = await _db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => new { u.DisplayName, u.AvatarUrl }).FirstOrDefaultAsync(ct)
                    ?? throw new NotFoundException("User", uid);
-        return new ProductReviewDto(review.Id, productId, uid, user.DisplayName, user.AvatarUrl, review.Rating, review.Comment, review.CreatedAt);
+        return new ProductReviewDto(review.Id, productId, uid, user.DisplayName, user.AvatarUrl, review.Rating, review.Comment, review.CreatedAt,
+            review.Images.OrderBy(i => i.OrderIndex).Select(i => i.Url).ToList());
+    }
+
+    /// <summary>
+    /// Author-only edit. Replaces the rating/comment + the image list. We don't
+    /// recompute the per-product rating average on every keystroke: the trigger
+    /// is "rating actually changed" — otherwise the old average stands.
+    /// </summary>
+    public async Task<ProductReviewDto> UpdateAsync(Guid reviewId, UpdateProductReviewInput input, CancellationToken ct = default)
+    {
+        var review = await _db.ProductReviews.Include(r => r.Images)
+            .FirstOrDefaultAsync(r => r.Id == reviewId, ct) ?? throw new NotFoundException("ProductReview", reviewId);
+        var uid = _current.UserId ?? throw new ForbiddenException();
+        if (review.UserId != uid) throw new ForbiddenException();
+
+        var oldRating = review.Rating;
+        review.Rating = input.Rating;
+        review.Comment = input.Comment;
+        review.UpdatedAt = DateTime.UtcNow;
+        review.UpdatedBy = uid;
+
+        _db.ProductReviewImages.RemoveRange(review.Images);
+        review.Images.Clear();
+        AttachImages(review, input.ImageUrls);
+
+        if (oldRating != input.Rating)
+        {
+            // Recompute average from scratch — accurate, and cheap for the per-product scale.
+            var stats = await _db.ProductReviews.AsNoTracking().Where(r => r.ProductId == review.ProductId && r.Id != reviewId)
+                .GroupBy(r => 1).Select(g => new { Sum = g.Sum(r => r.Rating), Count = g.Count() })
+                .FirstOrDefaultAsync(ct);
+            var newCount = (stats?.Count ?? 0) + 1;
+            var newAvg = ((decimal)(stats?.Sum ?? 0) + input.Rating) / newCount;
+
+            await _db.Products.Where(p => p.Id == review.ProductId).ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.RatingAverage, Math.Round(newAvg, 2))
+                .SetProperty(p => p.RatingCount, newCount), ct);
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        var user = await _db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => new { u.DisplayName, u.AvatarUrl }).FirstOrDefaultAsync(ct)
+                   ?? throw new NotFoundException("User", uid);
+        return new ProductReviewDto(review.Id, review.ProductId, uid, user.DisplayName, user.AvatarUrl, review.Rating, review.Comment, review.CreatedAt,
+            review.Images.OrderBy(i => i.OrderIndex).Select(i => i.Url).ToList());
     }
 
     public async Task DeleteAsync(Guid reviewId, CancellationToken ct = default)
@@ -125,6 +172,16 @@ public class ProductReviewService : IProductReviewService
         if (r.UserId != uid && !_current.Permissions.Contains(Permissions.Reviews.Delete)) throw new ForbiddenException();
         _db.ProductReviews.Remove(r);
         await _db.SaveChangesAsync(ct);
+    }
+
+    private static void AttachImages(ProductReview review, IReadOnlyList<string>? urls)
+    {
+        if (urls is null) return;
+        int i = 0;
+        foreach (var u in urls.Where(s => !string.IsNullOrWhiteSpace(s)).Take(8))
+        {
+            review.Images.Add(new ProductReviewImage { Url = u, OrderIndex = i++ });
+        }
     }
 }
 

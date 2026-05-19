@@ -15,7 +15,7 @@ import { toast } from "@/components/ui/sonner";
 
 export function CheckoutPage() {
   const nav = useNavigate();
-  const { lines, subtotal, clear } = useCartStore();
+  const { lines, subtotal, clear, appliedCoupon } = useCartStore();
 
   const { data: addresses } = useQuery({
     queryKey: ["shipping-addresses"],
@@ -40,7 +40,8 @@ export function CheckoutPage() {
         shippingAddress: values.shippingAddress || undefined,
         shippingCity: values.shippingCity || undefined,
         shippingCountry: values.shippingCountry || undefined,
-        paymentMethod: values.paymentMethod
+        paymentMethod: values.paymentMethod,
+        couponCode: appliedCoupon?.code
       });
       clear();
 
@@ -162,9 +163,21 @@ export function CheckoutPage() {
             ))}
           </div>
           <Separator />
-          <div className="flex justify-between font-semibold">
-            <span>Total</span><span>${subtotal().toFixed(2)}</span>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Subtotal</span>
+            <span>${subtotal().toFixed(2)}</span>
           </div>
+          {appliedCoupon && (
+            <div className="flex justify-between text-sm text-emerald-600">
+              <span>Coupon {appliedCoupon.code}</span>
+              <span>−${appliedCoupon.discount.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-semibold pt-1">
+            <span>Estimated total</span>
+            <span>${Math.max(0, subtotal() - (appliedCoupon?.discount ?? 0)).toFixed(2)}</span>
+          </div>
+          <p className="text-xs text-muted-foreground">+ shipping & tax computed at order placement.</p>
         </CardContent>
       </Card>
     </div>

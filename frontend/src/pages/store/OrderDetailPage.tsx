@@ -9,7 +9,26 @@ import { Separator } from "@/components/ui/separator";
 import { ordersV2Api } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
 
-const STEPS = ["Created", "Confirmed", "Packed", "Shipped", "Delivered"] as const;
+// Buyer-facing stepper labels mapped from internal OrderStatus + ShipmentStatus.
+// The internal enum keeps its original names (Created/Confirmed/Packed) for
+// schema stability; only the UI relabels for the spec's terminology.
+const STEPS: { key: string; label: string }[] = [
+  { key: "Pending",        label: "Pending" },        // OrderStatus = Created
+  { key: "Approved",       label: "Approved" },       // OrderStatus = Confirmed
+  { key: "Processing",     label: "Processing" },     // OrderStatus = Packed
+  { key: "Shipped",        label: "Shipped" },        // OrderStatus = Shipped
+  { key: "OutForDelivery", label: "Out for delivery" }, // ShipmentStatus = OutForDelivery
+  { key: "Delivered",      label: "Delivered" }        // OrderStatus = Delivered
+];
+
+function deriveStepKey(status: string, shipmentStatus: string): string {
+  if (status === "Delivered") return "Delivered";
+  if (shipmentStatus === "OutForDelivery") return "OutForDelivery";
+  if (status === "Shipped") return "Shipped";
+  if (status === "Packed") return "Processing";
+  if (status === "Confirmed") return "Approved";
+  return "Pending"; // Created or anything earlier
+}
 
 export function OrderDetailPage() {
   const { id = "" } = useParams();
@@ -29,8 +48,10 @@ export function OrderDetailPage() {
     return <div className="max-w-3xl mx-auto"><Skeleton className="h-64" /></div>;
   }
 
-  const stepIndex = Math.max(0, STEPS.indexOf(order.status as typeof STEPS[number]));
-  const canCancel = order.status !== "Shipped" && order.status !== "Delivered" && order.status !== "Cancelled";
+  const isTerminal = order.status === "Cancelled" || order.status === "Denied";
+  const stepKey = deriveStepKey(order.status, order.shipmentStatus);
+  const stepIndex = Math.max(0, STEPS.findIndex((s) => s.key === stepKey));
+  const canCancel = !isTerminal && order.status !== "Shipped" && order.status !== "Delivered";
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -49,19 +70,31 @@ export function OrderDetailPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Progress tracker */}
-          <div className="flex items-center justify-between mb-4">
-            {STEPS.map((s, i) => (
-              <div key={s} className="flex-1 flex items-center">
-                <div className={`h-7 w-7 rounded-full grid place-items-center text-xs font-medium
-                  ${i <= stepIndex ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  {i + 1}
+          {isTerminal ? (
+            <div className="mb-4 rounded-md border p-3 text-sm">
+              <p className="font-semibold">
+                {order.status === "Denied" ? "Order denied by the store" : "Order cancelled"}
+              </p>
+              <p className="text-muted-foreground text-xs">
+                {order.status === "Denied"
+                  ? "The store could not fulfil this order. If you were charged, a refund is in progress."
+                  : "This order is closed. Items have been returned to stock."}
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between mb-4">
+              {STEPS.map((s, i) => (
+                <div key={s.key} className="flex-1 flex items-center">
+                  <div className={`h-7 w-7 rounded-full grid place-items-center text-xs font-medium
+                    ${i <= stepIndex ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {i + 1}
+                  </div>
+                  <span className="ml-2 text-xs text-muted-foreground">{s.label}</span>
+                  {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 mx-2 ${i < stepIndex ? "bg-primary" : "bg-muted"}`} />}
                 </div>
-                <span className="ml-2 text-xs text-muted-foreground">{s}</span>
-                {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 mx-2 ${i < stepIndex ? "bg-primary" : "bg-muted"}`} />}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="grid sm:grid-cols-2 gap-3 text-sm">
             <div className="space-y-1">

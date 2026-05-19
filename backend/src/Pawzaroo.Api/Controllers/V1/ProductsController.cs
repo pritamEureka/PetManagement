@@ -133,6 +133,11 @@ public class ProductsController : ControllerBase
     public Task<ProductReviewDto> CreateReview(Guid id, [FromBody] CreateProductReviewInput input, CancellationToken ct)
         => _reviews.CreateAsync(id, input, ct);
 
+    [HttpPut("reviews/{reviewId:guid}")]
+    [Authorize]
+    public Task<ProductReviewDto> UpdateReview(Guid reviewId, [FromBody] UpdateProductReviewInput input, CancellationToken ct)
+        => _reviews.UpdateAsync(reviewId, input, ct);
+
     [HttpDelete("reviews/{reviewId:guid}")]
     [Authorize]
     public async Task<IActionResult> DeleteReview(Guid reviewId, CancellationToken ct)

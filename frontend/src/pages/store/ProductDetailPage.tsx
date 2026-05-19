@@ -1,7 +1,8 @@
 import { useState } from "react";
+import axios from "axios";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ShoppingBag, Star, Minus, Plus, ShoppingCart, Truck, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Star, Minus, Plus, ShoppingCart, Truck, ShieldCheck, Heart, Edit2, Trash2, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,8 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { productsV2Api } from "@/api/marketplace";
+import { productsV2Api, wishlistApi } from "@/api/marketplace";
+import { api } from "@/api/client";
 import { useCartStore } from "@/store/cartStore";
+import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/components/ui/sonner";
 import { EmptyState } from "@/components/common/EmptyState";
 
@@ -29,21 +32,101 @@ export function ProductDetailPage() {
   });
 
   const add = useCartStore((s) => s.add);
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const [qty, setQty] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
+  const [reviewImages, setReviewImages] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+
+  const { data: wishlistStatus } = useQuery({
+    queryKey: ["wishlist-status", id],
+    queryFn: () => wishlistApi.status(id),
+    enabled: !!id && !!currentUserId
+  });
+
+  const toggleWishlist = useMutation({
+    mutationFn: async () => {
+      if (wishlistStatus?.wishlisted) return wishlistApi.remove(id);
+      return wishlistApi.add(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wishlist-status", id] });
+      qc.invalidateQueries({ queryKey: ["wishlist"] });
+      toast.success(wishlistStatus?.wishlisted ? "Removed from wishlist" : "Saved to wishlist");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Could not update wishlist.")
+  });
+
+  function resetReviewForm() {
+    setReviewRating(5);
+    setReviewComment("");
+    setReviewImages([]);
+    setEditingReviewId(null);
+  }
 
   const createReview = useMutation({
-    mutationFn: () => productsV2Api.createReview(id, { rating: reviewRating, comment: reviewComment || undefined }),
+    mutationFn: () => productsV2Api.createReview(id, {
+      rating: reviewRating, comment: reviewComment || undefined,
+      imageUrls: reviewImages.length > 0 ? reviewImages : undefined
+    }),
     onSuccess: () => {
       toast.success("Review submitted");
-      setReviewComment("");
+      resetReviewForm();
       qc.invalidateQueries({ queryKey: ["product-reviews", id] });
       qc.invalidateQueries({ queryKey: ["product", id] });
     },
     onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Could not submit review.")
   });
+
+  const updateReview = useMutation({
+    mutationFn: () => productsV2Api.updateReview(editingReviewId!, {
+      rating: reviewRating, comment: reviewComment || undefined,
+      imageUrls: reviewImages.length > 0 ? reviewImages : undefined
+    }),
+    onSuccess: () => {
+      toast.success("Review updated");
+      resetReviewForm();
+      qc.invalidateQueries({ queryKey: ["product-reviews", id] });
+      qc.invalidateQueries({ queryKey: ["product", id] });
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Could not update review.")
+  });
+
+  const deleteReview = useMutation({
+    mutationFn: (reviewId: string) => productsV2Api.deleteReview(reviewId),
+    onSuccess: () => {
+      toast.success("Review deleted");
+      qc.invalidateQueries({ queryKey: ["product-reviews", id] });
+      qc.invalidateQueries({ queryKey: ["product", id] });
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Could not delete review.")
+  });
+
+  async function uploadReviewImage(file: File) {
+    // Same presign-then-PUT flow used by messaging attachments. The server is
+    // the gatekeeper on extension/mime; we just give the user a fast UX path.
+    setUploadingImage(true);
+    try {
+      const presign = await api.post("/media/presign", { fileName: file.name, contentType: file.type })
+        .then((r) => r.data?.data ?? r.data);
+      await axios.put(presign.url, file, { headers: { "Content-Type": file.type } });
+      setReviewImages((prev) => [...prev, presign.publicUrl].slice(0, 8));
+    } catch {
+      toast.error("Image upload failed.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  function beginEdit(r: { id: string; rating: number; comment?: string | null; imageUrls: string[] }) {
+    setEditingReviewId(r.id);
+    setReviewRating(r.rating);
+    setReviewComment(r.comment ?? "");
+    setReviewImages([...r.imageUrls]);
+  }
 
   if (isLoading) {
     return (
@@ -136,6 +219,15 @@ export function ProductDetailPage() {
             <Button size="lg" onClick={onAdd} disabled={outOfStock} className="flex-1">
               <ShoppingCart className="h-4 w-4 mr-2" /> Add to cart
             </Button>
+            <Button
+              size="lg"
+              variant={wishlistStatus?.wishlisted ? "default" : "outline"}
+              onClick={() => toggleWishlist.mutate()}
+              disabled={!currentUserId || toggleWishlist.isPending}
+              title={wishlistStatus?.wishlisted ? "Remove from wishlist" : "Save to wishlist"}
+            >
+              <Heart className={`h-4 w-4 ${wishlistStatus?.wishlisted ? "fill-current" : ""}`} />
+            </Button>
             <Button size="lg" variant="outline" asChild><Link to="/cart">View cart</Link></Button>
           </div>
 
@@ -161,7 +253,7 @@ export function ProductDetailPage() {
         <TabsContent value="reviews">
           <Card><CardContent className="pt-6 space-y-4">
             <div className="space-y-2">
-              <p className="font-semibold text-sm">Write a review</p>
+              <p className="font-semibold text-sm">{editingReviewId ? "Edit your review" : "Write a review"}</p>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button key={n} type="button" onClick={() => setReviewRating(n)}>
@@ -171,31 +263,101 @@ export function ProductDetailPage() {
               </div>
               <Textarea placeholder="Share what you liked or didn't..." value={reviewComment}
                         onChange={(e) => setReviewComment(e.target.value)} />
-              <Button size="sm" onClick={() => createReview.mutate()} disabled={createReview.isPending}>
-                {createReview.isPending ? "Submitting..." : "Submit review"}
-              </Button>
+
+              {reviewImages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {reviewImages.map((url, i) => (
+                    <div key={url} className="relative h-16 w-16 rounded border overflow-hidden">
+                      <img src={url} className="object-cover w-full h-full" />
+                      <button
+                        type="button"
+                        className="absolute top-0 right-0 bg-background/90 rounded-bl p-0.5"
+                        onClick={() => setReviewImages(reviewImages.filter((_, idx) => idx !== i))}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                  <ImagePlus className="h-4 w-4" />
+                  {uploadingImage ? "Uploading…" : reviewImages.length < 8 ? "Add image" : "Max 8 images"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    disabled={uploadingImage || reviewImages.length >= 8}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadReviewImage(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div className="flex gap-2">
+                {editingReviewId ? (
+                  <>
+                    <Button size="sm" onClick={() => updateReview.mutate()} disabled={updateReview.isPending}>
+                      {updateReview.isPending ? "Saving..." : "Save changes"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={resetReviewForm}>Cancel</Button>
+                  </>
+                ) : (
+                  <Button size="sm" onClick={() => createReview.mutate()} disabled={createReview.isPending}>
+                    {createReview.isPending ? "Submitting..." : "Submit review"}
+                  </Button>
+                )}
+              </div>
+
               <p className="text-xs text-muted-foreground">Only buyers of delivered orders can review.</p>
             </div>
             <Separator />
             <div className="space-y-3">
               {reviews?.items.length
-                ? reviews.items.map((r) => (
-                    <div key={r.id} className="flex gap-3">
-                      <div className="h-8 w-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
-                        {r.userAvatarUrl && <img src={r.userAvatarUrl} className="object-cover w-full h-full" />}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="font-medium">{r.userDisplayName}</span>
-                          <span className="flex items-center text-amber-500">
-                            {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="h-3 w-3 fill-current" />)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
+                ? reviews.items.map((r) => {
+                    const isMine = currentUserId && r.userId === currentUserId;
+                    return (
+                      <div key={r.id} className="flex gap-3">
+                        <div className="h-8 w-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                          {r.userAvatarUrl && <img src={r.userAvatarUrl} className="object-cover w-full h-full" />}
                         </div>
-                        {r.comment && <p className="text-sm text-muted-foreground mt-1">{r.comment}</p>}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-medium">{r.userDisplayName}</span>
+                            <span className="flex items-center text-amber-500">
+                              {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="h-3 w-3 fill-current" />)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
+                            {isMine && (
+                              <div className="ml-auto flex gap-1">
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => beginEdit(r)} title="Edit">
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteReview.mutate(r.id)} title="Delete">
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          {r.comment && <p className="text-sm text-muted-foreground mt-1">{r.comment}</p>}
+                          {r.imageUrls.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {r.imageUrls.map((u) => (
+                                <a key={u} href={u} target="_blank" rel="noreferrer" className="h-14 w-14 rounded border overflow-hidden">
+                                  <img src={u} className="object-cover w-full h-full" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 : <p className="text-sm text-muted-foreground text-center py-4">No reviews yet.</p>}
             </div>
           </CardContent></Card>

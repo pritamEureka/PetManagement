@@ -75,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Modules.Vet.Services.IDoctorReviewService,         Modules.Vet.DoctorReviewService>();
 
         // Marketplace module services
+        services.Configure<Modules.Marketplace.MarketplaceOptions>(config.GetSection(Modules.Marketplace.MarketplaceOptions.SectionName));
         services.AddSingleton<Application.Modules.Marketplace.Services.IMarketplaceCache,            Modules.Marketplace.MarketplaceCache>();
         services.AddScoped<Application.Modules.Marketplace.Services.IStoreOwnerProfileService,       Modules.Marketplace.StoreOwnerProfileService>();
         services.AddScoped<Application.Modules.Marketplace.Services.IStoreService,                   Modules.Marketplace.StoreService>();
@@ -89,6 +90,8 @@ public static class DependencyInjection
         services.AddScoped<Application.Modules.Marketplace.Services.ICommissionConfigurationService, Modules.Marketplace.CommissionConfigurationService>();
         services.AddScoped<Application.Modules.Marketplace.Services.IReturnService,                  Modules.Marketplace.ReturnService>();
         services.AddScoped<Application.Modules.Marketplace.Services.ISalesReportService,             Modules.Marketplace.SalesReportService>();
+        services.AddScoped<Application.Modules.Marketplace.Services.IWishlistService,                Modules.Marketplace.WishlistService>();
+        services.AddScoped<Application.Modules.Marketplace.Services.ICouponService,                  Modules.Marketplace.CouponService>();
 
         services.Configure<KafkaOptions>(config.GetSection("Kafka"));
         services.AddSingleton<IKafkaProducer, KafkaProducer>();

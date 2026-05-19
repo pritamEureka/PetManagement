@@ -98,7 +98,8 @@ public record CartItemDto(
 public record CartDto(
     Guid Id, string Currency,
     IReadOnlyList<CartItemDto> Items,
-    decimal Subtotal, int TotalItems);
+    decimal Subtotal, int TotalItems,
+    decimal ShippingFee = 0m, decimal Tax = 0m, decimal Total = 0m);
 
 public record AddToCartInput(Guid ProductId, int Quantity);
 public record UpdateCartItemInput(int Quantity);
@@ -108,7 +109,8 @@ public record UpdateCartItemInput(int Quantity);
 public record CheckoutInput(
     Guid? ShippingAddressId,
     string? ShippingAddress, string? ShippingCity, string? ShippingCountry,
-    string? PaymentMethod);
+    string? PaymentMethod,
+    string? CouponCode = null);
 
 public record OrderItemDto(
     Guid Id, Guid ProductId, string ProductName, string? ImageUrl,
@@ -123,6 +125,8 @@ public record OrderDto(
     string? TrackingNumber,
     IReadOnlyList<OrderItemDto> Items,
     DateTime CreatedAt,
+    decimal DiscountAmount = 0m,
+    string? CouponCode = null,
     string? PaymentCheckoutUrl = null);
 
 public record UpdateOrderStatusInput(OrderStatus Status);
@@ -132,9 +136,11 @@ public record UpdateShipmentStatusInput(ShipmentStatus Status, string? TrackingN
 
 public record ProductReviewDto(
     Guid Id, Guid ProductId, Guid UserId, string UserDisplayName, string? UserAvatarUrl,
-    int Rating, string? Comment, DateTime CreatedAt);
+    int Rating, string? Comment, DateTime CreatedAt,
+    IReadOnlyList<string> ImageUrls);
 
-public record CreateProductReviewInput(int Rating, string? Comment);
+public record CreateProductReviewInput(int Rating, string? Comment, IReadOnlyList<string>? ImageUrls = null);
+public record UpdateProductReviewInput(int Rating, string? Comment, IReadOnlyList<string>? ImageUrls = null);
 
 public record StoreReviewDto(
     Guid Id, Guid StoreId, Guid UserId, string UserDisplayName, string? UserAvatarUrl,
@@ -192,6 +198,29 @@ public record StoreSalesReportDto(
 
 public record DailySalesPoint(DateOnly Date, decimal Revenue, int Orders);
 public record TopProductDto(Guid ProductId, string Name, int UnitsSold, decimal Revenue);
+
+// ----- Wishlist ---------------------------------------------------------------
+
+public record WishlistItemDto(
+    Guid Id, Guid ProductId, string ProductName, string? ImageUrl,
+    decimal Price, decimal? DiscountPrice, int StockQuantity,
+    Guid StoreId, string StoreName,
+    DateTime CreatedAt);
+
+// ----- Coupons ----------------------------------------------------------------
+
+public record CouponDto(
+    Guid Id, string Code, CouponType Type, decimal Value,
+    decimal MinOrderAmount, int? MaxRedemptions, int RedemptionsCount,
+    DateTime? ExpiresAt, bool IsActive, DateTime CreatedAt);
+
+public record UpsertCouponInput(
+    string Code, CouponType Type, decimal Value,
+    decimal MinOrderAmount, int? MaxRedemptions,
+    DateTime? ExpiresAt, bool IsActive);
+
+public record ApplyCouponInput(string Code, decimal Subtotal);
+public record ApplyCouponResult(string Code, decimal Discount, decimal NewTotal);
 
 // ----- Generic paging ---------------------------------------------------------
 

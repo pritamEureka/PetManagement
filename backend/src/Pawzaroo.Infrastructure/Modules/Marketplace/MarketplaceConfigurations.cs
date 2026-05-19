@@ -122,6 +122,40 @@ public class ProductReviewConfiguration : IEntityTypeConfiguration<ProductReview
     }
 }
 
+public class ProductReviewImageConfiguration : IEntityTypeConfiguration<ProductReviewImage>
+{
+    public void Configure(EntityTypeBuilder<ProductReviewImage> b)
+    {
+        b.ToTable("product_review_images");
+        b.HasIndex(i => i.ProductReviewId);
+        b.Property(i => i.Url).HasMaxLength(1024).IsRequired();
+        b.HasOne(i => i.ProductReview).WithMany(r => r.Images).HasForeignKey(i => i.ProductReviewId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class WishlistItemConfiguration : IEntityTypeConfiguration<WishlistItem>
+{
+    public void Configure(EntityTypeBuilder<WishlistItem> b)
+    {
+        b.ToTable("wishlist_items");
+        b.HasIndex(w => new { w.UserId, w.ProductId }).IsUnique();
+        b.HasOne(w => w.User).WithMany().HasForeignKey(w => w.UserId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(w => w.Product).WithMany().HasForeignKey(w => w.ProductId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class CouponConfiguration : IEntityTypeConfiguration<Coupon>
+{
+    public void Configure(EntityTypeBuilder<Coupon> b)
+    {
+        b.ToTable("coupons");
+        b.HasIndex(c => c.Code).IsUnique();
+        b.Property(c => c.Code).HasMaxLength(64).IsRequired();
+        b.Property(c => c.Value).HasPrecision(18, 2);
+        b.Property(c => c.MinOrderAmount).HasPrecision(18, 2);
+    }
+}
+
 public class StoreReviewConfiguration : IEntityTypeConfiguration<StoreReview>
 {
     public void Configure(EntityTypeBuilder<StoreReview> b)
@@ -185,6 +219,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.Property(o => o.Subtotal).HasPrecision(18, 2);
         b.Property(o => o.ShippingFee).HasPrecision(18, 2);
         b.Property(o => o.Tax).HasPrecision(18, 2);
+        b.Property(o => o.DiscountAmount).HasPrecision(18, 2);
+        b.Property(o => o.CouponCode).HasMaxLength(64);
         b.Property(o => o.Total).HasPrecision(18, 2);
         b.Property(o => o.OrderNumber).HasMaxLength(32).IsRequired();
         b.Property(o => o.ShippingAddress).HasMaxLength(512).IsRequired();

@@ -120,7 +120,8 @@ public class ProductService : IProductService
                 p.Reviews.OrderByDescending(r => r.CreatedAt).Take(5)
                     .Select(r => new ProductReviewDto(
                         r.Id, r.ProductId, r.UserId, r.User.DisplayName, r.User.AvatarUrl,
-                        r.Rating, r.Comment, r.CreatedAt)).ToList(),
+                        r.Rating, r.Comment, r.CreatedAt,
+                        r.Images.OrderBy(i => i.OrderIndex).Select(i => i.Url).ToList())).ToList(),
                 p.CreatedAt))
             .FirstOrDefaultAsync(ct);
     }

@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
       /p:Version=${VERSION} \
       /p:SourceRevisionId=${GIT_SHA}
 
-FROM mcr.microsoft.com/dotnet/runtime:9.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 
 ARG VERSION=0.0.0

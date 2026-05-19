@@ -38,4 +38,5 @@ file sealed class NoopNotificationService : INotificationService
 {
     public Task NotifyUserAsync(Guid userId, string title, string body, object? payload = null, CancellationToken ct = default) => Task.CompletedTask;
     public Task BroadcastAsync(string title, string body, object? payload = null, CancellationToken ct = default) => Task.CompletedTask;
+    public Task PushChatMessageToUsersAsync(IEnumerable<Guid> userIds, object payload, CancellationToken ct = default) => Task.CompletedTask;
 }

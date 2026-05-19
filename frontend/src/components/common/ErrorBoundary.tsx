@@ -18,7 +18,12 @@ class ErrorBoundaryInner extends Component<Props, State> {
   static getDerivedStateFromError(error: Error): State { return { error }; }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[ErrorBoundary]", error, info.componentStack);
+    if (import.meta.env.DEV) {
+      console.error("[ErrorBoundary]", error, info.componentStack);
+    }
+    // TODO: ship `error` + `info.componentStack` to a server-side error reporter
+    // (Sentry, Datadog RUM, etc.) in production instead of writing to the
+    // browser console where end users can read it.
   }
 
   componentDidUpdate(prev: Props) {
@@ -45,10 +50,12 @@ function ErrorFallback({ error, onReset }: { error: Error; onReset: () => void }
         <p className="text-sm text-muted-foreground">
           The page failed to render. Other pages still work — use the sidebar or go back.
         </p>
-        <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-64 whitespace-pre-wrap">
-          {error.message}
-          {error.stack ? `\n\n${error.stack}` : ""}
-        </pre>
+        {import.meta.env.DEV && (
+          <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-64 whitespace-pre-wrap">
+            {error.message}
+            {error.stack ? `\n\n${error.stack}` : ""}
+          </pre>
+        )}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => nav(-1)}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Go back

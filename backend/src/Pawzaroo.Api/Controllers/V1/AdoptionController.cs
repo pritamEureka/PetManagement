@@ -75,6 +75,7 @@ public class AdoptionController : ControllerBase
 
     [HttpPut("listings/{id:guid}")]
     [Authorize]
+    [Permission(Permissions.Adoption.Edit)]
     [EnableRateLimiting("writes")]
     [Audit("Adoption", "update", entityName: "AdoptionListing")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAdoptionListingInput input, CancellationToken ct)
@@ -85,6 +86,7 @@ public class AdoptionController : ControllerBase
 
     [HttpDelete("listings/{id:guid}")]
     [Authorize]
+    [Permission(Permissions.Adoption.Delete)]
     [Audit("Adoption", "delete", entityName: "AdoptionListing")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
@@ -94,6 +96,7 @@ public class AdoptionController : ControllerBase
 
     [HttpPost("listings/{id:guid}/submit")]
     [Authorize]
+    [Permission(Permissions.Adoption.Edit)]
     public async Task<IActionResult> Submit(Guid id, CancellationToken ct)
     {
         await _listings.SubmitForApprovalAsync(id, ct);
@@ -102,6 +105,7 @@ public class AdoptionController : ControllerBase
 
     [HttpPost("listings/{id:guid}/close")]
     [Authorize]
+    [Permission(Permissions.Adoption.Edit)]
     public async Task<IActionResult> Close(Guid id, CancellationToken ct)
     {
         await _listings.CloseAsync(id, ct);
@@ -110,6 +114,7 @@ public class AdoptionController : ControllerBase
 
     [HttpPost("listings/{id:guid}/adopted")]
     [Authorize]
+    [Permission(Permissions.Adoption.Edit)]
     [Audit("Adoption", "mark_adopted", entityName: "AdoptionListing")]
     public async Task<IActionResult> MarkAdopted(Guid id, [FromBody] MarkAdoptedInput input, CancellationToken ct)
     {

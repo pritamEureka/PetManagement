@@ -36,6 +36,14 @@ public class CartService : ICartService
         var uid = Uid();
         var cart = await EnsureCartAsync(uid, ct);
 
+        // The stock read here is advisory (UX guard against obviously-overpicking
+        // when the catalog still shows stock). It is intentionally NOT race-free.
+        // The canonical, race-free decrement happens at checkout via
+        // InventoryService.DecrementForOrderAsync, which uses a conditional
+        // ExecuteUpdateAsync (UPDATE ... WHERE stock_quantity >= @qty) so the
+        // last writer cannot oversell. Don't tighten this into a row lock here —
+        // the cart is long-lived and holding pg locks across user sessions would
+        // be worse than the occasional cart-vs-stock discrepancy.
         var product = await _db.Products.AsNoTracking().Where(p => p.Id == input.ProductId)
             .Select(p => new { p.Id, p.StoreId, p.IsActive, p.StockQuantity, p.Price, p.DiscountPrice }).FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("Product", input.ProductId);

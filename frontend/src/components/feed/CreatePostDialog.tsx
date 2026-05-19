@@ -35,8 +35,17 @@ export function CreatePostDialog({ open, onOpenChange, onCreated }: Props) {
   function addMedia() {
     const url = mediaInput.trim();
     if (!url) return;
-    try { new URL(url); } catch { toast.error("Enter a valid image URL"); return; }
-    setValue("mediaUrls", [...media, url]);
+    let parsed: URL;
+    try { parsed = new URL(url); }
+    catch { toast.error("Enter a valid image URL"); return; }
+    // Reject javascript:, data:, file:, blob:, etc. — only http(s) URLs may be
+    // embedded as post media. https is strongly preferred but http is accepted
+    // for now to keep dev/staging assets working.
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      toast.error("Only https:// (or http://) URLs are allowed.");
+      return;
+    }
+    setValue("mediaUrls", [...media, parsed.toString()]);
     setMediaInput("");
   }
   function removeMedia(i: number) {

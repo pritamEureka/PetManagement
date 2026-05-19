@@ -286,10 +286,20 @@ public class OrderService : IOrderService
         await _audit.LogAsync("order.refund", "Order", order.Id.ToString(), refundAmount.ToString("0.00"), ct: ct);
     }
 
+    // Authorization for order writes (status / shipment updates).
+    //
+    // Trust model:
+    //  - "Admin" path requires Orders.Cancel (write-level), NOT Orders.View. View
+    //    is a read-only permission and was previously accepted here, which let
+    //    any read-only support role mutate orders.
+    //  - "Store owner" path joins through OrderItems.Store.OwnerUserId: a store
+    //    owner with at least one line-item in the order can update the order's
+    //    shared status. Multi-store orders share a single status by design — if
+    //    that ever changes, this check must become per-store.
     private async Task EnsureStoreOwnerOrAdmin(Order order, CancellationToken ct)
     {
         var uid = _current.UserId ?? throw new ForbiddenException();
-        if (_current.Permissions.Contains(Permissions.Orders.View)) return;
+        if (_current.Permissions.Contains(Permissions.Orders.Cancel)) return;
         var owns = await _db.OrderItems.AsNoTracking()
             .AnyAsync(i => i.OrderId == order.Id && i.Store.OwnerUserId == uid, ct);
         if (!owns) throw new ForbiddenException();

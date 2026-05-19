@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Common.Permissions;
 using Pawzaroo.Domain.Identity;
@@ -8,12 +11,17 @@ namespace Pawzaroo.Infrastructure.Persistence.Seed;
 
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(ApplicationDbContext db, IPasswordHasher hasher, CancellationToken ct = default)
+    public static async Task SeedAsync(
+        ApplicationDbContext db,
+        IPasswordHasher hasher,
+        IConfiguration configuration,
+        ILogger? logger = null,
+        CancellationToken ct = default)
     {
         await db.Database.MigrateAsync(ct);
         await SeedPermissionsAsync(db, ct);
         await SeedRolesAsync(db, ct);
-        await SeedSuperAdminAsync(db, hasher, ct);
+        await SeedSuperAdminAsync(db, hasher, configuration, logger ?? NullLogger.Instance, ct);
         await CatalogSeeder.SeedAsync(db, ct);
         await db.SaveChangesAsync(ct);
     }
@@ -197,17 +205,37 @@ public static class DatabaseSeeder
         }
     }
 
-    private static async Task SeedSuperAdminAsync(ApplicationDbContext db, IPasswordHasher hasher, CancellationToken ct)
+    private static async Task SeedSuperAdminAsync(
+        ApplicationDbContext db,
+        IPasswordHasher hasher,
+        IConfiguration configuration,
+        ILogger logger,
+        CancellationToken ct)
     {
-        const string email = "superadmin@pawzaroo.local";
+        var email = configuration["SuperAdmin:Email"] ?? "superadmin@pawzaroo.local";
+        var password = configuration["SuperAdmin:Password"];
+
         if (await db.Users.AnyAsync(u => u.Email == email, ct)) return;
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            logger.LogWarning(
+                "SuperAdmin:Password not configured. Skipping initial SuperAdmin seed for {Email}. " +
+                "Set SuperAdmin__Password (env) or SuperAdmin:Password (config) to provision the bootstrap admin.",
+                email);
+            return;
+        }
+
+        if (password.Length < 12)
+            throw new InvalidOperationException(
+                "SuperAdmin:Password must be at least 12 characters. Refusing to seed a weak bootstrap admin.");
 
         var role = await db.Roles.FirstAsync(r => r.Name == SystemRoles.SuperAdmin, ct);
         var u = new User
         {
             Email = email,
             DisplayName = "Super Admin",
-            PasswordHash = hasher.Hash("Admin@12345"),
+            PasswordHash = hasher.Hash(password),
             EmailConfirmed = true,
             IsActive = true
         };

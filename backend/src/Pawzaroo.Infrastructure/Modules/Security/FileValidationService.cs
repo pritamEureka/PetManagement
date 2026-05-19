@@ -50,17 +50,28 @@ public class FileValidationService : IFileValidationService
         if (sizeBytes <= 0) return new(false, "Empty file.");
         if (sizeBytes > MaxBytes) return new(false, $"Exceeds {MaxBytes / (1024 * 1024)} MB limit.");
 
+        var pre = ValidatePreflight(fileName, contentType);
+        if (!pre.Allowed) return pre;
+
+        var ext = Path.GetExtension(fileName ?? "");
+        var sig = Signatures.FirstOrDefault(s => s.Ext.Equals(ext, StringComparison.OrdinalIgnoreCase));
+        if (sig.Prefix is not null && !StartsWith(headBytes, sig.Prefix))
+            return new(false, $"File contents do not look like {ext}.");
+
+        return new(true, null);
+    }
+
+    public FileValidationResult ValidatePreflight(string fileName, string? contentType)
+    {
         var ext = Path.GetExtension(fileName ?? "");
         if (string.IsNullOrEmpty(ext) || !Allowed.TryGetValue(ext, out var mimePrefixes))
             return new(false, $"Extension '{ext}' is not allowed.");
 
-        if (!string.IsNullOrWhiteSpace(contentType) &&
-            !mimePrefixes.Any(p => contentType.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-            return new(false, $"Content-Type {contentType} does not match {ext}.");
+        if (string.IsNullOrWhiteSpace(contentType))
+            return new(false, "Content-Type is required.");
 
-        var sig = Signatures.FirstOrDefault(s => s.Ext.Equals(ext, StringComparison.OrdinalIgnoreCase));
-        if (sig.Prefix is not null && !StartsWith(headBytes, sig.Prefix))
-            return new(false, $"File contents do not look like {ext}.");
+        if (!mimePrefixes.Any(p => contentType.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            return new(false, $"Content-Type {contentType} does not match {ext}.");
 
         return new(true, null);
     }

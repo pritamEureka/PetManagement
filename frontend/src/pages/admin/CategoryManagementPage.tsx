@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { productsV2Api, type ProductCategory } from "@/api/marketplace";
+import { api } from "@/api/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { toast } from "@/components/ui/sonner";
 
@@ -35,22 +36,13 @@ export function AdminCategoryManagementPage() {
     onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Create failed.")
   });
 
-  // Delete uses the /v1/products/categories/{id} endpoint via fetch — keep this
-  // page self-contained without growing the marketplace API client.
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/v1/products/categories/${id}`, {
-        method: "DELETE", credentials: "include",
-        headers: { Authorization: `Bearer ${localStorage.getItem("pawzaroo-auth")
-          ? JSON.parse(localStorage.getItem("pawzaroo-auth") || "{}")?.state?.accessToken ?? "" : ""}` }
-      });
-      if (!res.ok) throw new Error(await res.text());
-    },
+    mutationFn: (id: string) => api.delete(`/v1/products/categories/${id}`),
     onSuccess: () => {
       toast.success("Deleted.");
       qc.invalidateQueries({ queryKey: ["product-categories"] });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Delete failed.")
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? e?.message ?? "Delete failed.")
   });
 
   const columns: Column<ProductCategory>[] = [
@@ -110,7 +102,7 @@ export function AdminCategoryManagementPage() {
         description="Products assigned to this category will keep working but their category will be cleared."
         confirmLabel="Delete"
         isLoading={remove.isPending}
-        onConfirm={() => toDelete ? remove.mutateAsync(toDelete.id) : undefined}
+        onConfirm={async () => { if (toDelete) await remove.mutateAsync(toDelete.id); }}
       />
     </div>
   );

@@ -27,8 +27,9 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: web
-          image: ghcr.io/your-org/pawzaroo-web:latest
-          imagePullPolicy: IfNotPresent
+          # Image tag MUST be pinned by the deployment pipeline. See api.deployment.yaml.
+          image: ghcr.io/your-org/pawzaroo-web:0.0.0
+          imagePullPolicy: Always
           ports:
             - { containerPort: 8080, name: http }
           securityContext:

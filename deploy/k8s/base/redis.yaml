@@ -28,22 +28,35 @@ spec:
         fsGroup: 999
       containers:
         - name: redis
-          image: redis:7-alpine
+          image: redis:7.4-alpine
+          # Auth is mandatory in cluster — REDIS_PASSWORD comes from pawzaroo-secrets.
+          # The shell wrapper builds the args dynamically so an empty password
+          # (dev only) still works.
+          command: ["sh", "-c"]
           args:
-            - "redis-server"
-            - "--appendonly"
-            - "yes"
-            - "--maxmemory"
-            - "512mb"
-            - "--maxmemory-policy"
-            - "allkeys-lru"
+            - >-
+              exec redis-server --appendonly yes --maxmemory 512mb
+              --maxmemory-policy allkeys-lru
+              ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: pawzaroo-secrets, key: REDIS_PASSWORD, optional: true }
           ports:
             - { containerPort: 6379, name: redis }
           readinessProbe:
-            exec: { command: ["redis-cli", "ping"] }
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli ${REDIS_PASSWORD:+-a "$REDIS_PASSWORD"} ping | grep PONG
             periodSeconds: 5
           livenessProbe:
-            exec: { command: ["redis-cli", "ping"] }
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli ${REDIS_PASSWORD:+-a "$REDIS_PASSWORD"} ping | grep PONG
             periodSeconds: 15
           resources:
             requests: { cpu: "50m",  memory: "128Mi" }

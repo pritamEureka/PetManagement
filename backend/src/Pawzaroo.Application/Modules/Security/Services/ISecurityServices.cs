@@ -105,5 +105,14 @@ public interface ITwoFactorService
 public interface IFileValidationService
 {
     FileValidationResult Validate(string fileName, string? contentType, long sizeBytes, ReadOnlySpan<byte> headBytes);
+
+    /// <summary>
+    /// Pre-flight check used before issuing a presigned upload URL. We don't
+    /// have the file bytes yet, so we can only check the extension allowlist
+    /// and the claimed Content-Type against the allowed MIME prefixes.
+    /// Full magic-byte validation happens server-side after upload.
+    /// </summary>
+    FileValidationResult ValidatePreflight(string fileName, string? contentType);
+
     Task<FileValidationResult> ScanAsync(Stream content, CancellationToken ct = default);
 }

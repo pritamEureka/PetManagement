@@ -4,6 +4,12 @@ import { useAuthStore } from "@/store/authStore";
 
 export const apiBase = import.meta.env.VITE_API_BASE ?? "/api";
 
+// CSRF posture: authentication is bearer-token via the Authorization header,
+// NOT cookies. The browser doesn't auto-attach bearer tokens, so classic CSRF
+// (where a third-party site triggers a cross-origin request that carries the
+// victim's cookie) is structurally not exploitable for state-changing calls.
+// If we ever migrate tokens to HttpOnly cookies (see vulnerabilities.md C-06)
+// we MUST add CSRF token handling here (double-submit cookie pattern).
 export const api = axios.create({ baseURL: apiBase });
 
 // Set `skipErrorToast: true` on a request config to opt out of the global error toast

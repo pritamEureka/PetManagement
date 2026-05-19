@@ -30,6 +30,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Structured logging.
 builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console());
 
+// Fail fast on missing/weak secrets. Dev defaults live in appsettings.Development.json;
+// production values MUST come from env vars or a secrets manager (Kubernetes Secret,
+// Azure Key Vault, AWS Secrets Manager, etc.).
+StartupSecretValidator.Validate(builder.Configuration, builder.Environment);
+
 // Application + Infrastructure composition.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -105,10 +110,13 @@ builder.Services.AddRateLimiter(opts =>
             }));
 });
 
-// CORS.
+// CORS — whitelist specific headers and methods to avoid the AllowAnyHeader/AllowAnyMethod
+// + AllowCredentials combination, which is overly permissive and a CSRF-class risk.
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:5173" })
-     .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+     .WithHeaders("Content-Type", "Authorization", "X-Correlation-Id", "X-Idempotency-Key")
+     .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+     .AllowCredentials()));
 
 builder.Services.AddSignalR();
 
@@ -165,13 +173,22 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    await DatabaseSeeder.SeedAsync(db, hasher);
+    var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("DatabaseSeeder");
+    await DatabaseSeeder.SeedAsync(db, hasher, app.Configuration, seedLogger);
 }
 
 app.UseMiddleware<RequestLoggingMiddleware>();   // assigns CorrelationId first
 app.UseSerilogRequestLogging();
 app.UseMiddleware<Pawzaroo.Api.Middleware.SecurityHeadersMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
+
+// Force HTTPS outside Development. Skipped locally so HTTP dev proxies keep working.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
 
 if (app.Environment.IsDevelopment())
 {

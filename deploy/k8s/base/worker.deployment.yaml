@@ -30,19 +30,30 @@ spec:
       terminationGracePeriodSeconds: 60  # give Kafka consumers time to commit offsets
       containers:
         - name: worker
-          image: ghcr.io/your-org/pawzaroo-worker:latest
-          imagePullPolicy: IfNotPresent
+          # Image tag MUST be pinned by the deployment pipeline. See api.deployment.yaml.
+          image: ghcr.io/your-org/pawzaroo-worker:0.0.0
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: { name: pawzaroo-config }
           env:
             - name: POSTGRES_PASSWORD
               valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: POSTGRES_PASSWORD } }
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: REDIS_PASSWORD, optional: true } }
             - name: ConnectionStrings__Postgres
               value: "Host=$(POSTGRES_HOST);Port=$(POSTGRES_PORT);Database=$(POSTGRES_DB);Username=$(POSTGRES_USER);Password=$(POSTGRES_PASSWORD)"
             - name: ConnectionStrings__Redis
-              value: "$(REDIS_HOST):$(REDIS_PORT)"
+              value: "$(REDIS_HOST):$(REDIS_PORT),password=$(REDIS_PASSWORD)"
             - name: Kafka__BootstrapServers
               value: "$(KAFKA_BROKERS)"
+            - name: Kafka__SecurityProtocol
+              valueFrom: { configMapKeyRef: { name: pawzaroo-config, key: KAFKA_SECURITY_PROTOCOL, optional: true } }
+            - name: Kafka__SaslMechanism
+              valueFrom: { configMapKeyRef: { name: pawzaroo-config, key: KAFKA_SASL_MECHANISM, optional: true } }
+            - name: Kafka__SaslUsername
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: KAFKA_SASL_USERNAME, optional: true } }
+            - name: Kafka__SaslPassword
+              valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: KAFKA_SASL_PASSWORD, optional: true } }
             - name: Storage__Endpoint
               valueFrom: { configMapKeyRef: { name: pawzaroo-config, key: STORAGE_ENDPOINT } }
             - name: Storage__Bucket

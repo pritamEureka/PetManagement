@@ -360,15 +360,6 @@ public class UsersAdminController : ControllerBase
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("User", id);
 
-        await _email.SendAsync(snapshot.Email,
-            "Your Pawzaroo account has been permanently deleted",
-            $"Hi {snapshot.DisplayName},\n\n" +
-            "Your Pawzaroo account has been permanently deleted by an administrator. " +
-            "You will no longer be able to sign in with this account.\n\n" +
-            "If you believe this was a mistake, please contact Pawzaroo support.\n\n" +
-            "- Pawzaroo",
-            null, ct);
-
         try
         {
             var deleted = await _db.Users.IgnoreQueryFilters()
@@ -386,6 +377,15 @@ public class UsersAdminController : ControllerBase
                 "Cannot delete this user — there are records referencing them (orders, posts, listings, etc.). " +
                 "Suspend the account instead, or clean up the dependent data first. (" + ex.GetBaseException().Message + ")");
         }
+
+        await _email.SendAsync(snapshot.Email,
+            "Your Pawzaroo account has been permanently deleted",
+            $"Hi {snapshot.DisplayName},\n\n" +
+            "Your Pawzaroo account has been permanently deleted by an administrator. " +
+            "You will no longer be able to sign in with this account.\n\n" +
+            "If you believe this was a mistake, please contact Pawzaroo support.\n\n" +
+            "- Pawzaroo",
+            null, ct);
 
         await _adminLog.LogAsync("user.delete", "User", id.ToString(), null,
             new { snapshot.Email, snapshot.DisplayName }, ct);

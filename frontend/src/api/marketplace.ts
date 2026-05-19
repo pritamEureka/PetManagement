@@ -122,7 +122,15 @@ export interface Order {
   shippingAddress: string; shippingCity?: string | null; shippingCountry?: string | null;
   trackingNumber?: string | null;
   items: OrderItem[]; createdAt: string;
+  /**
+   * When set (only on the response from POST /v1/orders/checkout for hosted-payment
+   * methods like sslcommerz), the client should redirect the browser here to
+   * complete payment. Successful payment lands the user on /checkout/success.
+   */
+  paymentCheckoutUrl?: string | null;
 }
+
+export type PaymentMethod = "sslcommerz" | "cod";
 
 export interface CheckoutPayload {
   shippingAddressId?: string;

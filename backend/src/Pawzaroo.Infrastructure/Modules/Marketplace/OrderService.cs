@@ -20,10 +20,11 @@ public class OrderService : IOrderService
     private readonly IInventoryService _inventory;
     private readonly ICommissionConfigurationService _commission;
     private readonly INotificationService _notify;
+    private readonly IPaymentGateway _paymentGateway;
 
     public OrderService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
         IAuditLogger audit, IInventoryService inventory, ICommissionConfigurationService commission,
-        INotificationService notify)
+        INotificationService notify, IPaymentGateway paymentGateway)
     {
         _db = db;
         _current = current;
@@ -32,6 +33,7 @@ public class OrderService : IOrderService
         _inventory = inventory;
         _commission = commission;
         _notify = notify;
+        _paymentGateway = paymentGateway;
     }
 
     private Guid Uid() => _current.UserId ?? throw new ForbiddenException();
@@ -114,14 +116,52 @@ public class OrderService : IOrderService
         foreach (var oi in order.Items)
             await _inventory.DecrementForOrderAsync(oi.ProductId, oi.Quantity, order.Id, ct);
 
-        _db.Payments.Add(new Payment
+        var paymentMethod = NormalizePaymentMethod(input.PaymentMethod);
+        var payment = new Payment
         {
             OrderId = order.Id, Amount = order.Total,
-            Method = input.PaymentMethod ?? "placeholder",
+            Method = paymentMethod,
             Status = PaymentStatus.Pending
-        });
+        };
+        _db.Payments.Add(payment);
         _db.CartItems.RemoveRange(cartLines);
         await _db.SaveChangesAsync(ct);
+
+        // Initiate the hosted-payment session BEFORE committing so that if the
+        // gateway is unreachable the entire txn rolls back: no order row, no
+        // inventory decrement, no orphaned Payment.
+        string? checkoutUrl = null;
+        if (paymentMethod == "sslcommerz")
+        {
+            var customer = await _db.Users.AsNoTracking()
+                .Where(u => u.Id == uid)
+                .Select(u => new { u.Email, u.DisplayName, u.PhoneNumber })
+                .FirstAsync(ct);
+
+            var lineItems = order.Items
+                .Select(i => new PaymentLineItem(
+                    Name: cartLines.First(c => c.ProductId == i.ProductId).Product.Name,
+                    UnitAmount: i.UnitPrice,
+                    Quantity: i.Quantity))
+                .ToList();
+
+            var session = await _paymentGateway.CreateCheckoutSessionAsync(new PaymentCheckoutRequest(
+                OrderId: order.Id,
+                OrderNumber: order.OrderNumber,
+                Currency: "BDT",
+                TotalAmount: order.Total,
+                CustomerEmail: customer.Email,
+                CustomerName: customer.DisplayName,
+                CustomerPhone: customer.PhoneNumber,
+                ShippingAddress: order.ShippingAddress,
+                ShippingCity: order.ShippingCity,
+                ShippingCountry: order.ShippingCountry,
+                LineItems: lineItems), ct);
+
+            payment.TransactionRef = session.SessionId;
+            checkoutUrl = session.CheckoutUrl;
+            await _db.SaveChangesAsync(ct);
+        }
 
         await tx.CommitAsync(ct);
 
@@ -139,7 +179,20 @@ public class OrderService : IOrderService
         }
 
         await _audit.LogAsync("order.checkout", "Order", order.Id.ToString(), order.OrderNumber, ct: ct);
-        return (await GetByIdAsync(order.Id, ct))!;
+        var dto = (await GetByIdAsync(order.Id, ct))!;
+        return checkoutUrl is null ? dto : dto with { PaymentCheckoutUrl = checkoutUrl };
+    }
+
+    private static string NormalizePaymentMethod(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "cod";
+        var v = raw.Trim().ToLowerInvariant();
+        return v switch
+        {
+            "sslcommerz" or "ssl" or "card" => "sslcommerz",
+            "cod" or "cash" or "cash_on_delivery" => "cod",
+            _ => v
+        };
     }
 
     public async Task<OrderDto?> GetByIdAsync(Guid orderId, CancellationToken ct = default)
@@ -284,6 +337,88 @@ public class OrderService : IOrderService
         await _kafka.PublishAsync(MarketplaceTopics.PaymentEvents,
             new OrderRefunded(order.Id, order.OrderNumber, refundAmount, DateTime.UtcNow), order.Id.ToString(), ct);
         await _audit.LogAsync("order.refund", "Order", order.Id.ToString(), refundAmount.ToString("0.00"), ct: ct);
+    }
+
+    /// <summary>
+    /// Idempotent: if the order is already Paid we just stamp the provider ref
+    /// (a duplicate IPN). We deliberately don't trust the gateway's amount as
+    /// the source of truth — we compare against order.Total and refuse to flip
+    /// to Paid on mismatch, leaving the order Pending for manual review.
+    /// </summary>
+    public async Task MarkPaymentSucceededAsync(Guid orderId, string providerRef, decimal? amountValidated, CancellationToken ct = default)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct)
+                    ?? throw new NotFoundException("Order", orderId);
+        var payment = await _db.Payments.FirstOrDefaultAsync(p => p.OrderId == orderId, ct);
+
+        if (payment is not null)
+        {
+            payment.TransactionRef = providerRef;
+            payment.UpdatedAt = DateTime.UtcNow;
+        }
+
+        if (order.PaymentStatus == PaymentStatus.Paid)
+        {
+            await _db.SaveChangesAsync(ct);
+            return;
+        }
+
+        if (amountValidated.HasValue && Math.Abs(amountValidated.Value - order.Total) > 0.01m)
+        {
+            await _audit.LogAsync("order.payment.mismatch", "Order", order.Id.ToString(),
+                $"expected={order.Total} got={amountValidated}", ct: ct);
+            await _db.SaveChangesAsync(ct);
+            return;
+        }
+
+        order.PaymentStatus = PaymentStatus.Paid;
+        if (order.Status == OrderStatus.Created) order.Status = OrderStatus.Confirmed;
+        order.UpdatedAt = DateTime.UtcNow;
+        if (payment is not null) payment.Status = PaymentStatus.Paid;
+
+        await _db.SaveChangesAsync(ct);
+
+        if (payment is not null)
+            await _kafka.PublishAsync(MarketplaceTopics.PaymentEvents,
+                new PaymentSucceeded(order.Id, payment.Id, order.Total, providerRef, DateTime.UtcNow),
+                order.Id.ToString(), ct);
+
+        await _notify.NotifyUserAsync(order.UserId, "Payment received",
+            $"{order.OrderNumber} is confirmed.", new { orderId = order.Id }, ct);
+
+        await _audit.LogAsync("order.payment.succeeded", "Order", order.Id.ToString(), providerRef, ct: ct);
+    }
+
+    /// <summary>
+    /// Marks payment failed/cancelled. We do NOT auto-cancel the order — the
+    /// user may retry payment from the cancel page. CancelAsync (with restock)
+    /// is a separate, explicit action.
+    /// </summary>
+    public async Task MarkPaymentFailedAsync(Guid orderId, string providerRef, bool cancelled, CancellationToken ct = default)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct)
+                    ?? throw new NotFoundException("Order", orderId);
+        if (order.PaymentStatus == PaymentStatus.Paid) return; // late callback after success — ignore
+
+        var payment = await _db.Payments.FirstOrDefaultAsync(p => p.OrderId == orderId, ct);
+        if (payment is not null)
+        {
+            payment.Status = PaymentStatus.Failed;
+            payment.TransactionRef = providerRef;
+            payment.UpdatedAt = DateTime.UtcNow;
+        }
+        order.PaymentStatus = PaymentStatus.Failed;
+        order.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        if (payment is not null)
+            await _kafka.PublishAsync(MarketplaceTopics.PaymentEvents,
+                new PaymentFailed(order.Id, payment.Id, cancelled ? "cancelled" : "failed", DateTime.UtcNow),
+                order.Id.ToString(), ct);
+
+        await _audit.LogAsync(
+            cancelled ? "order.payment.cancelled" : "order.payment.failed",
+            "Order", order.Id.ToString(), providerRef, ct: ct);
     }
 
     // Authorization for order writes (status / shipment updates).

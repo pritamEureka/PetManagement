@@ -167,7 +167,7 @@ export const checkoutSchema = z.object({
   shippingAddress: z.string().min(5).max(512).optional().or(z.literal("")),
   shippingCity: z.string().max(128).optional().or(z.literal("")),
   shippingCountry: z.string().max(64).optional().or(z.literal("")),
-  paymentMethod: z.string().max(32).optional().or(z.literal(""))
+  paymentMethod: z.enum(["sslcommerz", "cod"]).default("sslcommerz")
 }).refine((v) => !!v.shippingAddressId || !!(v.shippingAddress && v.shippingAddress.length >= 5),
   { message: "Provide a saved address or a shipping address line.", path: ["shippingAddress"] });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

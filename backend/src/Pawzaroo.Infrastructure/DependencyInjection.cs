@@ -8,6 +8,7 @@ using Pawzaroo.Infrastructure.Audit;
 using Pawzaroo.Infrastructure.Caching;
 using Pawzaroo.Infrastructure.Identity;
 using Pawzaroo.Infrastructure.Messaging;
+using Pawzaroo.Infrastructure.Payments;
 using Pawzaroo.Infrastructure.Persistence;
 using Pawzaroo.Infrastructure.Storage;
 using StackExchange.Redis;
@@ -96,6 +97,14 @@ public static class DependencyInjection
 
         services.Configure<StorageOptions>(config.GetSection("Storage"));
         services.AddSingleton<IObjectStorage, S3ObjectStorage>();
+
+        // SSLCommerz payment gateway. HttpClient is registered via the named
+        // factory so timeouts/retries/DNS-refresh follow project defaults.
+        services.Configure<SslCommerzOptions>(config.GetSection(SslCommerzOptions.SectionName));
+        services.AddHttpClient<IPaymentGateway, SslCommerzPaymentGateway>(c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(20);
+        });
 
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditLogger, AuditLogger>();

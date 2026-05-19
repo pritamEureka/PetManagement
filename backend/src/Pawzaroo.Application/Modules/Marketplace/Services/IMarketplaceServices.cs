@@ -101,6 +101,15 @@ public interface IOrderService
     Task UpdateShipmentStatusAsync(Guid orderId, ShipmentStatus status, string? trackingNumber, CancellationToken ct = default);
     Task CancelAsync(Guid orderId, string? reason, CancellationToken ct = default);
     Task RefundAsync(Guid orderId, decimal? amount, CancellationToken ct = default);
+
+    /// <summary>
+    /// Called by the payments controller after a gateway success/IPN is verified.
+    /// Idempotent: a second call on an already-paid order is a no-op.
+    /// </summary>
+    Task MarkPaymentSucceededAsync(Guid orderId, string providerRef, decimal? amountValidated, CancellationToken ct = default);
+
+    /// <summary>Marks the order's payment failed (gateway fail/cancel callback). Idempotent.</summary>
+    Task MarkPaymentFailedAsync(Guid orderId, string providerRef, bool cancelled, CancellationToken ct = default);
 }
 
 public interface IProductReviewService

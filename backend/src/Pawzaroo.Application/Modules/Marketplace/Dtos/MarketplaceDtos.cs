@@ -122,7 +122,8 @@ public record OrderDto(
     string ShippingAddress, string? ShippingCity, string? ShippingCountry,
     string? TrackingNumber,
     IReadOnlyList<OrderItemDto> Items,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? PaymentCheckoutUrl = null);
 
 public record UpdateOrderStatusInput(OrderStatus Status);
 public record UpdateShipmentStatusInput(ShipmentStatus Status, string? TrackingNumber);

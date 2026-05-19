@@ -40,9 +40,19 @@ export function CheckoutPage() {
         shippingAddress: values.shippingAddress || undefined,
         shippingCity: values.shippingCity || undefined,
         shippingCountry: values.shippingCountry || undefined,
-        paymentMethod: values.paymentMethod || undefined
+        paymentMethod: values.paymentMethod
       });
       clear();
+
+      // Hosted-payment methods return a redirect URL the user must visit to
+      // complete payment. Don't toast success yet — the order is still
+      // PaymentStatus=Pending until the gateway confirms via /checkout/success.
+      if (order.paymentCheckoutUrl) {
+        toast.message("Redirecting to payment gateway…");
+        window.location.href = order.paymentCheckoutUrl;
+        return;
+      }
+
       toast.success(`Order ${order.orderNumber} placed.`);
       nav(`/orders/${order.id}`);
     } catch (err: any) {
@@ -98,12 +108,39 @@ export function CheckoutPage() {
               </div>
             </details>
 
-            <div>
-              <Label htmlFor="pay">Payment method</Label>
-              <Input id="pay" placeholder="card / cod / wallet" defaultValue="placeholder" {...register("paymentMethod")} />
-              <p className="text-xs text-muted-foreground mt-1">
-                Payment is a placeholder in the MVP — your order will be created as <em>Pending payment</em>.
-              </p>
+            <div className="space-y-2">
+              <Label>Payment method</Label>
+              <div className="grid sm:grid-cols-2 gap-2">
+                <label className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    value="sslcommerz"
+                    defaultChecked
+                    {...register("paymentMethod")}
+                  />
+                  <div className="text-sm">
+                    <p className="font-medium">Pay online (SSLCommerz)</p>
+                    <p className="text-muted-foreground text-xs">
+                      Card / mobile banking / net banking. Redirects to the sandbox gateway.
+                    </p>
+                  </div>
+                </label>
+                <label className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    value="cod"
+                    {...register("paymentMethod")}
+                  />
+                  <div className="text-sm">
+                    <p className="font-medium">Cash on delivery</p>
+                    <p className="text-muted-foreground text-xs">
+                      Pay when the courier hands you the parcel.
+                    </p>
+                  </div>
+                </label>
+              </div>
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting || lines.length === 0}>

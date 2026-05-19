@@ -23,6 +23,9 @@ export function AttachmentUpload({ attachments, onChange, disabled }: Props) {
   const [busy, setBusy] = useState(false);
 
   async function upload(file: File) {
+    const reject = validateForUpload(file);
+    if (reject) { toast.error(reject); return; }
+
     setBusy(true);
     try {
       const presign = await api.post("/media/presign", { fileName: file.name, contentType: file.type })
@@ -35,8 +38,7 @@ export function AttachmentUpload({ attachments, onChange, disabled }: Props) {
         fileName: file.name
       };
       onChange([...attachments, next]);
-    } catch (err: any) {
-      console.error(err);
+    } catch {
       toast.error("Upload failed.");
     } finally { setBusy(false); }
   }
@@ -45,6 +47,25 @@ export function AttachmentUpload({ attachments, onChange, disabled }: Props) {
     const files = Array.from(e.target.files ?? []);
     for (const f of files) await upload(f);
     e.target.value = "";
+  }
+
+  // Mirrors the backend FileValidationService allowlist. Client-side checks are
+  // UX-only (the server is authoritative) but they catch the common cases
+  // before we burn a presign round-trip.
+  function validateForUpload(file: File): string | null {
+    const MAX_BYTES = 20 * 1024 * 1024;
+    const ALLOWED_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".webm", ".pdf"]);
+    const ALLOWED_MIME = new Set([
+      "image/jpeg", "image/png", "image/webp", "image/gif",
+      "video/mp4", "video/webm", "application/pdf",
+    ]);
+    if (file.size <= 0) return "File is empty.";
+    if (file.size > MAX_BYTES) return "File exceeds 20 MB limit.";
+    const dot = file.name.lastIndexOf(".");
+    const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
+    if (!ALLOWED_EXT.has(ext)) return `File type "${ext || "unknown"}" is not allowed.`;
+    if (file.type && !ALLOWED_MIME.has(file.type)) return `Content-Type "${file.type}" is not allowed.`;
+    return null;
   }
 
   function remove(i: number) {

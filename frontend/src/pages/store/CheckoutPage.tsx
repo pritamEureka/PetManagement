@@ -80,7 +80,7 @@ export function CheckoutPage() {
                 <Label>Choose a saved address</Label>
                 <div className="space-y-2">
                   {addresses.map((a) => (
-                    <label key={a.id} className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
+                    <label key={a.id} className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-background/80 dark:hover:bg-background/60">
                       <input
                         type="radio"
                         className="mt-1"
@@ -127,7 +127,7 @@ export function CheckoutPage() {
             <div className="space-y-2">
               <Label>Payment method</Label>
               <div className="grid sm:grid-cols-2 gap-2">
-                <label className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
+                <label className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-background/80 dark:hover:bg-background/60">
                   <input
                     type="radio"
                     className="mt-1"
@@ -142,7 +142,7 @@ export function CheckoutPage() {
                     </p>
                   </div>
                 </label>
-                <label className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
+                <label className="flex items-start gap-2 border rounded-md p-3 cursor-pointer hover:bg-background/80 dark:hover:bg-background/60">
                   <input
                     type="radio"
                     className="mt-1"

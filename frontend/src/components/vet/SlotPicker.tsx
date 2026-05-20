@@ -70,7 +70,7 @@ export function SlotPicker({ doctorId, selectedSlotId, consultationType, onSelec
               <button key={d.ymd}
                 onClick={() => setActiveDate(d.ymd)}
                 disabled={d.count === 0}
-                className={`rounded-md border text-center py-2 ${active ? "border-primary bg-primary/10" : "hover:bg-accent"} ${d.count === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`rounded-md border text-center py-2 ${active ? "border-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-muted"} ${d.count === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <p className="text-[10px] uppercase text-muted-foreground">{d.date.toLocaleDateString(undefined, { weekday: "short" })}</p>
                 <p className="text-sm font-semibold">{d.date.getDate()}</p>
@@ -98,7 +98,7 @@ export function SlotPicker({ doctorId, selectedSlotId, consultationType, onSelec
             return (
               <button key={s.id}
                 onClick={() => onSelect(s)}
-                className={`rounded-md border px-2 py-2 text-sm flex items-center justify-center gap-1.5 ${selected ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                className={`rounded-md border px-2 py-2 text-sm flex items-center justify-center gap-1.5 ${selected ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-muted"}`}
               >
                 <Icon className="h-3 w-3" />
                 {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

@@ -189,11 +189,11 @@ function SidebarNavItem({
       }
       className={({ isActive }) =>
         cn(
-          "relative flex items-center rounded-md px-3 py-2 text-sm font-semibold hover:bg-accent transition-colors",
+          "relative flex items-center rounded-md px-3 py-2 text-sm font-semibold transition-colors",
           collapsed ? "justify-center" : "gap-3",
           isActive
-            ? "bg-accent text-accent-foreground"
-            : "text-slate-950 dark:text-muted-foreground",
+            ? "bg-muted text-foreground dark:bg-muted/80 dark:text-foreground"
+            : "text-slate-950 hover:bg-muted/60 dark:text-muted-foreground dark:hover:bg-muted/40",
         )
       }
     >

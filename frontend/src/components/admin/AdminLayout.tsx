@@ -129,7 +129,9 @@ function AdminSidebarNav({ collapsed, onNavigate, search }: { collapsed: boolean
                 className={({ isActive }) => cn(
                   "flex items-center rounded-md px-3 py-2 text-sm font-semibold transition-colors",
                   collapsed ? "justify-center" : "gap-3",
-                  isActive ? "bg-primary/10 text-primary" : "text-slate-950 hover:bg-accent hover:text-foreground dark:text-muted-foreground"
+                  isActive
+                    ? "bg-muted text-foreground dark:bg-muted/80 dark:text-foreground"
+                    : "text-slate-950 hover:bg-muted/60 hover:text-foreground dark:text-muted-foreground dark:hover:bg-muted/40"
                 )}>
                 <Icon className="h-4 w-4 shrink-0" />
                 <span className={cn(

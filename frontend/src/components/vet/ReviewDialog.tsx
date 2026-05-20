@@ -60,7 +60,7 @@ export function ReviewDialog({ open, onOpenChange, title = "Leave a review", des
                   <button
                     key={n}
                     type="button"
-                    className="p-1"
+                    className="rounded-md p-1 hover:bg-muted"
                     onClick={() => setRating(n)}
                     onMouseEnter={() => setHover(n)}
                     onMouseLeave={() => setHover(0)}

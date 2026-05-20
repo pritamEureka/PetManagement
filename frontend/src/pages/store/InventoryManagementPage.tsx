@@ -54,7 +54,7 @@ export function InventoryManagementPage() {
               : products?.items.map((p) => (
                 <button key={p.id}
                   onClick={() => setSelected(p)}
-                  className={`w-full flex items-center gap-3 p-2 rounded-md text-left hover:bg-accent
+                  className={`w-full flex items-center gap-3 p-2 rounded-md text-left hover:bg-muted
                     ${selected?.id === p.id ? "bg-accent" : ""}`}>
                   <div className="h-10 w-10 bg-muted rounded overflow-hidden flex-shrink-0">
                     {p.imageUrls[0] && <img src={p.imageUrls[0]} className="object-cover w-full h-full" />}

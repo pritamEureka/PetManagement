@@ -69,7 +69,7 @@ export function OnboardingPage() {
                   <button
                     key={id}
                     onClick={() => setIntent(id)}
-                    className={`text-left rounded-lg border p-4 transition-colors hover:bg-accent ${intent === id ? "border-primary ring-1 ring-primary" : ""}`}
+                    className={`text-left rounded-lg border p-4 transition-colors ${intent === id ? "border-primary bg-primary/5 ring-1 ring-primary hover:bg-primary/10" : "hover:bg-muted"}`}
                   >
                     <Icon className="h-5 w-5 text-primary mb-2" />
                     <p className="font-semibold">{title}</p>

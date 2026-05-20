@@ -182,7 +182,7 @@ export function DoctorRegistrationPage() {
                   const on = animals.includes(t);
                   return (
                     <button key={t} type="button" onClick={() => toggleAnimal(t)}
-                      className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary" : "hover:bg-accent"}`}>
+                      className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90" : "hover:bg-muted"}`}>
                       {t}
                     </button>
                   );
@@ -202,7 +202,7 @@ export function DoctorRegistrationPage() {
                       const on = selectedSpecialtyIds.includes(s.id);
                       return (
                         <button key={s.id} type="button" onClick={() => toggleSpecialty(s.id)}
-                          className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary" : "hover:bg-accent"}`}>
+                          className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90" : "hover:bg-muted"}`}>
                           {s.name}
                         </button>
                       );

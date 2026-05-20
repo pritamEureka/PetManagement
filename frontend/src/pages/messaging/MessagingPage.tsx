@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Send, MessageSquare, Search, Archive, ArchiveX, BellOff, Bell, Ban, MoreHorizontal, Eye } from "lucide-react";
+import { Send, MessageSquare, Search, Archive, ArchiveX, BellOff, Bell, Ban, MoreHorizontal, Eye, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ export function MessagingPage() {
   const [blockTarget, setBlockTarget] = useState<{ userId: string; displayName: string } | null>(null);
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [threadClosed, setThreadClosed] = useState(false);
 
   const { data: convos, isLoading: loadingList } = useQuery({
     queryKey: ["conversations", includeArchived, search],
@@ -51,8 +52,8 @@ export function MessagingPage() {
   const active = useMemo(() => convos?.find((c) => c.id === activeId), [convos, activeId]);
 
   useEffect(() => {
-    if (!activeId && convos && convos.length > 0) setSearchParams({ c: convos[0].id }, { replace: true });
-  }, [convos, activeId, setSearchParams]);
+    if (!activeId && !threadClosed && convos && convos.length > 0) setSearchParams({ c: convos[0].id }, { replace: true });
+  }, [convos, activeId, threadClosed, setSearchParams]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -205,7 +206,7 @@ export function MessagingPage() {
               onClick={() => setTab("chats")}
               className={cn(
                 "text-xs font-medium px-2 py-1.5 rounded transition-colors",
-                tab === "chats" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                tab === "chats" ? "bg-background shadow-sm hover:bg-muted" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >Chats</button>
             <button
@@ -213,7 +214,7 @@ export function MessagingPage() {
               onClick={() => setTab("people")}
               className={cn(
                 "text-xs font-medium px-2 py-1.5 rounded transition-colors",
-                tab === "people" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                tab === "people" ? "bg-background shadow-sm hover:bg-muted" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >People</button>
           </div>
@@ -252,8 +253,8 @@ export function MessagingPage() {
                 {convos.map((c) => (
                   <ConversationRow key={c.id} c={c} active={c.id === activeId}
                     presence={presence}
-                    onClick={() => setSearchParams({ c: c.id }, { replace: true })}
-                    onMessage={() => setSearchParams({ c: c.id }, { replace: true })}
+                    onClick={() => { setThreadClosed(false); setSearchParams({ c: c.id }, { replace: true }); }}
+                    onMessage={() => { setThreadClosed(false); setSearchParams({ c: c.id }, { replace: true }); }}
                     onViewProfile={(userId) => nav(`/u/${userId}`)} />
                 ))}
               </ul>
@@ -269,6 +270,7 @@ export function MessagingPage() {
                   // Chats tab next time the user switches back.
                   qc.invalidateQueries({ queryKey: ["conversations"] });
                   setTab("chats");
+                  setThreadClosed(false);
                   setSearchParams({ c: conv.id }, { replace: true });
                 } catch (err: any) {
                   toast.error(err?.response?.data?.error?.message ?? "Couldn't open chat.");
@@ -290,7 +292,7 @@ export function MessagingPage() {
         ) : (
           <>
             <div className="md:hidden p-2 border-b">
-              <Button variant="ghost" size="sm" onClick={() => setSearchParams({}, { replace: true })}>
+              <Button variant="ghost" size="sm" onClick={() => { setThreadClosed(true); setSearchParams({}, { replace: true }); }}>
                 ← Back
               </Button>
             </div>
@@ -300,6 +302,7 @@ export function MessagingPage() {
               onArchive={toggleArchive}
               onMute={toggleMute}
               onBlock={blockOther}
+              onClose={() => { setThreadClosed(true); setSearchParams({}, { replace: true }); }}
             />
             <ScrollArea className="flex-1 p-4">
               {loadingHistory ? (
@@ -389,7 +392,7 @@ function ConversationRow({ c, active, presence, onClick, onViewProfile, onMessag
         onClick={onClick}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
         className={cn(
-          "w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors cursor-pointer",
+          "w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-background/80 dark:hover:bg-background/60 transition-colors cursor-pointer",
           "focus:outline-none focus-visible:bg-accent",
           active && "bg-accent"
         )}
@@ -441,9 +444,9 @@ function ConversationRow({ c, active, presence, onClick, onViewProfile, onMessag
   );
 }
 
-function ConversationHeader({ c, presence, onArchive, onMute, onBlock }: {
+function ConversationHeader({ c, presence, onArchive, onMute, onBlock, onClose }: {
   c: ConversationSummary; presence: Record<string, boolean>;
-  onArchive: () => void; onMute: () => void; onBlock: () => void;
+  onArchive: () => void; onMute: () => void; onBlock: () => void; onClose: () => void;
 }) {
   const other = c.participants[0];
   const online = other ? (presence[other.userId] ?? other.online) : false;
@@ -477,6 +480,9 @@ function ConversationHeader({ c, presence, onArchive, onMute, onBlock }: {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Button variant="ghost" size="icon" onClick={onClose} title="Close conversation">
+        <X className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
@@ -536,7 +542,7 @@ function PersonRow({ u, onView, onMessage }: {
     finally { setBusy(false); }
   }
   return (
-    <li className="flex items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors">
+    <li className="flex items-center gap-3 px-3 py-2.5 hover:bg-background/80 dark:hover:bg-background/60 transition-colors">
       <Avatar>
         <AvatarImage src={u.avatarUrl ?? undefined} />
         <AvatarFallback>{u.displayName?.[0] ?? "?"}</AvatarFallback>

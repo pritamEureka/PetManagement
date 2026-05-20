@@ -130,7 +130,7 @@ export function CartPage() {
                 <div className="flex justify-between text-sm text-emerald-600">
                   <span className="flex items-center gap-1">
                     <Tag className="h-3 w-3" /> {appliedCoupon.code}
-                    <button onClick={() => setCoupon(null)} className="ml-1 text-muted-foreground hover:text-foreground">
+                    <button onClick={() => setCoupon(null)} className="ml-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </span>

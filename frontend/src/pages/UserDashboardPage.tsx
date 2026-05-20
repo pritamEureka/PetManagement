@@ -54,7 +54,7 @@ export function UserDashboardPage() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {pets.slice(0, 6).map((p) => (
-                  <Link key={p.id} to={`/pets/${p.id}`} className="rounded-lg border hover:bg-accent transition-colors p-3 flex items-center gap-3">
+                  <Link key={p.id} to={`/pets/${p.id}`} className="rounded-lg border hover:bg-background/80 dark:hover:bg-background/60 transition-colors p-3 flex items-center gap-3">
                     <Avatar>
                       <AvatarImage src={p.primaryPhotoUrl ?? undefined} />
                       <AvatarFallback>{p.name[0]}</AvatarFallback>
@@ -117,7 +117,7 @@ export function UserDashboardPage() {
 
 function QuickAction({ to, icon: Icon, title, hint }: { to: string; icon: any; title: string; hint: string }) {
   return (
-    <Link to={to} className="flex items-center gap-3 rounded-md border p-3 hover:bg-accent transition-colors">
+    <Link to={to} className="flex items-center gap-3 rounded-md border p-3 hover:bg-background/80 dark:hover:bg-background/60 transition-colors">
       <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center"><Icon className="h-4 w-4 text-primary" /></div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">{title}</p>

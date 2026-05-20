@@ -180,7 +180,7 @@ export function AdoptionListingFormFields() {
               <div key={i} className="relative aspect-square rounded-md overflow-hidden bg-muted">
                 <img src={url} className="object-cover w-full h-full" />
                 <button type="button" onClick={() => removePhoto(i)}
-                  className="absolute top-1 right-1 rounded-full bg-black/60 text-white p-1">
+                  className="absolute top-1 right-1 rounded-full bg-black/60 text-white p-1 hover:bg-black/80">
                   <X className="h-3 w-3" />
                 </button>
               </div>

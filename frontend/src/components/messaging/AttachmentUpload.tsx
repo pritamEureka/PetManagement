@@ -80,7 +80,7 @@ export function AttachmentUpload({ attachments, onChange, disabled }: Props) {
             <div key={i} className="relative rounded-md border bg-muted/50 p-1.5 pr-7 text-xs flex items-center gap-1.5 max-w-[14rem]">
               {a.mimeType.startsWith("image/") ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
               <span className="truncate">{a.fileName}</span>
-              <button onClick={() => remove(i)} className="absolute right-1 top-1 rounded-full hover:bg-background p-0.5">
+              <button onClick={() => remove(i)} className="absolute right-1 top-1 rounded-full hover:bg-muted p-0.5">
                 <X className="h-3 w-3" />
               </button>
             </div>

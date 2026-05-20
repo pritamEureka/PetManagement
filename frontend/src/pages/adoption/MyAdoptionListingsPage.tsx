@@ -78,7 +78,7 @@ export function MyAdoptionListingsPage() {
         <div className="space-y-2">
           {items.map((l) => (
             <Link key={l.id} to={`/adoption/${l.id}`}>
-              <Card className="hover:bg-accent/30 transition-colors">
+              <Card className="hover:bg-background/80 dark:hover:bg-background/60 transition-colors">
                 <CardContent className="py-3 flex items-center gap-3">
                   <div className="h-14 w-14 rounded-md bg-muted overflow-hidden flex-shrink-0">
                     {l.photoUrls?.[0] && <img src={l.photoUrls[0]} className="object-cover w-full h-full" />}

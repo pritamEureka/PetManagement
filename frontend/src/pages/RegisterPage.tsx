@@ -200,14 +200,14 @@ function RolePicker({
               onClick={() => choose(opt.value as SelfRegisterRole)}
               className={cn(
                 "group text-left rounded-lg border p-3 transition-all",
-                "hover:border-primary hover:bg-primary/5 hover:shadow-sm",
+                "hover:border-primary hover:bg-muted hover:shadow-sm",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 "disabled:opacity-60 disabled:cursor-not-allowed",
-                busy && "border-primary bg-primary/5"
+                busy && "border-primary bg-primary/5 hover:bg-primary/10"
               )}
             >
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 space-y-0.5">

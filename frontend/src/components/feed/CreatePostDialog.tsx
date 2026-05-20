@@ -95,7 +95,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreated }: Props) {
                   <img src={url} className="object-cover w-full h-full" />
                   <button type="button"
                     onClick={() => removeMedia(i)}
-                    className="absolute top-1 right-1 rounded-full bg-black/60 text-white p-1">
+                    className="absolute top-1 right-1 rounded-full bg-black/60 text-white p-1 hover:bg-black/80">
                     <X className="h-3 w-3" />
                   </button>
                 </div>
@@ -113,7 +113,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreated }: Props) {
               {hashtags.map((t) => (
                 <Badge key={t} variant="secondary" className="gap-1">
                   #{t}
-                  <button type="button" onClick={() => removeTag(t)}><X className="h-3 w-3" /></button>
+                  <button type="button" onClick={() => removeTag(t)} className="rounded-full hover:bg-secondary/80"><X className="h-3 w-3" /></button>
                 </Badge>
               ))}
             </div>

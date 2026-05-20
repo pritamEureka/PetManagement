@@ -65,7 +65,7 @@ export function FeedPage() {
       </Tabs>
 
       <Can permission="posts.create">
-        <Card className="cursor-pointer hover:bg-accent/40 transition-colors" onClick={() => setOpen(true)}>
+        <Card className="cursor-pointer hover:bg-background/80 dark:hover:bg-background/60 transition-colors" onClick={() => setOpen(true)}>
           <CardContent className="pt-4 pb-4 flex items-center gap-3">
             <Avatar>
               <AvatarImage src={me?.avatarUrl ?? undefined} />

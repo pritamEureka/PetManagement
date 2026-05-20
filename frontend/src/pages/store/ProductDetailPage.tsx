@@ -176,7 +176,7 @@ export function ProductDetailPage() {
                 <button
                   key={i}
                   onClick={() => setActiveImage(i)}
-                  className={`aspect-square rounded-md overflow-hidden border ${i === activeImage ? "ring-2 ring-primary" : ""}`}
+                  className={`aspect-square rounded-md overflow-hidden border transition-colors hover:bg-muted ${i === activeImage ? "ring-2 ring-primary" : ""}`}
                 >
                   <img src={src} className="object-cover w-full h-full" />
                 </button>
@@ -260,7 +260,7 @@ export function ProductDetailPage() {
               <p className="font-semibold text-sm">{editingReviewId ? "Edit your review" : "Write a review"}</p>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} type="button" onClick={() => setReviewRating(n)}>
+                  <button key={n} type="button" onClick={() => setReviewRating(n)} className="rounded-md p-0.5 hover:bg-muted">
                     <Star className={`h-5 w-5 ${n <= reviewRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
                   </button>
                 ))}
@@ -275,7 +275,7 @@ export function ProductDetailPage() {
                       <img src={url} className="object-cover w-full h-full" />
                       <button
                         type="button"
-                        className="absolute top-0 right-0 bg-background/90 rounded-bl p-0.5"
+                        className="absolute top-0 right-0 bg-background/90 rounded-bl p-0.5 hover:bg-muted"
                         onClick={() => setReviewImages(reviewImages.filter((_, idx) => idx !== i))}
                       >
                         <X className="h-3 w-3" />

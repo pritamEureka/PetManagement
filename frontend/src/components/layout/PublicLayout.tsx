@@ -11,11 +11,11 @@ export function PublicLayout() {
           <Link to="/" className="flex items-center gap-2 font-bold text-lg">
             <PawPrint className="h-5 w-5 text-primary" /> Pawzaroo
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <Link to="/#features" className="text-muted-foreground hover:text-foreground">Features</Link>
-            <Link to="/#vets" className="text-muted-foreground hover:text-foreground">Find a vet</Link>
-            <Link to="/#adoption" className="text-muted-foreground hover:text-foreground">Adopt</Link>
-            <Link to="/#marketplace" className="text-muted-foreground hover:text-foreground">Marketplace</Link>
+          <nav className="hidden md:flex items-center gap-1 text-sm">
+            <Link to="/#features" className="rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">Features</Link>
+            <Link to="/#vets" className="rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">Find a vet</Link>
+            <Link to="/#adoption" className="rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">Adopt</Link>
+            <Link to="/#marketplace" className="rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">Marketplace</Link>
           </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />

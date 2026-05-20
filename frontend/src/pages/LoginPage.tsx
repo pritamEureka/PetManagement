@@ -122,7 +122,7 @@ export function LoginPage() {
                 Verify and sign in
               </Button>
               <button type="button"
-                className="text-xs text-muted-foreground hover:underline w-full text-center"
+                className="w-full rounded-md py-1 text-center text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                 onClick={() => useAuthStore.getState().clearTwoFactor()}>
                 Use a different account
               </button>

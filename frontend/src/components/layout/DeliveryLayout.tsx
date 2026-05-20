@@ -36,7 +36,7 @@ export function DeliveryLayout() {
               key={to} to={to} end={end}
               className={({ isActive }) => cn(
                 "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                isActive ? "bg-muted text-foreground dark:bg-muted/80 dark:text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground dark:hover:bg-muted/40"
               )}
             >
               <Icon className="h-4 w-4" /> <span className="hidden sm:inline">{label}</span>

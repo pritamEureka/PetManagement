@@ -79,7 +79,7 @@ export function EditPostDialog({ open, onOpenChange, post, onSaved }: Props) {
               {hashtags.map((t) => (
                 <Badge key={t} variant="secondary" className="gap-1">
                   #{t}
-                  <button type="button" onClick={() => setValue("hashtags", hashtags.filter((x) => x !== t))}>
+                  <button type="button" onClick={() => setValue("hashtags", hashtags.filter((x) => x !== t))} className="rounded-full hover:bg-secondary/80">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>

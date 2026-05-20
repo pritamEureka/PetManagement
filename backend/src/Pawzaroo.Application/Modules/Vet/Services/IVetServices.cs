@@ -20,6 +20,7 @@ public interface IVetDoctorService
     Task VerifyCredentialAsync(Guid credentialId, bool verified, CancellationToken ct = default);
 
     // Admin
+    Task<CursorPage<DoctorSummaryDto>> AdminListAsync(ApprovalStatus status, string? cursor = null, int pageSize = 20, CancellationToken ct = default);
     Task ApproveAsync(Guid doctorId, string? adminNotes, CancellationToken ct = default);
     Task RejectAsync(Guid doctorId, string? adminNotes, CancellationToken ct = default);
     Task SuspendAsync(Guid doctorId, string? reason, CancellationToken ct = default);

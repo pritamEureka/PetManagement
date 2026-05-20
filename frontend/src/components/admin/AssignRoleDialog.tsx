@@ -5,6 +5,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { rbacApi, type RoleDto, type UserRolesView } from "@/api/rbac";
+import { toast } from "@/components/ui/sonner";
 
 interface Props {
   open: boolean;
@@ -12,9 +13,10 @@ interface Props {
   userId: string;
   userDisplayName?: string;
   allRoles: RoleDto[];
+  onChanged?: () => void;
 }
 
-export function AssignRoleDialog({ open, onOpenChange, userId, userDisplayName, allRoles }: Props) {
+export function AssignRoleDialog({ open, onOpenChange, userId, userDisplayName, allRoles, onChanged }: Props) {
   const [view, setView] = useState<UserRolesView | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,12 +27,15 @@ export function AssignRoleDialog({ open, onOpenChange, userId, userDisplayName, 
   useEffect(() => { if (open) { setError(null); reload(); } }, [open, userId]);
 
   async function toggle(roleId: string, currentlyAssigned: boolean) {
+    const roleName = allRoles.find((r) => r.id === roleId)?.name ?? "Role";
     setBusy(roleId); setError(null);
     try {
       currentlyAssigned
         ? await rbacApi.revokeRole(userId, roleId)
         : await rbacApi.assignRole(userId, roleId);
-      await reload();
+      toast.success(currentlyAssigned ? `Revoked ${roleName}.` : `Assigned ${roleName}.`);
+      onChanged?.();
+      onOpenChange(false);
     } catch (err: any) {
       setError(err?.response?.data?.error?.message ?? "Operation failed.");
     } finally { setBusy(null); }

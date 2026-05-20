@@ -17,13 +17,9 @@ import { PromptDialog } from "@/components/common/PromptDialog";
 
 export function DoctorApprovalPage() {
   const qc = useQueryClient();
-  // The vets search endpoint returns only approved doctors. To list pending
-  // applications we hit the admin commission-report-style queue isn't available
-  // yet — for now this view shows approved doctors with credential management.
-  // In production, swap to a `/admin/doctors?status=Pending` endpoint.
   const { data, isLoading } = useQuery({
     queryKey: ["admin-doctors"],
-    queryFn: () => vetsApi.search({ pageSize: 50 })
+    queryFn: () => vetsApi.adminList({ status: "Pending", pageSize: 50 })
   });
   const [rejectTarget, setRejectTarget] = useState<DoctorSummary | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<DoctorSummary | null>(null);

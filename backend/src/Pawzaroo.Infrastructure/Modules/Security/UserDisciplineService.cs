@@ -131,6 +131,39 @@ public class UserDisciplineService : IUserDisciplineService
         await _adminLog.LogAsync("user.restore", "User", hold.UserId.ToString(), notes, new { suspensionId }, ct);
     }
 
+    public async Task RestoreUserAsync(Guid userId, string? notes, CancellationToken ct = default)
+    {
+        EnsurePermission(Permissions.Users.Restore);
+        var actor = _current.UserId ?? throw new ForbiddenException();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
+                   ?? throw new NotFoundException("User", userId);
+
+        // Lift the most recent active hold if there is one — emails + notifications
+        // are sent from LiftAsync. We delegate so behaviour stays identical to the
+        // "lift by suspensionId" path.
+        var activeId = await _db.UserSuspensions
+            .Where(s => s.UserId == userId && s.Status == SuspensionStatus.Active)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (activeId is not null)
+        {
+            await LiftAsync(activeId.Value, notes, ct);
+            return;
+        }
+
+        // No active suspension row but the flag is set — orphan state from a seed
+        // or a partial earlier flow. Clear the flag idempotently so the UI unsticks.
+        if (user.IsSuspended)
+        {
+            user.IsSuspended = false;
+            await _db.SaveChangesAsync(ct);
+            await _adminLog.LogAsync("user.restore", "User", userId.ToString(),
+                notes ?? "Cleared orphan suspension flag", new { userId, orphan = true }, ct);
+        }
+    }
+
     public async Task<UserSuspensionDto?> GetActiveAsync(Guid userId, CancellationToken ct = default)
     {
         return await _db.UserSuspensions.AsNoTracking()

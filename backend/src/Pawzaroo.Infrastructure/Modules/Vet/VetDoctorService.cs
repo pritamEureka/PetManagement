@@ -32,6 +32,9 @@ public class VetDoctorService : IVetDoctorService
         _current.Permissions.Contains(Permissions.Vets.Approve)
         || _current.Permissions.Contains(Permissions.Vets.Reject);
 
+    private bool CanReviewApprovalQueue =>
+        IsAdmin || _current.Permissions.Contains(Permissions.Vets.Suspend);
+
     public async Task<CursorPage<DoctorSummaryDto>> SearchAsync(DoctorSearchInput input, CancellationToken ct = default)
     {
         var q = _db.Doctors.AsNoTracking().Where(d => d.ApprovalStatus == ApprovalStatus.Approved);
@@ -73,6 +76,46 @@ public class VetDoctorService : IVetDoctorService
         };
 
         var rows = await orderedQ.Take(take + 1)
+            .Select(d => new
+            {
+                d.Id, d.UserId, Name = d.User.DisplayName, d.User.AvatarUrl,
+                d.Specialty, d.ClinicName, d.City, d.Country,
+                d.ConsultationFee, d.ConsultationType, d.OnlineAvailable, d.OfflineAvailable,
+                d.RatingAverage, d.RatingCount, d.ApprovalStatus, d.CreatedAt,
+                SupportedAnimalTypes = d.SupportedAnimalTypes.Select(a => a.AnimalType).ToList(),
+                Specialties = _db.DoctorSpecialties.Where(s => s.DoctorId == d.Id).Select(s => s.Specialty.Name).ToList()
+            })
+            .ToListAsync(ct);
+
+        string? next = null;
+        if (rows.Count > take)
+        {
+            var last = rows[take - 1];
+            next = VetCursor.Encode(last.CreatedAt, last.Id);
+            rows.RemoveAt(rows.Count - 1);
+        }
+
+        return new CursorPage<DoctorSummaryDto>(rows.Select(d => new DoctorSummaryDto(
+            d.Id, d.UserId, d.Name, d.AvatarUrl, d.Specialty, d.Specialties,
+            d.ClinicName, d.City, d.Country, d.ConsultationFee, d.ConsultationType,
+            d.OnlineAvailable, d.OfflineAvailable, d.RatingAverage, d.RatingCount,
+            d.ApprovalStatus, d.SupportedAnimalTypes)).ToList(), next);
+    }
+
+    public async Task<CursorPage<DoctorSummaryDto>> AdminListAsync(
+        ApprovalStatus status, string? cursor = null, int pageSize = 20, CancellationToken ct = default)
+    {
+        if (!CanReviewApprovalQueue) throw new ForbiddenException();
+
+        var q = _db.Doctors.AsNoTracking().Where(d => d.ApprovalStatus == status);
+
+        var cur = VetCursor.Decode(cursor);
+        if (cur is { } c)
+            q = q.Where(d => d.CreatedAt < c.Ts || (d.CreatedAt == c.Ts && d.Id.CompareTo(c.Id) < 0));
+
+        var take = Math.Clamp(pageSize, 1, 50);
+        var rows = await q.OrderByDescending(d => d.CreatedAt).ThenByDescending(d => d.Id)
+            .Take(take + 1)
             .Select(d => new
             {
                 d.Id, d.UserId, Name = d.User.DisplayName, d.User.AvatarUrl,

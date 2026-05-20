@@ -51,6 +51,15 @@ public interface IUserDisciplineService
         DateTime? expiresAt, bool isBan, CancellationToken ct = default);
 
     Task LiftAsync(Guid suspensionId, string? notes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Idempotent restore by user id. Lifts the active suspension if there is
+    /// one, and clears <c>User.IsSuspended</c> regardless. Safe to call when
+    /// the user has no active hold (e.g. seeded suspended demo users that
+    /// never had a UserSuspension row).
+    /// </summary>
+    Task RestoreUserAsync(Guid userId, string? notes, CancellationToken ct = default);
+
     Task<UserSuspensionDto?> GetActiveAsync(Guid userId, CancellationToken ct = default);
 
     Task<UserWarning> WarnAsync(Guid userId, WarningSeverity severity, string reason,

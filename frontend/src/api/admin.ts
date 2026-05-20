@@ -67,19 +67,9 @@ export const adminApi = {
   suspend: (id: string, reason = "Suspended by admin") =>
     api.post(`/v1/moderation/users/${id}/suspend`, { reason }),
 
-  // Restore = lift the active suspension. We look up the suspension first since
-  // the moderation API keys lifts by suspensionId, not userId. A 404 just means
-  // "no active suspension" — opt out of the global error toast for that probe.
-  restore: async (id: string) => {
-    try {
-      const active = await api
-        .get<{ id: string }>(`/v1/moderation/users/${id}/active-suspension`, { skipErrorToast: true })
-        .then((r) => r.data);
-      if (!active?.id) return;
-      await api.post(`/v1/moderation/suspensions/${active.id}/lift`, { notes: null });
-    } catch (err: any) {
-      if (err?.response?.status === 404) return; // not currently suspended
-      throw err;
-    }
-  }
+  // Restore is keyed by userId on the server — it lifts the active suspension
+  // (if any) and idempotently clears User.IsSuspended, which also unsticks
+  // seeded users whose IsSuspended flag was set without a UserSuspension row.
+  restore: (id: string) =>
+    api.post(`/v1/moderation/users/${id}/restore`, { notes: null })
 };

@@ -62,6 +62,14 @@ public class ModerationController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("users/{userId:guid}/restore")]
+    [Permission(Permissions.Users.Restore)]
+    public async Task<IActionResult> RestoreUser(Guid userId, [FromBody] LiftBody? body, CancellationToken ct)
+    {
+        await _discipline.RestoreUserAsync(userId, body?.Notes, ct);
+        return NoContent();
+    }
+
     [HttpPost("users/{userId:guid}/warn")]
     [Permission(Permissions.Users.Suspend)]
     public async Task<IActionResult> Warn(Guid userId, [FromBody] WarnBody body, CancellationToken ct)

@@ -121,7 +121,9 @@ public class PermissionService : IPermissionService
             await _db.SaveChangesAsync(ct);
         }
         await InvalidateUserCacheAsync(userId, ct);
-        await _audit.LogAsync("assign", "UserRole", $"{userId}:{roleId}", "RBAC",
+        // EntityId is varchar(64); a "userId:roleId" composite of two GUIDs is 73 chars
+        // and would fail the insert. Store userId here; roleId is captured in newValues.
+        await _audit.LogAsync("assign", "UserRole", userId.ToString(), "RBAC",
             newValues: new { userId, roleId, roleName = role.Name }, ct: ct);
     }
 
@@ -132,7 +134,7 @@ public class PermissionService : IPermissionService
         _db.UserRoles.Remove(ur);
         await _db.SaveChangesAsync(ct);
         await InvalidateUserCacheAsync(userId, ct);
-        await _audit.LogAsync("revoke", "UserRole", $"{userId}:{roleId}", "RBAC",
+        await _audit.LogAsync("revoke", "UserRole", userId.ToString(), "RBAC",
             oldValues: new { userId, roleId }, ct: ct);
     }
 

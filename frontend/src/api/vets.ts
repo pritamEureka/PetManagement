@@ -108,6 +108,8 @@ export const vetsApi = {
     city?: string; type?: string; maxPrice?: number; minRating?: number;
     availableThisWeek?: boolean; sort?: string;
   } = {}) => unwrap<CursorPage<DoctorSummary>>(api.get("/v1/vets", { params })),
+  adminList: (params: { cursor?: string; pageSize?: number; status?: string } = {}) =>
+    unwrap<CursorPage<DoctorSummary>>(api.get("/v1/vets/admin", { params })),
 
   specialties: () => unwrap<Specialty[]>(api.get("/v1/vets/specialties")),
   get:         (id: string) => unwrap<DoctorDetail>(api.get(`/v1/vets/${id}`)),

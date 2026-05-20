@@ -271,6 +271,7 @@ export function UsersPage() {
           userId={roleUser.id}
           userDisplayName={roleUser.displayName}
           allRoles={roles ?? []}
+          onChanged={refresh}
         />
       )}
 

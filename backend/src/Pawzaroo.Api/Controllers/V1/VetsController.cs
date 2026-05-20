@@ -122,6 +122,15 @@ public class VetsController : ControllerBase
 
     // ---------- Admin moderation ----------
 
+    [HttpGet("admin")]
+    [Authorize]
+    public Task<CursorPage<DoctorSummaryDto>> AdminList(
+        [FromQuery] ApprovalStatus status = ApprovalStatus.Pending,
+        [FromQuery] string? cursor = null,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+        => _doctors.AdminListAsync(status, cursor, pageSize, ct);
+
     [HttpPost("{id:guid}/approve")]
     [Authorize]
     [Permission(Permissions.Vets.Approve)]

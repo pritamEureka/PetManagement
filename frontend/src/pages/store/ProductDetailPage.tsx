@@ -171,7 +171,7 @@ export function ProductDetailPage() {
               : <div className="flex items-center justify-center h-full text-muted-foreground"><ShoppingBag className="h-16 w-16" /></div>}
           </div>
           {product.imageUrls.length > 1 && (
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
               {product.imageUrls.map((src, i) => (
                 <button
                   key={i}

@@ -11,7 +11,7 @@ export function VetDashboardPage() {
         <p className="text-sm text-muted-foreground">Today's appointments, pending follow-ups, and revenue snapshot.</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <StatTile label="Today" value="3" Icon={Calendar} />
         <StatTile label="This week" value="14" Icon={Calendar} />
         <StatTile label="Prescriptions issued" value="42" Icon={FileText} />

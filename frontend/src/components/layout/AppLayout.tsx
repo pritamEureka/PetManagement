@@ -40,6 +40,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useCartStore } from "@/store/cartStore";
 
 interface NavItem {
   to: string;
@@ -340,6 +341,25 @@ function NotificationBellBadge() {
   );
 }
 
+function FloatingCartBar() {
+  const lines = useCartStore((s) => s.lines);
+  const count = lines.reduce((n, l) => n + l.quantity, 0);
+  if (count === 0) return null;
+  return (
+    <div className="sticky bottom-0 z-40 p-3 pointer-events-none">
+      <div className="max-w-lg mx-auto pointer-events-auto">
+        <Link
+          to="/cart"
+          className="flex items-center justify-center gap-2 w-full rounded-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 shadow-lg transition-colors"
+        >
+          <ShoppingBag className="h-5 w-5" />
+          View Your Cart ({count})
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export function AppLayout() {
   const { user, logout } = useAuthStore();
   const { roles } = usePermissions();
@@ -601,6 +621,7 @@ export function AppLayout() {
               <Outlet />
             </ErrorBoundary>
           </div>
+          <FloatingCartBar />
         </main>
       </div>
     </div>

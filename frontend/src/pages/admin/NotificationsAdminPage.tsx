@@ -90,7 +90,7 @@ export function AdminNotificationsPage() {
         </TabsContent>
 
         <TabsContent value="send">
-          <div className="grid lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader><CardTitle className="text-base">Send to one user</CardTitle></CardHeader>
               <CardContent className="space-y-3">

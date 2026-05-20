@@ -194,7 +194,7 @@ export function MessagingPage() {
     active?.participants.find((p) => p.userId === uid)?.displayName ?? "Someone");
 
   return (
-    <div className="h-[calc(100vh-6rem)] grid grid-cols-1 md:grid-cols-[18rem_1fr] lg:grid-cols-[20rem_1fr] gap-3">
+    <div className="h-[calc(100vh-6rem)] grid grid-cols-1 md:grid-cols-[16rem_1fr] lg:grid-cols-[20rem_1fr] gap-2 sm:gap-3">
       <Card className={cn("flex flex-col", activeId ? "hidden md:flex" : "flex")}>
         <div className="p-3 border-b space-y-2">
           {/* Tab switcher: Chats (existing conversations) vs People (directory of
@@ -324,7 +324,7 @@ export function MessagingPage() {
 
             <TypingIndicator names={typingNames} />
 
-            <div className="border-t p-3 flex gap-2 items-end">
+            <div className="border-t p-2 sm:p-3 flex gap-2 items-end">
               <AttachmentUpload attachments={attachments} onChange={setAttachments} />
               <Input
                 placeholder="Type a message..."

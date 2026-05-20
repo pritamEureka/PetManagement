@@ -58,7 +58,7 @@ export function FeedPage() {
       <PageHeader title="Feed" icon={Home} description="Latest from your pet community." />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList className="grid grid-cols-2 w-full max-w-xs">
+        <TabsList className="grid grid-cols-2 w-full sm:max-w-xs">
           <TabsTrigger value="public">Public</TabsTrigger>
           <TabsTrigger value="following">Following</TabsTrigger>
         </TabsList>

@@ -74,7 +74,7 @@ export function CartPage() {
               {lines.map((l) => {
                 const overStock = l.stockAvailable !== undefined && l.quantity > l.stockAvailable;
                 return (
-                  <div key={l.productId} className="py-4 flex gap-3 items-center">
+                  <div key={l.productId} className="py-4 flex gap-2 sm:gap-3 items-start sm:items-center flex-wrap sm:flex-nowrap">
                     <div className="h-16 w-16 bg-muted rounded overflow-hidden flex-shrink-0">
                       {l.image && <img src={l.image} className="object-cover w-full h-full" />}
                     </div>

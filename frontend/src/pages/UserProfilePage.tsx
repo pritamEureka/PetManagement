@@ -46,12 +46,12 @@ export function UserProfilePage() {
       </Button>
 
       <Card>
-        <CardContent className="pt-6 flex items-center gap-4">
-          <Avatar className="h-16 w-16">
+        <CardContent className="pt-6 flex flex-col sm:flex-row items-center gap-4">
+          <Avatar className="h-14 w-14 sm:h-16 sm:w-16">
             <AvatarFallback>{profile?.displayName?.[0] ?? "?"}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate">{profile?.displayName ?? "—"}</h1>
+          <div className="flex-1 min-w-0 text-center sm:text-left">
+            <h1 className="text-lg sm:text-xl font-bold truncate">{profile?.displayName ?? "—"}</h1>
             <p className="text-xs text-muted-foreground">Posts: {items.length}{hasNextPage ? "+" : ""}</p>
           </div>
           {/* Don't show "Message" on the user's own profile — they'd be DM-ing themselves. */}

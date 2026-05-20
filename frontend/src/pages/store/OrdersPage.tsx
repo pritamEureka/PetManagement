@@ -51,9 +51,9 @@ export function OrdersPage() {
               <CardContent className="space-y-2">
                 <div className="text-sm space-y-1">
                   {o.items.map((i) => (
-                    <div key={i.id} className="flex justify-between">
-                      <span>{i.quantity}× {i.productName} <span className="text-xs text-muted-foreground">({i.storeName})</span></span>
-                      <span>${i.total.toFixed(2)}</span>
+                    <div key={i.id} className="flex flex-col sm:flex-row sm:justify-between gap-0.5">
+                      <span className="truncate">{i.quantity}× {i.productName} <span className="text-xs text-muted-foreground">({i.storeName})</span></span>
+                      <span className="text-right">${i.total.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>

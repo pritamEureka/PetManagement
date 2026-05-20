@@ -58,12 +58,12 @@ export function OrderDetailPage() {
       <Button variant="ghost" size="sm" asChild><Link to="/orders"><ArrowLeft className="h-4 w-4 mr-1" /> Back to orders</Link></Button>
 
       <Card>
-        <CardHeader className="flex flex-row justify-between items-start space-y-0">
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start gap-2 space-y-0">
           <div>
             <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> {order.orderNumber}</CardTitle>
             <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge>{order.status}</Badge>
             <Badge variant="outline">{order.paymentStatus}</Badge>
             <Badge variant="outline" className="flex items-center gap-1"><RefreshCw className="h-3 w-3" />{order.shipmentStatus}</Badge>
@@ -82,18 +82,36 @@ export function OrderDetailPage() {
               </p>
             </div>
           ) : (
-            <div className="flex items-center justify-between mb-4">
-              {STEPS.map((s, i) => (
-                <div key={s.key} className="flex-1 flex items-center">
-                  <div className={`h-7 w-7 rounded-full grid place-items-center text-xs font-medium
-                    ${i <= stepIndex ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {i + 1}
+            <>
+              {/* Mobile: vertical stepper showing labels */}
+              <div className="sm:hidden mb-4 flex flex-col gap-1.5">
+                {STEPS.map((s, i) => (
+                  <div key={s.key} className="flex items-center gap-2">
+                    <div className={`h-6 w-6 rounded-full grid place-items-center text-[10px] font-medium flex-shrink-0
+                      ${i <= stepIndex ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                      {i + 1}
+                    </div>
+                    <span className={`text-xs ${i <= stepIndex ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                      {s.label}
+                    </span>
+                    {i === stepIndex && <span className="text-[10px] text-primary font-medium ml-auto">Current</span>}
                   </div>
-                  <span className="ml-2 text-xs text-muted-foreground">{s.label}</span>
-                  {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 mx-2 ${i < stepIndex ? "bg-primary" : "bg-muted"}`} />}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {/* Desktop: horizontal stepper */}
+              <div className="hidden sm:flex items-center justify-between mb-4">
+                {STEPS.map((s, i) => (
+                  <div key={s.key} className="flex-1 flex items-center min-w-0">
+                    <div className={`h-7 w-7 rounded-full grid place-items-center text-xs font-medium flex-shrink-0
+                      ${i <= stepIndex ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                      {i + 1}
+                    </div>
+                    <span className="ml-1 text-xs text-muted-foreground truncate">{s.label}</span>
+                    {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 mx-2 ${i < stepIndex ? "bg-primary" : "bg-muted"}`} />}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           <div className="grid sm:grid-cols-2 gap-3 text-sm">

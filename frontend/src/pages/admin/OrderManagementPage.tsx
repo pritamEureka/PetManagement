@@ -78,21 +78,21 @@ export function AdminOrderManagementPage() {
 
   const columns: Column<Order>[] = [
     { key: "no", header: "Order #", render: (o) => <span className="font-mono text-xs">{o.orderNumber}</span> },
-    { key: "buyer", header: "Buyer",
+    { key: "buyer", header: "Buyer", className: "hidden sm:table-cell",
       render: (o) => <span className="text-xs">{o.customerName ?? <span className="text-muted-foreground">{o.userId.slice(0, 8)}…</span>}</span> },
     { key: "items", header: "Items", render: (o) => o.items.length, className: "text-right w-16" },
-    { key: "total", header: "Total", className: "text-right w-24",
+    { key: "total", header: "Total", className: "text-right w-20 sm:w-24",
       render: (o) => <span className="font-semibold">${o.total.toFixed(2)}</span> },
     { key: "status", header: "Status",
       render: (o) => <Badge variant={STATUS_VARIANT[o.status] ?? "outline"}>{o.status}</Badge> },
-    { key: "ship", header: "Shipment", render: (o) => <Badge variant="outline">{o.shipmentStatus}</Badge> },
-    { key: "pay", header: "Payment", render: (o) => <Badge variant="outline">{o.paymentStatus}</Badge> },
-    { key: "courier", header: "Courier",
+    { key: "ship", header: "Shipment", className: "hidden md:table-cell", render: (o) => <Badge variant="outline">{o.shipmentStatus}</Badge> },
+    { key: "pay", header: "Payment", className: "hidden md:table-cell", render: (o) => <Badge variant="outline">{o.paymentStatus}</Badge> },
+    { key: "courier", header: "Courier", className: "hidden lg:table-cell",
       render: (o) => o.deliveryUserName
         ? <span className="text-xs">{o.deliveryUserName}</span>
         : <span className="text-xs text-muted-foreground">—</span>
     },
-    { key: "created", header: "Placed",
+    { key: "created", header: "Placed", className: "hidden lg:table-cell",
       render: (o) => <span className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</span> }
   ];
 

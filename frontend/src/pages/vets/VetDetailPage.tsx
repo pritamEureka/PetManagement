@@ -35,8 +35,8 @@ export function VetDetailPage() {
       <Button variant="ghost" size="sm" asChild><Link to="/vets"><ArrowLeft className="h-4 w-4 mr-1" /> All vets</Link></Button>
 
       <Card>
-        <CardHeader className="flex flex-row gap-4 space-y-0">
-          <Avatar className="h-20 w-20">
+        <CardHeader className="flex flex-col sm:flex-row gap-3 sm:gap-4 space-y-0">
+          <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
             <AvatarImage src={doctor.avatarUrl ?? undefined} />
             <AvatarFallback>{doctor.name[0]}</AvatarFallback>
           </Avatar>
@@ -49,7 +49,7 @@ export function VetDetailPage() {
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" /> {doctor.clinicName ?? ""}{doctor.city ? ` · ${doctor.city}` : ""}{doctor.country ? `, ${doctor.country}` : ""}
             </p>
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center flex-wrap gap-2 text-xs">
               {doctor.onlineAvailable && <Badge variant="secondary"><Video className="h-3 w-3 mr-1" /> Online</Badge>}
               {doctor.offlineAvailable && <Badge variant="muted"><Building2 className="h-3 w-3 mr-1" /> In-clinic</Badge>}
               <span className="flex items-center gap-1 text-amber-500"><Star className="h-3 w-3 fill-current" /> {doctor.ratingAverage.toFixed(1)} ({doctor.ratingCount})</span>

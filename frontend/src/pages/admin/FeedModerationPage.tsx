@@ -87,13 +87,13 @@ export function AdminFeedModerationPage() {
       render: (p) => p.reportsCount > 0
         ? <Badge variant="destructive">{p.reportsCount}</Badge>
         : <span className="text-muted-foreground">0</span> },
-    { key: "engagement", header: "Engagement",
+    { key: "engagement", header: "Engagement", className: "hidden sm:table-cell",
       render: (p) => <span className="text-xs text-muted-foreground">{p.reactionCount}♥ · {p.commentCount}💬</span> },
-    { key: "status", header: "Status",
+    { key: "status", header: "Status", className: "hidden sm:table-cell",
       render: (p) => p.isDeleted ? <Badge variant="outline">Hidden</Badge> : <Badge variant="secondary">Live</Badge> },
-    { key: "created", header: "Created",
+    { key: "created", header: "Created", className: "hidden md:table-cell",
       render: (p) => <span className="text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()}</span> },
-    { key: "actions", header: "", className: "w-44 text-right",
+    { key: "actions", header: "", className: "w-24 sm:w-44 text-right",
       render: (p) => (
         <div className="flex justify-end gap-1">
           <Button size="sm" variant="ghost"

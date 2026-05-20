@@ -89,7 +89,7 @@ export function CheckoutPage() {
                         checked={selectedAddressId === a.id}
                         onChange={() => setValue("shippingAddressId", a.id)}
                       />
-                      <div className="text-sm">
+                      <div className="text-sm break-words">
                         <p className="font-medium">{a.label} — {a.recipientName} {a.isDefault && <span className="text-xs text-primary">(default)</span>}</p>
                         <p className="text-muted-foreground">{a.addressLine1}{a.addressLine2 ? `, ${a.addressLine2}` : ""}</p>
                         <p className="text-muted-foreground">{[a.city, a.state, a.country, a.postalCode].filter(Boolean).join(", ")}</p>

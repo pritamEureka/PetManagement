@@ -203,7 +203,7 @@ export function UsersPage() {
           />
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm">
               <span className="text-muted-foreground">Page {page} of {totalPages}</span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>

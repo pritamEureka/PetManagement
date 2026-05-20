@@ -68,7 +68,7 @@ export function RolesPage() {
 
       {loading && <p className="text-muted-foreground">Loading...</p>}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {roles.map((r) => (
           <Card key={r.id}>
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">

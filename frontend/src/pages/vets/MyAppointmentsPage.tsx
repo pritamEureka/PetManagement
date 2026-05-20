@@ -89,7 +89,7 @@ export function MyAppointmentsPage() {
       <PageHeader title="My appointments" icon={Calendar}
         description="Upcoming, past, and pending vet bookings." />
 
-      <div className="w-64">
+      <div className="w-full sm:w-64">
         <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
           <SelectTrigger><SelectValue placeholder="Filter status" /></SelectTrigger>
           <SelectContent>
@@ -153,7 +153,7 @@ function AppointmentRow({ a, onCancel, onPay, onJoin, onReview }: {
 
   return (
     <Card>
-      <CardContent className="py-3 flex items-center gap-3">
+      <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
         <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center"><Icon className="h-5 w-5 text-primary" /></div>
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">Dr. {a.doctorName}</p>
@@ -162,7 +162,7 @@ function AppointmentRow({ a, onCancel, onPay, onJoin, onReview }: {
             {a.petName ? ` · ${a.petName}` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
           <AppointmentStatusBadge status={a.status} />
           {canPay && <Button size="sm" onClick={onPay}><CreditCard className="h-3.5 w-3.5 mr-1" /> Pay</Button>}
           {isOnline && a.status === "Confirmed" && <Button size="sm" onClick={onJoin}><Video className="h-3.5 w-3.5 mr-1" /> Join</Button>}

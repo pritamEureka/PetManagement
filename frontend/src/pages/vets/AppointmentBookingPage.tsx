@@ -69,7 +69,7 @@ export function AppointmentBookingPage() {
       </Button>
 
       <Card>
-        <CardHeader className="flex flex-row gap-3 items-center space-y-0">
+        <CardHeader className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center space-y-0">
           <Avatar><AvatarImage src={doctor.avatarUrl ?? undefined} /><AvatarFallback>{doctor.name[0]}</AvatarFallback></Avatar>
           <div className="flex-1">
             <CardTitle className="text-base">Dr. {doctor.name}</CardTitle>
@@ -78,7 +78,7 @@ export function AppointmentBookingPage() {
           <Badge variant="muted">${doctor.consultationFee.toFixed(2)}</Badge>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Pet (optional)</Label>
               <Select value={petId} onValueChange={setPetId}>
@@ -128,7 +128,7 @@ export function AppointmentBookingPage() {
             <p className="text-muted-foreground">Fee: <span className="text-foreground">${doctor.consultationFee.toFixed(2)}</span></p>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col sm:flex-row justify-end gap-2">
             <Button variant="outline" onClick={() => nav(-1)}>Cancel</Button>
             <Button onClick={book} disabled={!slot || busy}>{busy ? "Booking..." : "Confirm booking"}</Button>
           </div>

@@ -87,7 +87,7 @@ export function AdminDashboardPage() {
       </div>
 
       {/* Top breakdowns */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader><CardTitle className="text-base">Top animal types (30d)</CardTitle></CardHeader>
           <CardContent>

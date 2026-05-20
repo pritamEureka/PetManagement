@@ -103,14 +103,14 @@ export function AdoptionListPage() {
       </Card>
 
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-72 rounded-lg" />)}
         </div>
       ) : items.length === 0 ? (
         <EmptyState icon={HeartHandshake} title="No listings match your filters."
           description="Try widening your search, or check back later." />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {items.map((l) => (
             <Link key={l.id} to={`/adoption/${l.id}`}>
               <Card className="overflow-hidden hover:shadow-md transition-shadow h-full">

@@ -104,7 +104,7 @@ export function AdoptionDetailPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <Button variant="ghost" size="sm" asChild><Link to="/adoption"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link></Button>
 
-      <div className="grid lg:grid-cols-[1fr_22rem] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-3 lg:gap-4">
         {/* Main column */}
         <div className="space-y-4">
           <Card className="overflow-hidden">
@@ -114,7 +114,7 @@ export function AdoptionDetailPage() {
                 : <div className="flex items-center justify-center h-full text-muted-foreground"><HeartHandshake className="h-16 w-16" /></div>}
             </div>
             {listing.photoUrls.length > 1 && (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1 p-2 bg-muted/40">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 p-2 bg-muted/40">
                 {listing.photoUrls.slice(0, 5).map((src, i) => (
                   <div key={i} className="aspect-square rounded overflow-hidden">
                     <img src={src} className="object-cover w-full h-full" />
@@ -125,7 +125,7 @@ export function AdoptionDetailPage() {
             <CardContent className="pt-6 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h1 className="text-2xl font-bold">{listing.title}</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold">{listing.title}</h1>
                   {listing.petName && <p className="text-sm text-muted-foreground">Meet {listing.petName}</p>}
                 </div>
                 <Badge variant={STATUS_VARIANT[listing.status]}>{prettyStatus(listing.status)}</Badge>
@@ -148,7 +148,7 @@ export function AdoptionDetailPage() {
           </Card>
 
           {/* Details grid */}
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <DetailCard icon={Stethoscope} title="Health">
               <DetailRow label="Vaccinated" value={listing.vaccinated ? "Yes" : "No"} />
               <DetailRow label="Neutered / spayed" value={listing.neuteredSpayed ? "Yes" : "No"} />

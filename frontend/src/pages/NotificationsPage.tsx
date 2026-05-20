@@ -163,7 +163,7 @@ export function NotificationsPage() {
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
                   className={cn(
-                    "w-full flex items-start gap-3 p-4 text-left transition-colors hover:bg-accent/50",
+                    "w-full flex items-start gap-3 p-3 sm:p-4 text-left transition-colors hover:bg-accent/50",
                     !notification.isRead && "bg-primary/5"
                   )}
                 >

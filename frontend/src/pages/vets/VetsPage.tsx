@@ -66,13 +66,13 @@ export function VetsPage() {
       </Card>
 
       {isLoading ? (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32" />)}
         </div>
       ) : !data || data.items.length === 0 ? (
         <Card><CardContent className="py-16 text-center text-muted-foreground">No vets match those filters.</CardContent></Card>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.items.map((d) => (
             <Link key={d.id} to={`/vets/${d.id}`}>
               <Card className="hover:shadow-md transition-shadow h-full">

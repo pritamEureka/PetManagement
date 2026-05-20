@@ -135,7 +135,7 @@ export function StoreRegistrationPage() {
                 </div>
                 <Separator />
                 <div><Label>Address</Label><Input {...storeForm.register("address")} /></div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><Label>City</Label><Input {...storeForm.register("city")} /></div>
                   <div><Label>Country</Label><Input {...storeForm.register("country")} /></div>
                   <div><Label>Phone</Label><Input {...storeForm.register("phoneNumber")} /></div>

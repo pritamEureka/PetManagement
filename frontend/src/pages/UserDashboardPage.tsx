@@ -36,7 +36,7 @@ export function UserDashboardPage() {
         <StatTile label="Saved adoptions" value={0} icon={HeartHandshake} />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* My pets — span 2 */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -96,7 +96,7 @@ export function UserDashboardPage() {
           ) : (
             <div className="divide-y">
               {orders.items.slice(0, 3).map((o) => (
-                <div key={o.id} className="py-3 flex items-center justify-between">
+                <div key={o.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div>
                     <p className="text-sm font-medium">{o.orderNumber}</p>
                     <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>

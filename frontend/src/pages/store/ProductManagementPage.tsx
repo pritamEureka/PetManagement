@@ -55,16 +55,16 @@ export function ProductManagementPage() {
         <Card><CardContent className="py-12 text-center text-muted-foreground">No products yet.</CardContent></Card>
       ) : (
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b text-muted-foreground">
                 <tr className="text-left">
                   <th className="p-3">Product</th>
-                  <th className="p-3">SKU</th>
+                  <th className="p-3 hidden sm:table-cell">SKU</th>
                   <th className="p-3">Price</th>
-                  <th className="p-3">Stock</th>
-                  <th className="p-3">Rating</th>
-                  <th className="p-3">Status</th>
+                  <th className="p-3 hidden sm:table-cell">Stock</th>
+                  <th className="p-3 hidden md:table-cell">Rating</th>
+                  <th className="p-3 hidden md:table-cell">Status</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -81,22 +81,22 @@ export function ProductManagementPage() {
                           <Link to={`/dashboard/store/products/${p.id}`} className="font-medium hover:underline">{p.name}</Link>
                         </div>
                       </td>
-                      <td className="p-3 font-mono text-xs">{p.sku}</td>
+                      <td className="p-3 font-mono text-xs hidden sm:table-cell">{p.sku}</td>
                       <td className="p-3">
                         ${price.toFixed(2)}
                         {p.discountPrice != null && <span className="block text-xs text-muted-foreground line-through">${p.price.toFixed(2)}</span>}
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 hidden sm:table-cell">
                         <Badge variant={p.stockQuantity <= 0 ? "destructive" : p.stockQuantity < 5 ? "outline" : "secondary"}>
                           {p.stockQuantity}
                         </Badge>
                       </td>
-                      <td className="p-3 text-xs">
+                      <td className="p-3 text-xs hidden md:table-cell">
                         <span className="flex items-center gap-1 text-amber-500">
                           <Star className="h-3 w-3 fill-current" /> {p.ratingAverage.toFixed(1)} ({p.ratingCount})
                         </span>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 hidden md:table-cell">
                         {p.isActive
                           ? <Badge>Live</Badge>
                           : <Badge variant="outline">Hidden</Badge>}

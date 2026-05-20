@@ -61,7 +61,7 @@ export function StoreDashboardPage() {
         <Stat label="Avg rating" value={store.avgRating.toFixed(1)} Icon={Star} />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader><CardTitle className="text-base">Top products (30d)</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-2">

@@ -36,6 +36,11 @@ public class SslCommerzPaymentGateway : IPaymentGateway
         _log = log;
     }
 
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(_options.StoreId)
+        && !string.IsNullOrWhiteSpace(_options.StorePassword)
+        && !string.IsNullOrWhiteSpace(_options.BackendBaseUrl);
+
     public async Task<PaymentCheckoutResult> CreateCheckoutSessionAsync(
         PaymentCheckoutRequest request, CancellationToken ct = default)
     {
@@ -46,6 +51,16 @@ public class SslCommerzPaymentGateway : IPaymentGateway
 
         var backend = _options.BackendBaseUrl.TrimEnd('/');
         var orderId = request.OrderId.ToString();
+
+        // Per SSLCommerz EasyCheckout v4 docs, when shipping_method is sent
+        // (not "NO"), ALL ship_* fields incl. ship_state and ship_postcode are
+        // required, AND cus_postcode/cus_state are required for the customer.
+        // We default the optional ones to placeholders the gateway accepts —
+        // a one-off shipping address with no postcode still has to checkout.
+        var shipState   = NonEmpty(request.ShippingState,      "Dhaka");
+        var shipPost    = NonEmpty(request.ShippingPostalCode, "1000");
+        var shipCity    = NonEmpty(request.ShippingCity,       "Dhaka");
+        var shipCountry = NonEmpty(request.ShippingCountry,    "Bangladesh");
 
         var form = new Dictionary<string, string>
         {
@@ -60,25 +75,29 @@ public class SslCommerzPaymentGateway : IPaymentGateway
             ["cancel_url"]  = $"{backend}/api/v1/payments/sslcommerz/cancel",
             ["ipn_url"]     = $"{backend}/api/v1/payments/sslcommerz/ipn",
 
-            ["cus_name"]    = request.CustomerName    ?? "Customer",
-            ["cus_email"]   = request.CustomerEmail   ?? "noreply@pawzaroo.local",
-            ["cus_phone"]   = request.CustomerPhone   ?? "0000000000",
-            ["cus_add1"]    = request.ShippingAddress ?? "N/A",
-            ["cus_city"]    = request.ShippingCity    ?? "N/A",
-            ["cus_country"] = request.ShippingCountry ?? "Bangladesh",
+            // Customer block — name/email/add1/city/postcode/country are required.
+            ["cus_name"]      = NonEmpty(request.CustomerName,    "Customer"),
+            ["cus_email"]     = NonEmpty(request.CustomerEmail,   "noreply@pawzaroo.local"),
+            ["cus_add1"]      = NonEmpty(request.ShippingAddress, "N/A"),
+            ["cus_city"]      = shipCity,
+            ["cus_state"]     = shipState,
+            ["cus_postcode"]  = shipPost,
+            ["cus_country"]   = shipCountry,
+            ["cus_phone"]     = NonEmpty(request.CustomerPhone,   "01700000000"),
 
-            // Shipping mirrors customer for digital-light catalogs; non-zero
-            // shipping is collected in OrderService and rolled into total_amount.
+            // Shipping block — required because shipping_method is set.
             ["shipping_method"] = "Courier",
             ["num_of_item"]     = request.LineItems.Sum(li => li.Quantity).ToString(),
             ["product_name"]    = TruncateForGateway(string.Join(", ", request.LineItems.Select(li => li.Name)), 250),
             ["product_category"]= "general",
             ["product_profile"] = "general",
 
-            ["ship_name"]    = request.CustomerName ?? "Customer",
-            ["ship_add1"]    = request.ShippingAddress ?? "N/A",
-            ["ship_city"]    = request.ShippingCity    ?? "N/A",
-            ["ship_country"] = request.ShippingCountry ?? "Bangladesh",
+            ["ship_name"]     = NonEmpty(request.CustomerName,    "Customer"),
+            ["ship_add1"]     = NonEmpty(request.ShippingAddress, "N/A"),
+            ["ship_city"]     = shipCity,
+            ["ship_state"]    = shipState,
+            ["ship_postcode"] = shipPost,
+            ["ship_country"]  = shipCountry,
 
             ["value_a"] = orderId,
             ["value_b"] = request.OrderNumber
@@ -194,4 +213,7 @@ public class SslCommerzPaymentGateway : IPaymentGateway
 
     private static string TruncateForGateway(string s, int max) =>
         string.IsNullOrEmpty(s) ? "Order" : (s.Length <= max ? s : s.Substring(0, max));
+
+    private static string NonEmpty(string? value, string fallback) =>
+        string.IsNullOrWhiteSpace(value) ? fallback : value!;
 }

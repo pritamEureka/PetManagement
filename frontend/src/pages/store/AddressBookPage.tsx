@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { shippingAddressesApi } from "@/api/marketplace";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/schemas";
 import { toast } from "@/components/ui/sonner";
+import { CountryCityPicker } from "@/components/common/CountryCityPicker";
 
 export function AddressBookPage() {
   const qc = useQueryClient();
@@ -22,8 +23,12 @@ export function AddressBookPage() {
     queryFn: () => shippingAddressesApi.list()
   });
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } =
     useForm<ShippingAddressInput>({ resolver: zodResolver(shippingAddressSchema) });
+
+  const country = watch("country") ?? "";
+  const state = watch("state") ?? "";
+  const city = watch("city") ?? "";
 
   const create = useMutation({
     mutationFn: (input: ShippingAddressInput) => shippingAddressesApi.create({
@@ -65,12 +70,21 @@ export function AddressBookPage() {
               <div><Label>Phone</Label><Input {...register("phoneNumber")} /></div>
               <div><Label>Address line 1</Label><Input {...register("addressLine1")} /></div>
               <div><Label>Address line 2</Label><Input {...register("addressLine2")} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>City</Label><Input {...register("city")} /></div>
-                <div><Label>State</Label><Input {...register("state")} /></div>
-                <div><Label>Country</Label><Input {...register("country")} /></div>
-                <div><Label>Postal code</Label><Input {...register("postalCode")} /></div>
-              </div>
+
+              <CountryCityPicker
+                value={{ country, state, city }}
+                onChange={(v) => {
+                  setValue("country", v.country, { shouldDirty: true });
+                  setValue("state", v.state, { shouldDirty: true });
+                  setValue("city", v.city, { shouldDirty: true });
+                }}
+              />
+              {/* RHF still needs the registered fields so the values reach validation + submit. */}
+              <input type="hidden" {...register("country")} />
+              <input type="hidden" {...register("state")} />
+              <input type="hidden" {...register("city")} />
+
+              <div><Label>Postal code</Label><Input {...register("postalCode")} placeholder="e.g. 1000" /></div>
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox {...register("isDefault")} /> Set as default
               </label>

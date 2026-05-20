@@ -42,40 +42,68 @@ public class PaymentsController : ControllerBase
         _log = log;
     }
 
-    [HttpPost("success")]
-    [Consumes("application/x-www-form-urlencoded")]
+    // SSLCommerz returns the user's browser to these URLs via an auto-submitting
+    // form (POST with x-www-form-urlencoded body). We also accept GET so that
+    //   (a) the URL is directly testable in a browser, and
+    //   (b) refreshes / back-navigation don't 404. On GET there's no form data
+    //       to validate, so we just bounce the browser to the matching frontend
+    //       page — the page itself re-fetches the order and shows its true
+    //       status (the IPN endpoint will have already flipped Paid).
+
+    [HttpGet("success"), HttpPost("success")]
     public Task<IActionResult> Success(CancellationToken ct) =>
         HandleCallbackAsync(PaymentCallbackKind.Success, redirect: true, ct);
 
-    [HttpPost("fail")]
-    [Consumes("application/x-www-form-urlencoded")]
+    [HttpGet("fail"), HttpPost("fail")]
     public Task<IActionResult> Fail(CancellationToken ct) =>
         HandleCallbackAsync(PaymentCallbackKind.Fail, redirect: true, ct);
 
-    [HttpPost("cancel")]
-    [Consumes("application/x-www-form-urlencoded")]
+    [HttpGet("cancel"), HttpPost("cancel")]
     public Task<IActionResult> Cancel(CancellationToken ct) =>
         HandleCallbackAsync(PaymentCallbackKind.Cancel, redirect: true, ct);
 
+    // IPN is server-to-server only — keep it POST-only and don't redirect.
     [HttpPost("ipn")]
-    [Consumes("application/x-www-form-urlencoded")]
     public Task<IActionResult> Ipn(CancellationToken ct) =>
         HandleCallbackAsync(PaymentCallbackKind.Ipn, redirect: false, ct);
 
     private async Task<IActionResult> HandleCallbackAsync(
         PaymentCallbackKind kind, bool redirect, CancellationToken ct)
     {
-        var form = await Request.ReadFormAsync(ct);
-        var dict = form.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
+        // Read the form only when the request actually has one — Request.Form
+        // throws on GET / empty bodies. Falling back to the query string lets a
+        // refresh of the URL still recover an orderId for the redirect.
+        IDictionary<string, string> dict;
+        if (Request.HasFormContentType)
+        {
+            var form = await Request.ReadFormAsync(ct);
+            dict = form.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
+        }
+        else
+        {
+            dict = Request.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
+        }
 
         var result = await _gateway.VerifyCallbackAsync(dict, kind, ct);
+
+        // No form/data we could validate. For browser hits (GET), drop the user
+        // on the frontend page that matches the URL they reached — the page
+        // will fetch the order and show its current state. For IPN we 400.
         if (result is null)
         {
-            _log.LogWarning("SSLCommerz {Kind} callback could not be validated; form keys={Keys}",
+            _log.LogWarning("SSLCommerz {Kind} callback could not be validated; keys={Keys}",
                 kind, string.Join(",", dict.Keys));
-            return redirect
-                ? Redirect(_options.FrontendFailUrl.Replace("{ORDER_ID}", Guid.Empty.ToString()))
-                : BadRequest();
+            if (!redirect) return BadRequest();
+            var fallbackTemplate = kind switch
+            {
+                PaymentCallbackKind.Success => _options.FrontendSuccessUrl,
+                PaymentCallbackKind.Cancel  => _options.FrontendCancelUrl,
+                _                           => _options.FrontendFailUrl,
+            };
+            var orderHint = dict.TryGetValue("orderId", out var oid) ? oid
+                          : dict.TryGetValue("tran_id", out var tid) ? tid
+                          : Guid.Empty.ToString();
+            return Redirect(fallbackTemplate.Replace("{ORDER_ID}", orderHint));
         }
 
         switch (result.Outcome)

@@ -12,10 +12,14 @@ import { checkoutSchema, type CheckoutInput } from "@/lib/schemas";
 import { ordersV2Api, shippingAddressesApi } from "@/api/marketplace";
 import { useCartStore } from "@/store/cartStore";
 import { toast } from "@/components/ui/sonner";
+import { CountryCityPicker } from "@/components/common/CountryCityPicker";
 
 export function CheckoutPage() {
   const nav = useNavigate();
-  const { lines, subtotal, clear, appliedCoupon } = useCartStore();
+  // resetLocal — not clear() — because OrderService.CheckoutAsync already
+  // removed the CartItems inside its transaction. We just need to drop the
+  // optimistic local mirror.
+  const { lines, subtotal, resetLocal, appliedCoupon } = useCartStore();
 
   const { data: addresses } = useQuery({
     queryKey: ["shipping-addresses"],
@@ -26,6 +30,8 @@ export function CheckoutPage() {
     useForm<CheckoutInput>({ resolver: zodResolver(checkoutSchema) });
 
   const selectedAddressId = watch("shippingAddressId");
+  const country = watch("shippingCountry") ?? "";
+  const city = watch("shippingCity") ?? "";
 
   useEffect(() => {
     const def = addresses?.find((a) => a.isDefault) ?? addresses?.[0];
@@ -43,7 +49,7 @@ export function CheckoutPage() {
         paymentMethod: values.paymentMethod,
         couponCode: appliedCoupon?.code
       });
-      clear();
+      resetLocal();
 
       // Hosted-payment methods return a redirect URL the user must visit to
       // complete payment. Don't toast success yet — the order is still
@@ -98,14 +104,23 @@ export function CheckoutPage() {
 
             <details className="text-sm">
               <summary className="cursor-pointer text-muted-foreground">Or ship to a one-off address</summary>
-              <div className="space-y-2 pt-3">
-                <Label htmlFor="addr">Address</Label>
-                <Input id="addr" placeholder="123 Main St" {...register("shippingAddress")} />
-                {errors.shippingAddress && <p className="text-xs text-destructive">{errors.shippingAddress.message}</p>}
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label htmlFor="city">City</Label><Input id="city" {...register("shippingCity")} /></div>
-                  <div><Label htmlFor="country">Country</Label><Input id="country" {...register("shippingCountry")} /></div>
+              <div className="space-y-3 pt-3">
+                <div>
+                  <Label htmlFor="addr">Address</Label>
+                  <Input id="addr" placeholder="123 Main St" {...register("shippingAddress")} />
+                  {errors.shippingAddress && <p className="text-xs text-destructive">{errors.shippingAddress.message}</p>}
                 </div>
+                <CountryCityPicker
+                  showState={false}
+                  value={{ country, state: "", city }}
+                  onChange={(v) => {
+                    setValue("shippingCountry", v.country, { shouldDirty: true });
+                    setValue("shippingCity", v.city, { shouldDirty: true });
+                  }}
+                />
+                {/* Hidden inputs so RHF still tracks the values in the form. */}
+                <input type="hidden" {...register("shippingCountry")} />
+                <input type="hidden" {...register("shippingCity")} />
               </div>
             </details>
 

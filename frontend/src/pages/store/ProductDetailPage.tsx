@@ -149,10 +149,14 @@ export function ProductDetailPage() {
   const discounted = product.discountPrice != null && product.discountPrice < product.price;
   const outOfStock = product.stockQuantity <= 0;
 
-  function onAdd() {
+  async function onAdd() {
     if (!product) return;
-    add(product, qty);
-    toast.success(`${qty}× ${product.name} added to cart`);
+    try {
+      await add(product, qty);
+      toast.success(`${qty}× ${product.name} added to cart`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Could not add to cart.");
+    }
   }
 
   return (

@@ -65,17 +65,21 @@ export function WishlistPage() {
                         <Button
                           size="sm" className="flex-1"
                           disabled={outOfStock}
-                          onClick={() => {
-                            cartAdd({
-                              id: w.productId, name: w.productName, sku: "",
-                              price: w.price, discountPrice: w.discountPrice ?? null,
-                              stockQuantity: w.stockQuantity, isActive: true, isFeatured: false,
-                              ratingAverage: 0, ratingCount: 0,
-                              storeId: w.storeId, storeName: w.storeName,
-                              imageUrls: w.imageUrl ? [w.imageUrl] : [],
-                              createdAt: w.createdAt
-                            });
-                            toast.success("Added to cart");
+                          onClick={async () => {
+                            try {
+                              await cartAdd({
+                                id: w.productId, name: w.productName, sku: "",
+                                price: w.price, discountPrice: w.discountPrice ?? null,
+                                stockQuantity: w.stockQuantity, isActive: true, isFeatured: false,
+                                ratingAverage: 0, ratingCount: 0,
+                                storeId: w.storeId, storeName: w.storeName,
+                                imageUrls: w.imageUrl ? [w.imageUrl] : [],
+                                createdAt: w.createdAt
+                              });
+                              toast.success("Added to cart");
+                            } catch (err: any) {
+                              toast.error(err?.response?.data?.error?.message ?? "Could not add to cart.");
+                            }
                           }}
                         >
                           <ShoppingCart className="h-3.5 w-3.5 mr-1" /> Add

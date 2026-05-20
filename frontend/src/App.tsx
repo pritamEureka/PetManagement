@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
+import { CartHydrator } from "@/components/common/CartHydrator";
 
 // Layouts
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -142,6 +143,7 @@ export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
+        <CartHydrator />
         <Routes>
           {/* Public marketing */}
           <Route element={<PublicLayout />}>

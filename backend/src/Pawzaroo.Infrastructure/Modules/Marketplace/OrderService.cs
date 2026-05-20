@@ -54,8 +54,28 @@ public class OrderService : IOrderService
         if (cartLines.Count == 0) throw new ValidationException(
             new Dictionary<string, string[]> { ["cart"] = new[] { "Cart is empty." } });
 
+        // Bail out cleanly if the user picked a hosted-payment method we can't
+        // actually initiate (no credentials, no public backend URL). Done before
+        // the txn opens so we don't churn an order row that would only roll back.
+        var paymentMethodNormalized = NormalizePaymentMethod(input.PaymentMethod);
+        if (paymentMethodNormalized == "sslcommerz" && !_paymentGateway.IsConfigured)
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                ["paymentMethod"] = new[]
+                {
+                    "Online payment is not configured on the server. " +
+                    "Choose Cash on delivery, or ask the admin to set SslCommerz:StoreId, StorePassword, and BackendBaseUrl."
+                }
+            });
+
         string address;
         string? city, country;
+        // SSLCommerz requires ship_state + ship_postcode for the initiate POST.
+        // We capture them from the saved address book entry when available;
+        // SslCommerzPaymentGateway falls back to safe defaults if both are null
+        // so a one-off shipping address still goes through.
+        string? state = null;
+        string? postalCode = null;
         if (input.ShippingAddressId.HasValue)
         {
             var sa = await _db.ShippingAddresses.AsNoTracking()
@@ -64,6 +84,7 @@ public class OrderService : IOrderService
             address = $"{sa.RecipientName}, {sa.PhoneNumber}, {sa.AddressLine1}" +
                       (string.IsNullOrEmpty(sa.AddressLine2) ? "" : $", {sa.AddressLine2}");
             city = sa.City; country = sa.Country;
+            state = sa.State; postalCode = sa.PostalCode;
         }
         else
         {
@@ -147,11 +168,10 @@ public class OrderService : IOrderService
         foreach (var oi in order.Items)
             await _inventory.DecrementForOrderAsync(oi.ProductId, oi.Quantity, order.Id, ct);
 
-        var paymentMethod = NormalizePaymentMethod(input.PaymentMethod);
         var payment = new Payment
         {
             OrderId = order.Id, Amount = order.Total,
-            Method = paymentMethod,
+            Method = paymentMethodNormalized,
             Status = PaymentStatus.Pending
         };
         _db.Payments.Add(payment);
@@ -162,7 +182,7 @@ public class OrderService : IOrderService
         // gateway is unreachable the entire txn rolls back: no order row, no
         // inventory decrement, no orphaned Payment.
         string? checkoutUrl = null;
-        if (paymentMethod == "sslcommerz")
+        if (paymentMethodNormalized == "sslcommerz")
         {
             var customer = await _db.Users.AsNoTracking()
                 .Where(u => u.Id == uid)
@@ -186,7 +206,9 @@ public class OrderService : IOrderService
                 CustomerPhone: customer.PhoneNumber,
                 ShippingAddress: order.ShippingAddress,
                 ShippingCity: order.ShippingCity,
+                ShippingState: state,
                 ShippingCountry: order.ShippingCountry,
+                ShippingPostalCode: postalCode,
                 LineItems: lineItems), ct);
 
             payment.TransactionRef = session.SessionId;
@@ -226,23 +248,33 @@ public class OrderService : IOrderService
         };
     }
 
+    // EF Core projection through Order.User + Order.DeliveryAssignment.DeliveryUser
+    // didn't translate reliably (Order/User/DeliveryAssignment all have a global
+    // soft-delete query filter from ApplicationDbContext.OnModelCreating, and
+    // chained nav projections with that combo can fail at runtime). We
+    // materialize with Include and map in memory — bulletproof and the volumes
+    // here don't justify a hand-tuned projection.
+    private IQueryable<Order> OrderWithRelations() =>
+        _db.Orders.AsNoTracking()
+            .Include(o => o.User)
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Images)
+            .Include(o => o.Items).ThenInclude(i => i.Store)
+            .Include(o => o.DeliveryAssignment!).ThenInclude(a => a.DeliveryUser);
+
     public async Task<OrderDto?> GetByIdAsync(Guid orderId, CancellationToken ct = default)
     {
         var uid = _current.UserId;
         var canModerate = _current.Permissions.Contains(Permissions.Orders.View);
 
-        var order = await _db.Orders.AsNoTracking()
-            .Where(o => o.Id == orderId)
-            .Select(o => ToDto(o))
-            .FirstOrDefaultAsync(ct);
+        var order = await OrderWithRelations().FirstOrDefaultAsync(o => o.Id == orderId, ct);
         if (order is null) return null;
 
         // Buyer can read their own; store owners can read orders for their store; admin always.
-        if (canModerate || order.UserId == uid) return order;
+        if (canModerate || order.UserId == uid) return ToDto(order);
 
         var hasMyStore = await _db.OrderItems.AsNoTracking()
             .AnyAsync(i => i.OrderId == orderId && i.Store.OwnerUserId == uid, ct);
-        if (hasMyStore) return order;
+        if (hasMyStore) return ToDto(order);
 
         throw new ForbiddenException();
     }
@@ -250,12 +282,11 @@ public class OrderService : IOrderService
     public async Task<PageResult<OrderDto>> ListMineAsync(int page, int pageSize, CancellationToken ct = default)
     {
         var uid = Uid();
-        var q = _db.Orders.AsNoTracking().Where(o => o.UserId == uid);
-        var total = await q.CountAsync(ct);
-        var items = await q.OrderByDescending(o => o.CreatedAt)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(o => ToDto(o)).ToListAsync(ct);
-        return new PageResult<OrderDto>(items, total, page, pageSize);
+        var q = OrderWithRelations().Where(o => o.UserId == uid);
+        var total = await _db.Orders.AsNoTracking().Where(o => o.UserId == uid).CountAsync(ct);
+        var orders = await q.OrderByDescending(o => o.CreatedAt)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PageResult<OrderDto>(orders.Select(ToDto).ToList(), total, page, pageSize);
     }
 
     public async Task<PageResult<OrderDto>> ListForStoreAsync(Guid storeId, OrderStatus? status, int page, int pageSize, CancellationToken ct = default)
@@ -264,27 +295,30 @@ public class OrderService : IOrderService
         var owns = await _db.Stores.AsNoTracking().AnyAsync(s => s.Id == storeId && s.OwnerUserId == uid, ct);
         if (!owns && !_current.Permissions.Contains(Permissions.Orders.View)) throw new ForbiddenException();
 
-        var q = _db.Orders.AsNoTracking()
-            .Where(o => o.Items.Any(i => i.StoreId == storeId));
-        if (status.HasValue) q = q.Where(o => o.Status == status);
+        var baseQ = _db.Orders.AsNoTracking().Where(o => o.Items.Any(i => i.StoreId == storeId));
+        if (status.HasValue) baseQ = baseQ.Where(o => o.Status == status);
+        var total = await baseQ.CountAsync(ct);
 
-        var total = await q.CountAsync(ct);
-        var items = await q.OrderByDescending(o => o.CreatedAt)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(o => ToDto(o)).ToListAsync(ct);
-        return new PageResult<OrderDto>(items, total, page, pageSize);
+        var q = OrderWithRelations().Where(o => o.Items.Any(i => i.StoreId == storeId));
+        if (status.HasValue) q = q.Where(o => o.Status == status);
+        var orders = await q.OrderByDescending(o => o.CreatedAt)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PageResult<OrderDto>(orders.Select(ToDto).ToList(), total, page, pageSize);
     }
 
     public async Task<PageResult<OrderDto>> ListForAdminAsync(OrderStatus? status, int page, int pageSize, CancellationToken ct = default)
     {
         if (!_current.Permissions.Contains(Permissions.Orders.View)) throw new ForbiddenException();
-        var q = _db.Orders.AsNoTracking();
+
+        var baseQ = _db.Orders.AsNoTracking().AsQueryable();
+        if (status.HasValue) baseQ = baseQ.Where(o => o.Status == status);
+        var total = await baseQ.CountAsync(ct);
+
+        var q = OrderWithRelations();
         if (status.HasValue) q = q.Where(o => o.Status == status);
-        var total = await q.CountAsync(ct);
-        var items = await q.OrderByDescending(o => o.CreatedAt)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(o => ToDto(o)).ToListAsync(ct);
-        return new PageResult<OrderDto>(items, total, page, pageSize);
+        var orders = await q.OrderByDescending(o => o.CreatedAt)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PageResult<OrderDto>(orders.Select(ToDto).ToList(), total, page, pageSize);
     }
 
     public async Task UpdateStatusAsync(Guid orderId, OrderStatus status, CancellationToken ct = default)
@@ -513,29 +547,28 @@ public class OrderService : IOrderService
         if (!owns) throw new ForbiddenException();
     }
 
-    // Used inside LINQ-to-SQL projections (.Select(o => ToDto(o))) — every
-    // expression below must be EF-translatable. The two navigation accesses
-    // (o.User and o.DeliveryAssignment) both have FKs and configured nav props.
-    private static OrderDto ToDto(Order o) => new(
-        o.Id, o.OrderNumber, o.UserId,
-        o.Subtotal, o.ShippingFee, o.Tax, o.Total,
-        o.Status, o.PaymentStatus, o.ShipmentStatus,
-        o.ShippingAddress, o.ShippingCity, o.ShippingCountry,
-        o.TrackingNumber,
-        o.Items.Select(i => new OrderItemDto(
-            i.Id, i.ProductId, i.Product.Name,
-            i.Product.Images.OrderBy(x => x.OrderIndex).Select(x => x.Url).FirstOrDefault(),
-            i.StoreId, i.Store.Name,
+    // In-memory mapper. Assumes the Order entity was loaded with the navs we
+    // touch (Items.Product.Images, Items.Store, User, optionally
+    // DeliveryAssignment.DeliveryUser). OrderWithRelations() takes care of that.
+    private static OrderDto ToDto(Order o) => new OrderDto(
+        Id: o.Id, OrderNumber: o.OrderNumber, UserId: o.UserId,
+        Subtotal: o.Subtotal, ShippingFee: o.ShippingFee, Tax: o.Tax, Total: o.Total,
+        Status: o.Status, PaymentStatus: o.PaymentStatus, ShipmentStatus: o.ShipmentStatus,
+        ShippingAddress: o.ShippingAddress, ShippingCity: o.ShippingCity, ShippingCountry: o.ShippingCountry,
+        TrackingNumber: o.TrackingNumber,
+        Items: o.Items.Select(i => new OrderItemDto(
+            i.Id, i.ProductId, i.Product?.Name ?? string.Empty,
+            i.Product?.Images?.OrderBy(x => x.OrderIndex).Select(x => x.Url).FirstOrDefault(),
+            i.StoreId, i.Store?.Name ?? string.Empty,
             i.Quantity, i.UnitPrice, i.Total, i.CommissionAmount)).ToList(),
-        o.CreatedAt,
-        o.DiscountAmount,
-        o.CouponCode,
-        null,
-        o.User.DisplayName,
-        o.User.Email,
-        o.User.PhoneNumber,
-        o.DeliveryAssignment != null ? (Guid?)o.DeliveryAssignment.Id : null,
-        o.DeliveryAssignment != null ? (Guid?)o.DeliveryAssignment.DeliveryUserId : null,
-        o.DeliveryAssignment != null ? o.DeliveryAssignment.DeliveryUser.DisplayName : null,
-        o.DeliveryAssignment != null ? (DeliveryAssignmentStatus?)o.DeliveryAssignment.Status : null);
+        CreatedAt: o.CreatedAt,
+        DiscountAmount: o.DiscountAmount,
+        CouponCode: o.CouponCode,
+        CustomerName: o.User?.DisplayName,
+        CustomerEmail: o.User?.Email,
+        CustomerPhone: o.User?.PhoneNumber,
+        DeliveryAssignmentId: o.DeliveryAssignment?.Id,
+        DeliveryUserId: o.DeliveryAssignment?.DeliveryUserId,
+        DeliveryUserName: o.DeliveryAssignment?.DeliveryUser?.DisplayName,
+        DeliveryStatus: o.DeliveryAssignment?.Status);
 }

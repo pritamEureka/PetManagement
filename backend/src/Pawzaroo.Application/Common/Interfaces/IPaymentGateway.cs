@@ -10,6 +10,14 @@ namespace Pawzaroo.Application.Common.Interfaces;
 /// </summary>
 public interface IPaymentGateway
 {
+    /// <summary>
+    /// True when the gateway has all the credentials/URLs it needs to issue a
+    /// session. OrderService consults this before opening a transaction so a
+    /// misconfigured environment surfaces as a 400 (with a readable message),
+    /// not a 500 from inside the txn.
+    /// </summary>
+    bool IsConfigured { get; }
+
     Task<PaymentCheckoutResult> CreateCheckoutSessionAsync(
         PaymentCheckoutRequest request,
         CancellationToken ct = default);
@@ -32,7 +40,9 @@ public record PaymentCheckoutRequest(
     string? CustomerPhone,
     string? ShippingAddress,
     string? ShippingCity,
+    string? ShippingState,
     string? ShippingCountry,
+    string? ShippingPostalCode,
     IReadOnlyList<PaymentLineItem> LineItems);
 
 public record PaymentCheckoutResult(string SessionId, string CheckoutUrl);

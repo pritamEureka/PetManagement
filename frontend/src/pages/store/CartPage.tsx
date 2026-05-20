@@ -34,6 +34,10 @@ export function CartPage() {
   const tax = serverCart?.tax ?? 0;
   const total = subAfterDiscount + ship + tax;
 
+  function reportCartError(err: any) {
+    toast.error(err?.response?.data?.error?.message ?? "Cart update failed.");
+  }
+
   async function applyCoupon() {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
@@ -85,15 +89,18 @@ export function CartPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button size="icon" variant="outline" onClick={() => setQty(l.productId, l.quantity - 1)}>
+                      <Button size="icon" variant="outline"
+                        onClick={() => setQty(l.productId, l.quantity - 1).catch(reportCartError)}>
                         <Minus className="h-3 w-3" />
                       </Button>
                       <span className="w-8 text-center">{l.quantity}</span>
-                      <Button size="icon" variant="outline" onClick={() => setQty(l.productId, l.quantity + 1)}>
+                      <Button size="icon" variant="outline"
+                        onClick={() => setQty(l.productId, l.quantity + 1).catch(reportCartError)}>
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                    <Button size="icon" variant="ghost" onClick={() => remove(l.productId)}>
+                    <Button size="icon" variant="ghost"
+                      onClick={() => remove(l.productId).catch(reportCartError)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -149,7 +156,7 @@ export function CartPage() {
                 <span>${total.toFixed(2)}</span>
               </div>
               <Button className="w-full" onClick={() => nav("/checkout")}>Checkout</Button>
-              <Button variant="ghost" className="w-full" onClick={clear}>Empty cart</Button>
+              <Button variant="ghost" className="w-full" onClick={() => clear().catch(reportCartError)}>Empty cart</Button>
             </CardContent>
           </Card>
         </div>

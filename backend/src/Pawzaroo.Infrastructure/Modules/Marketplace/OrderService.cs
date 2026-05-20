@@ -354,6 +354,32 @@ public class OrderService : IOrderService
             $"{order.OrderNumber}: {status}", new { orderId = order.Id, trackingNumber }, ct);
     }
 
+    public async Task AssignCourierAsync(Guid orderId, CourierProvider courier, string? trackingNumber, CancellationToken ct = default)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct) ?? throw new NotFoundException("Order", orderId);
+        await EnsureStoreOwnerOrAdmin(order, ct);
+        if (order.Status is OrderStatus.Cancelled or OrderStatus.Denied)
+            throw new ConflictException("Cannot assign a courier to a closed order.");
+        if (order.DeliveryAssignment is not null)
+            throw new ConflictException("Order is already with an internal delivery user; unassign first.");
+
+        order.Courier = courier;
+        if (!string.IsNullOrWhiteSpace(trackingNumber)) order.TrackingNumber = trackingNumber;
+        if (order.ShipmentStatus == ShipmentStatus.NotShipped) order.ShipmentStatus = ShipmentStatus.Processing;
+        if (order.Status == OrderStatus.Created || order.Status == OrderStatus.Confirmed || order.Status == OrderStatus.Packed)
+            order.Status = OrderStatus.Shipped;
+        order.UpdatedAt = DateTime.UtcNow;
+        order.UpdatedBy = _current.UserId;
+        await _db.SaveChangesAsync(ct);
+
+        await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
+            new OrderShipmentStatusChanged(order.Id, order.OrderNumber, order.ShipmentStatus.ToString(), order.TrackingNumber, DateTime.UtcNow),
+            order.Id.ToString(), ct);
+        await _notify.NotifyUserAsync(order.UserId, "Shipment update",
+            $"{order.OrderNumber} handed to {courier}", new { orderId = order.Id, courier = courier.ToString(), trackingNumber = order.TrackingNumber }, ct);
+        await _audit.LogAsync("order.courier.assign", "Order", order.Id.ToString(), courier.ToString(), ct: ct);
+    }
+
     public async Task CancelAsync(Guid orderId, string? reason, CancellationToken ct = default)
     {
         var order = await _db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == orderId, ct)
@@ -570,5 +596,6 @@ public class OrderService : IOrderService
         DeliveryAssignmentId: o.DeliveryAssignment?.Id,
         DeliveryUserId: o.DeliveryAssignment?.DeliveryUserId,
         DeliveryUserName: o.DeliveryAssignment?.DeliveryUser?.DisplayName,
-        DeliveryStatus: o.DeliveryAssignment?.Status);
+        DeliveryStatus: o.DeliveryAssignment?.Status,
+        Courier: o.Courier);
 }

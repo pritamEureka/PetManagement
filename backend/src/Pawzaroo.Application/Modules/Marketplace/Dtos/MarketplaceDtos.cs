@@ -134,10 +134,12 @@ public record OrderDto(
     Guid? DeliveryAssignmentId = null,
     Guid? DeliveryUserId = null,
     string? DeliveryUserName = null,
-    DeliveryAssignmentStatus? DeliveryStatus = null);
+    DeliveryAssignmentStatus? DeliveryStatus = null,
+    CourierProvider? Courier = null);
 
 public record UpdateOrderStatusInput(OrderStatus Status);
 public record UpdateShipmentStatusInput(ShipmentStatus Status, string? TrackingNumber);
+public record AssignCourierInput(CourierProvider Courier, string? TrackingNumber);
 
 // ----- Reviews ----------------------------------------------------------------
 

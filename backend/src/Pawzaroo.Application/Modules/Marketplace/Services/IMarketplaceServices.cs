@@ -99,6 +99,16 @@ public interface IOrderService
 
     Task UpdateStatusAsync(Guid orderId, OrderStatus status, CancellationToken ct = default);
     Task UpdateShipmentStatusAsync(Guid orderId, ShipmentStatus status, string? trackingNumber, CancellationToken ct = default);
+
+    /// <summary>
+    /// Store owner / admin records that the order has been handed off to one of
+    /// the supported external couriers (SteadFast, Pathao, Paperfly, Sundarban).
+    /// Sets Order.Courier + TrackingNumber and bumps ShipmentStatus to Processing
+    /// if still NotShipped. Does NOT create a DeliveryAssignment row — external
+    /// couriers are tracked via their own portal, not by an internal driver app.
+    /// </summary>
+    Task AssignCourierAsync(Guid orderId, CourierProvider courier, string? trackingNumber, CancellationToken ct = default);
+
     Task CancelAsync(Guid orderId, string? reason, CancellationToken ct = default);
     Task RefundAsync(Guid orderId, decimal? amount, CancellationToken ct = default);
 

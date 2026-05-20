@@ -64,6 +64,13 @@ public class OrdersController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/courier")]
+    public async Task<IActionResult> AssignCourier(Guid id, [FromBody] AssignCourierInput input, CancellationToken ct)
+    {
+        await _orders.AssignCourierAsync(id, input.Courier, input.TrackingNumber, ct);
+        return NoContent();
+    }
+
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, [FromBody] CancelOrderBody? body, CancellationToken ct)
     {

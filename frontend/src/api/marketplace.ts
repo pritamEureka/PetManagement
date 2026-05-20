@@ -8,6 +8,14 @@ export type DeliveryAssignmentStatus =
   | "Assigned" | "PickedUp" | "InTransit" | "OutForDelivery" | "Delivered" | "Failed";
 export type PaymentStatusT = "Unpaid" | "Pending" | "Paid" | "Refunded" | "Failed";
 export type ShipmentStatus = "NotShipped" | "Processing" | "InTransit" | "OutForDelivery" | "Delivered" | "Failed";
+export type CourierProvider = "SteadFast" | "Pathao" | "Paperfly" | "Sundarban";
+export const COURIER_PROVIDERS: CourierProvider[] = ["SteadFast", "Pathao", "Paperfly", "Sundarban"];
+export const COURIER_LABELS: Record<CourierProvider, string> = {
+  SteadFast: "SteadFast Courier",
+  Pathao: "Pathao Parcel",
+  Paperfly: "Paperfly",
+  Sundarban: "Sundarban Courier",
+};
 export type InventoryReason = "Purchase" | "Sale" | "Return" | "Adjustment" | "Damage" | "Restock";
 export type CommissionScope = "Global" | "Category" | "Store";
 export type StoreDocumentType = "TradeLicense" | "NationalId" | "AddressProof" | "TaxCertificate" | "BankStatement" | "Other";
@@ -139,6 +147,7 @@ export interface Order {
   deliveryUserId?: string | null;
   deliveryUserName?: string | null;
   deliveryStatus?: DeliveryAssignmentStatus | null;
+  courier?: CourierProvider | null;
 }
 
 // ---------- Deliveries ----------------------------------------------------
@@ -349,6 +358,8 @@ export const ordersV2Api = {
     api.put(`${V1}/orders/${id}/status`, { status }),
   updateShipment: (id: string, status: ShipmentStatus, trackingNumber?: string) =>
     api.put(`${V1}/orders/${id}/shipment`, { status, trackingNumber }),
+  assignCourier: (id: string, courier: CourierProvider, trackingNumber?: string) =>
+    api.post(`${V1}/orders/${id}/courier`, { courier, trackingNumber }),
   cancel: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/cancel`, { reason }),
   deny: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/deny`, { reason }),
   refund: (id: string, amount?: number) => api.post(`${V1}/orders/${id}/refund`, { amount }),

@@ -43,6 +43,12 @@ public enum ShipmentStatus { NotShipped = 0, Processing = 1, InTransit = 2, OutF
 
 public enum DeliveryAssignmentStatus { Assigned = 0, PickedUp = 1, InTransit = 2, OutForDelivery = 3, Delivered = 4, Failed = 5 }
 
+// Third-party courier services a store owner can hand an order off to. Distinct
+// from the internal DeliveryUser flow on Order.DeliveryAssignment — when this
+// is set, the parcel is being handled externally and our app only tracks
+// status by syncing the courier's tracking number, not by driver app updates.
+public enum CourierProvider { SteadFast = 1, Pathao = 2, Paperfly = 3, Sundarban = 4 }
+
 public enum ServiceProviderType { Grooming = 0, Training = 1, Boarding = 2, Walking = 3 }
 
 public enum AnimalSize { Tiny = 1, Small = 2, Medium = 3, Large = 4, ExtraLarge = 5 }

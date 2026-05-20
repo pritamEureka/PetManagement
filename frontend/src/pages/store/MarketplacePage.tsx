@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { productsV2Api, type ProductSummary } from "@/api/marketplace";
+import { productsV2Api, storesApi, type ProductSummary } from "@/api/marketplace";
 import { useCartStore } from "@/store/cartStore";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -16,16 +16,18 @@ import { cn } from "@/lib/utils";
 export function MarketplacePage() {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | undefined>();
+  const [storeId, setStoreId] = useState<string | undefined>();
   const [sort, setSort] = useState("newest");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["marketplace-products", { search, categoryId, sort, minPrice, maxPrice, page }],
+    queryKey: ["marketplace-products", { search, categoryId, storeId, sort, minPrice, maxPrice, page }],
     queryFn: () => productsV2Api.list({
       search: search || undefined,
       categoryId: categoryId || undefined,
+      storeId: storeId || undefined,
       sort,
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
@@ -36,6 +38,12 @@ export function MarketplacePage() {
   const { data: categories } = useQuery({
     queryKey: ["product-categories"],
     queryFn: () => productsV2Api.categories()
+  });
+
+  // Approved stores only — buyer-facing filter shouldn't expose pending/rejected.
+  const { data: stores } = useQuery({
+    queryKey: ["marketplace-stores"],
+    queryFn: () => storesApi.search({ status: "Approved", pageSize: 200 })
   });
 
   const addToCart = useCartStore((s) => s.add);
@@ -100,6 +108,14 @@ export function MarketplacePage() {
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
             {categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={storeId ?? "all"} onValueChange={(v) => { setStoreId(v === "all" ? undefined : v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All stores</SelectItem>
+            {stores?.items.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
           </SelectContent>
         </Select>
 

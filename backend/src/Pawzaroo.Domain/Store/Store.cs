@@ -122,6 +122,7 @@ public class Order : AuditableEntity
     public string? ShippingCity { get; set; }
     public string? ShippingCountry { get; set; }
     public string? TrackingNumber { get; set; }
+    public CourierProvider? Courier { get; set; }
 
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();

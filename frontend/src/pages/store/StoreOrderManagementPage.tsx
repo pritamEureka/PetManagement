@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { storesApi, ordersV2Api, type OrderStatus, type ShipmentStatus } from "@/api/marketplace";
+import { storesApi, ordersV2Api, COURIER_PROVIDERS, COURIER_LABELS, type OrderStatus, type ShipmentStatus, type CourierProvider } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
 
 const STATUS_OPTIONS: OrderStatus[] = ["Created", "Confirmed", "Packed", "Shipped", "Delivered", "Cancelled", "Returned"];
@@ -35,6 +35,12 @@ export function StoreOrderManagementPage() {
     mutationFn: ({ id, status, trackingNumber }: { id: string; status: ShipmentStatus; trackingNumber?: string }) =>
       ordersV2Api.updateShipment(id, status, trackingNumber),
     onSuccess: () => { toast.success("Shipment updated"); qc.invalidateQueries({ queryKey: ["store-orders"] }); }
+  });
+
+  const assignCourier = useMutation({
+    mutationFn: ({ id, courier, trackingNumber }: { id: string; courier: CourierProvider; trackingNumber?: string }) =>
+      ordersV2Api.assignCourier(id, courier, trackingNumber),
+    onSuccess: () => { toast.success("Courier assigned"); qc.invalidateQueries({ queryKey: ["store-orders"] }); }
   });
 
   if (!store) return <p className="text-sm text-muted-foreground">Register a store first.</p>;
@@ -68,6 +74,7 @@ export function StoreOrderManagementPage() {
                 <div className="flex gap-2 flex-wrap">
                   <Badge variant={statusBadgeVariant(o.status)}>{o.status}</Badge>
                   <Badge variant={statusBadgeVariant(o.paymentStatus)}>{o.paymentStatus}</Badge>
+                  {o.courier && <Badge variant="secondary">{COURIER_LABELS[o.courier]}</Badge>}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
@@ -99,11 +106,55 @@ export function StoreOrderManagementPage() {
                     onSave={(status, tracking) => updateShipment.mutate({ id: o.id, status, trackingNumber: tracking })}
                   />
                 </div>
+
+                <CourierAssigner
+                  current={o.courier ?? undefined}
+                  tracking={o.trackingNumber}
+                  hasInternalDelivery={!!o.deliveryAssignmentId}
+                  onAssign={(courier, tracking) => assignCourier.mutate({ id: o.id, courier, trackingNumber: tracking })}
+                />
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function CourierAssigner({ current, tracking, hasInternalDelivery, onAssign }: {
+  current?: CourierProvider;
+  tracking?: string | null;
+  hasInternalDelivery: boolean;
+  onAssign: (courier: CourierProvider, tracking?: string) => void;
+}) {
+  const [courier, setCourier] = useState<CourierProvider | "">(current ?? "");
+  const [trackingNumber, setTrackingNumber] = useState(tracking ?? "");
+
+  if (hasInternalDelivery && !current) {
+    return (
+      <p className="text-xs text-muted-foreground italic">
+        Internal delivery user assigned — courier hand-off unavailable.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <label className="text-xs text-muted-foreground">Hand off to courier</label>
+      <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+        <Select value={courier || undefined} onValueChange={(v) => setCourier(v as CourierProvider)}>
+          <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Choose courier" /></SelectTrigger>
+          <SelectContent>
+            {COURIER_PROVIDERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABELS[c]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input placeholder="Tracking # (optional)" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} />
+        <Button size="sm" variant="outline" disabled={!courier}
+          onClick={() => courier && onAssign(courier, trackingNumber || undefined)}>
+          {current ? "Update" : "Assign"}
+        </Button>
+      </div>
     </div>
   );
 }

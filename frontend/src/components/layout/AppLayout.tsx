@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
@@ -341,10 +341,15 @@ function NotificationBellBadge() {
   );
 }
 
+const CART_BAR_PATHS = ["/store", "/cart", "/checkout", "/orders"];
+
 function FloatingCartBar() {
+  const { pathname } = useLocation();
   const lines = useCartStore((s) => s.lines);
   const count = lines.reduce((n, l) => n + l.quantity, 0);
-  if (count === 0) return null;
+
+  const isStorePage = CART_BAR_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  if (count === 0 || !isStorePage) return null;
   return (
     <div className="sticky bottom-0 z-40 p-3 pointer-events-none">
       <div className="max-w-lg mx-auto pointer-events-auto">

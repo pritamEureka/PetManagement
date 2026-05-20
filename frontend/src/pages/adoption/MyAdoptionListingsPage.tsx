@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Plus, HeartHandshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -12,11 +12,6 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Can } from "@/components/auth/Can";
 import { adoptionApi, type AdoptionListingStatus } from "@/api/adoption";
 import { CreateAdoptionDialog } from "./CreateAdoptionDialog";
-
-const STATUS_VARIANT: Record<AdoptionListingStatus, "default"|"secondary"|"muted"|"destructive"> = {
-  Draft: "muted", PendingApproval: "secondary", Approved: "default",
-  Rejected: "destructive", Adopted: "default", Closed: "muted"
-};
 
 export function MyAdoptionListingsPage() {
   const qc = useQueryClient();
@@ -94,7 +89,7 @@ export function MyAdoptionListingsPage() {
                       {l.animalType}{l.breed ? ` · ${l.breed}` : ""} · {new Date(l.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <Badge variant={STATUS_VARIANT[l.status]}>
+                  <Badge variant={statusBadgeVariant(l.status)}>
                     {l.status === "PendingApproval" ? "Pending" : l.status}
                   </Badge>
                 </CardContent>

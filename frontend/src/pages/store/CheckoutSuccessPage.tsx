@@ -2,7 +2,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Clock, Package, ArrowRight, Home } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -65,8 +65,8 @@ export function CheckoutSuccessPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-center gap-2">
-            <Badge>{order.status}</Badge>
-            <Badge variant="outline">{order.paymentStatus}</Badge>
+            <Badge variant={statusBadgeVariant(order.status)}>{order.status}</Badge>
+            <Badge variant={statusBadgeVariant(order.paymentStatus)}>{order.paymentStatus}</Badge>
           </div>
 
           <Separator />

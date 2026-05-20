@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -298,7 +298,7 @@ function CredentialRow({ c }: { c: CredentialDocument }) {
           <p className="text-[10px] text-muted-foreground">{c.documentNumber ?? ""}{c.expiresOn ? ` · expires ${c.expiresOn}` : ""}</p>
         </div>
       </div>
-      {c.verified ? <Badge variant="default">Verified</Badge> : <Badge variant="muted">Pending verification</Badge>}
+      {c.verified ? <Badge variant={statusBadgeVariant("Verified")}>Verified</Badge> : <Badge variant={statusBadgeVariant("Pending")}>Pending verification</Badge>}
     </div>
   );
 }

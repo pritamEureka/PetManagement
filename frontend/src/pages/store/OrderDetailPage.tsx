@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Package, RefreshCw, Truck, MapPin, Receipt } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -64,9 +64,9 @@ export function OrderDetailPage() {
             <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge>{order.status}</Badge>
-            <Badge variant="outline">{order.paymentStatus}</Badge>
-            <Badge variant="outline" className="flex items-center gap-1"><RefreshCw className="h-3 w-3" />{order.shipmentStatus}</Badge>
+            <Badge variant={statusBadgeVariant(order.status)}>{order.status}</Badge>
+            <Badge variant={statusBadgeVariant(order.paymentStatus)}>{order.paymentStatus}</Badge>
+            <Badge variant={statusBadgeVariant(order.shipmentStatus)} className="flex items-center gap-1"><RefreshCw className="h-3 w-3" />{order.shipmentStatus}</Badge>
           </div>
         </CardHeader>
         <CardContent>

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Store as StoreIcon, ShieldCheck, ShieldAlert, Pause, Play } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -76,7 +76,7 @@ export function StoreApprovalPage() {
                   <Card key={k.id}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-base">{k.legalName}</CardTitle>
-                      <Badge variant="outline">{k.kycStatus}</Badge>
+                      <Badge variant={statusBadgeVariant(k.kycStatus)}>{k.kycStatus}</Badge>
                     </CardHeader>
                     <CardContent className="text-sm space-y-2">
                       <div className="grid grid-cols-2 gap-2">
@@ -124,7 +124,7 @@ export function StoreApprovalPage() {
                   <Card key={s.id}>
                     <CardHeader className="flex flex-row justify-between items-start space-y-0 pb-2">
                       <CardTitle className="text-base flex items-center gap-2"><StoreIcon className="h-4 w-4" /> {s.name}</CardTitle>
-                      <Badge variant={s.approvalStatus === "Approved" ? "default" : "outline"}>{s.approvalStatus}</Badge>
+                      <Badge variant={statusBadgeVariant(s.approvalStatus)}>{s.approvalStatus}</Badge>
                     </CardHeader>
                     <CardContent className="text-sm space-y-2">
                       <p className="text-muted-foreground">{s.description}</p>

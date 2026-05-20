@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { History, CheckCircle2, AlertCircle, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deliveriesApi } from "@/api/marketplace";
@@ -45,7 +45,7 @@ export function DeliveryHistoryPage() {
                       </div>
                     </div>
                     <div className="text-right text-xs text-muted-foreground space-y-0.5">
-                      <Badge variant={ok ? "default" : "destructive"}>{a.status}</Badge>
+                      <Badge variant={statusBadgeVariant(a.status)}>{a.status}</Badge>
                       <p>{ok ? `Delivered ${new Date(a.deliveredAt!).toLocaleDateString()}`
                             : `Failed ${new Date(a.failedAt!).toLocaleDateString()}`}</p>
                     </div>

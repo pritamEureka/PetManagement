@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Package, Check, Ban, Printer, Truck, User as UserIcon, Mail, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -17,11 +17,6 @@ import { ordersV2Api, deliveriesApi, type Order, type OrderStatus } from "@/api/
 import { toast } from "@/components/ui/sonner";
 
 const STATUSES: OrderStatus[] = ["Created", "Confirmed", "Packed", "Shipped", "Delivered", "Cancelled", "Returned", "Denied"];
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  Created: "outline", Confirmed: "secondary", Packed: "secondary",
-  Shipped: "default", Delivered: "default",
-  Cancelled: "destructive", Returned: "outline", Denied: "destructive"
-};
 
 export function AdminOrderManagementPage() {
   const qc = useQueryClient();
@@ -84,9 +79,9 @@ export function AdminOrderManagementPage() {
     { key: "total", header: "Total", className: "text-right w-20 sm:w-24",
       render: (o) => <span className="font-semibold">${o.total.toFixed(2)}</span> },
     { key: "status", header: "Status",
-      render: (o) => <Badge variant={STATUS_VARIANT[o.status] ?? "outline"}>{o.status}</Badge> },
-    { key: "ship", header: "Shipment", className: "hidden md:table-cell", render: (o) => <Badge variant="outline">{o.shipmentStatus}</Badge> },
-    { key: "pay", header: "Payment", className: "hidden md:table-cell", render: (o) => <Badge variant="outline">{o.paymentStatus}</Badge> },
+      render: (o) => <Badge variant={statusBadgeVariant(o.status)}>{o.status}</Badge> },
+    { key: "ship", header: "Shipment", className: "hidden md:table-cell", render: (o) => <Badge variant={statusBadgeVariant(o.shipmentStatus)}>{o.shipmentStatus}</Badge> },
+    { key: "pay", header: "Payment", className: "hidden md:table-cell", render: (o) => <Badge variant={statusBadgeVariant(o.paymentStatus)}>{o.paymentStatus}</Badge> },
     { key: "courier", header: "Courier", className: "hidden lg:table-cell",
       render: (o) => o.deliveryUserName
         ? <span className="text-xs">{o.deliveryUserName}</span>
@@ -151,10 +146,10 @@ export function AdminOrderManagementPage() {
         {selected && (
           <div className="space-y-4 text-sm">
             <div className="flex flex-wrap gap-2">
-              <Badge variant={STATUS_VARIANT[selected.status] ?? "outline"}>{selected.status}</Badge>
-              <Badge variant="outline">{selected.shipmentStatus}</Badge>
-              <Badge variant="outline">{selected.paymentStatus}</Badge>
-              {selected.deliveryStatus && <Badge variant="secondary">Delivery: {selected.deliveryStatus}</Badge>}
+              <Badge variant={statusBadgeVariant(selected.status)}>{selected.status}</Badge>
+              <Badge variant={statusBadgeVariant(selected.shipmentStatus)}>{selected.shipmentStatus}</Badge>
+              <Badge variant={statusBadgeVariant(selected.paymentStatus)}>{selected.paymentStatus}</Badge>
+              {selected.deliveryStatus && <Badge variant={statusBadgeVariant(selected.deliveryStatus)}>Delivery: {selected.deliveryStatus}</Badge>}
             </div>
 
             <div className="flex flex-wrap gap-2">

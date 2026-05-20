@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Flag, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
@@ -90,7 +90,7 @@ export function AdminFeedModerationPage() {
     { key: "engagement", header: "Engagement", className: "hidden sm:table-cell",
       render: (p) => <span className="text-xs text-muted-foreground">{p.reactionCount}♥ · {p.commentCount}💬</span> },
     { key: "status", header: "Status", className: "hidden sm:table-cell",
-      render: (p) => p.isDeleted ? <Badge variant="outline">Hidden</Badge> : <Badge variant="secondary">Live</Badge> },
+      render: (p) => p.isDeleted ? <Badge variant={statusBadgeVariant("Hidden")}>Hidden</Badge> : <Badge variant={statusBadgeVariant("Live")}>Live</Badge> },
     { key: "created", header: "Created", className: "hidden md:table-cell",
       render: (p) => <span className="text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()}</span> },
     { key: "actions", header: "", className: "w-24 sm:w-44 text-right",

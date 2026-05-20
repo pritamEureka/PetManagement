@@ -5,7 +5,7 @@ import { Plus, Edit, Trash2, Search, Eye, EyeOff, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { productsV2Api, type ProductSummary } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
@@ -98,8 +98,8 @@ export function ProductManagementPage() {
                       </td>
                       <td className="p-3 hidden md:table-cell">
                         {p.isActive
-                          ? <Badge>Live</Badge>
-                          : <Badge variant="outline">Hidden</Badge>}
+                          ? <Badge variant={statusBadgeVariant("Live")}>Live</Badge>
+                          : <Badge variant={statusBadgeVariant("Hidden")}>Hidden</Badge>}
                         {p.isFeatured && <Badge variant="secondary" className="ml-1">Featured</Badge>}
                       </td>
                       <td className="p-3">

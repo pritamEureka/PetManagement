@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Package, Truck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -66,8 +66,8 @@ export function StoreOrderManagementPage() {
                   <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <Badge>{o.status}</Badge>
-                  <Badge variant="outline">{o.paymentStatus}</Badge>
+                  <Badge variant={statusBadgeVariant(o.status)}>{o.status}</Badge>
+                  <Badge variant={statusBadgeVariant(o.paymentStatus)}>{o.paymentStatus}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">

@@ -4,7 +4,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminApi, type AdminUserDetail } from "@/api/admin";
 
@@ -49,16 +49,12 @@ export function ViewUserDialog({ open, onOpenChange, userId }: Props) {
             {/* Status badges */}
             <div className="flex flex-wrap gap-2">
               {detail.approvalStatus && (
-                <Badge variant={
-                  detail.approvalStatus === "Approved" ? "default"
-                  : detail.approvalStatus === "Rejected" ? "destructive"
-                  : "secondary"
-                }>{detail.approvalStatus}</Badge>
+                <Badge variant={statusBadgeVariant(detail.approvalStatus)}>{detail.approvalStatus}</Badge>
               )}
-              <Badge variant={detail.isActive ? "secondary" : "muted"}>
+              <Badge variant={statusBadgeVariant(detail.isActive ? "Active" : "Inactive")}>
                 {detail.isActive ? "Active" : "Inactive"}
               </Badge>
-              {detail.isSuspended && <Badge variant="destructive">Suspended</Badge>}
+              {detail.isSuspended && <Badge variant={statusBadgeVariant("Suspended")}>Suspended</Badge>}
               {detail.emailConfirmed && <Badge variant="outline">Email confirmed</Badge>}
             </div>
 

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { kycSubmitSchema, storeRegisterSchema, type KycSubmitInput, type StoreRegisterInput } from "@/lib/schemas";
@@ -63,7 +63,7 @@ export function StoreRegistrationPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <StoreIcon className="h-5 w-5" /> {store.name}
-              <Badge variant={store.approvalStatus === "Approved" ? "default" : "outline"}>{store.approvalStatus}</Badge>
+              <Badge variant={statusBadgeVariant(store.approvalStatus)}>{store.approvalStatus}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
@@ -86,7 +86,7 @@ export function StoreRegistrationPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
                 Identity verification
-                {kyc && <Badge variant={kycApproved ? "default" : "outline"}>{kyc.kycStatus}</Badge>}
+                {kyc && <Badge variant={statusBadgeVariant(kyc.kycStatus)}>{kyc.kycStatus}</Badge>}
               </CardTitle>
             </CardHeader>
             <CardContent>

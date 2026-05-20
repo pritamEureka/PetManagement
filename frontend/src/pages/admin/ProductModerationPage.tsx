@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Eye, EyeOff, Star, Search, ShoppingBag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { productsV2Api, type ProductSummary } from "@/api/marketplace";
@@ -86,7 +86,7 @@ export function ProductModerationPage() {
                         </span>
                       </td>
                       <td className="p-3">
-                        {p.isActive ? <Badge>Live</Badge> : <Badge variant="outline">Hidden</Badge>}
+                        {p.isActive ? <Badge variant={statusBadgeVariant("Live")}>Live</Badge> : <Badge variant={statusBadgeVariant("Hidden")}>Hidden</Badge>}
                         {p.isFeatured && <Badge variant="secondary" className="ml-1">Featured</Badge>}
                       </td>
                       <td className="p-3">

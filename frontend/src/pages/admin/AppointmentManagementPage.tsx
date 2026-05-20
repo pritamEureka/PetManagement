@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,18 +19,6 @@ const STATUSES = [
   "Rescheduled", "CancelledByUser", "CancelledByDoctor",
   "Completed", "NoShow", "Refunded"
 ];
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  Completed: "default",
-  Confirmed: "secondary",
-  PendingConfirmation: "secondary",
-  PendingPayment: "outline",
-  Draft: "outline",
-  Refunded: "outline",
-  CancelledByUser: "destructive",
-  CancelledByDoctor: "destructive",
-  NoShow: "destructive"
-};
 
 export function AdminAppointmentManagementPage() {
   const [status, setStatus] = useState<string>("all");
@@ -62,9 +50,9 @@ export function AdminAppointmentManagementPage() {
     { key: "user",   header: "Patient", render: (a) => <span className="truncate">{a.userDisplayName}</span> },
     {
       key: "status", header: "Status",
-      render: (a) => <Badge variant={STATUS_VARIANT[a.status] ?? "outline"}>{a.status}</Badge>
+      render: (a) => <Badge variant={statusBadgeVariant(a.status)}>{a.status}</Badge>
     },
-    { key: "pay",  header: "Payment", render: (a) => <Badge variant="outline">{a.paymentStatus}</Badge> },
+    { key: "pay",  header: "Payment", render: (a) => <Badge variant={statusBadgeVariant(a.paymentStatus)}>{a.paymentStatus}</Badge> },
     { key: "amount", header: "Amount", className: "text-right w-24",
       render: (a) => <span className="font-semibold">${a.amount.toFixed(2)}</span> }
   ];

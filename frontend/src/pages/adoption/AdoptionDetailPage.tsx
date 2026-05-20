@@ -8,7 +8,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -21,11 +21,6 @@ import { EditAdoptionDialog } from "./EditAdoptionDialog";
 import { RejectReasonModal } from "@/components/adoption/RejectReasonModal";
 import { MarkAsAdoptedDialog } from "@/components/adoption/MarkAsAdoptedDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-
-const STATUS_VARIANT: Record<AdoptionListingStatus, "default"|"secondary"|"muted"|"destructive"> = {
-  Draft: "muted", PendingApproval: "secondary", Approved: "default",
-  Rejected: "destructive", Adopted: "default", Closed: "muted"
-};
 
 export function AdoptionDetailPage() {
   const { id = "" } = useParams();
@@ -128,7 +123,7 @@ export function AdoptionDetailPage() {
                   <h1 className="text-xl sm:text-2xl font-bold">{listing.title}</h1>
                   {listing.petName && <p className="text-sm text-muted-foreground">Meet {listing.petName}</p>}
                 </div>
-                <Badge variant={STATUS_VARIANT[listing.status]}>{prettyStatus(listing.status)}</Badge>
+                <Badge variant={statusBadgeVariant(listing.status)}>{prettyStatus(listing.status)}</Badge>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
                 <Badge variant="outline">{listing.animalType}</Badge>

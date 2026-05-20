@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Flag, Gavel, Filter, Inbox } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,13 +17,6 @@ const STATUSES: ReportStatus[] = ["Open", "UnderReview", "Resolved", "Dismissed"
 const TYPES: ReportTargetType[] = [
   "Post", "Comment", "Message", "User", "AdoptionListing", "Product", "Doctor", "Store"
 ];
-
-const STATUS_VARIANT: Record<ReportStatus, "default" | "secondary" | "outline" | "destructive"> = {
-  Open: "destructive",
-  UnderReview: "secondary",
-  Resolved: "default",
-  Dismissed: "outline"
-};
 
 export function ReportedContentPage() {
   const qc = useQueryClient();
@@ -100,7 +93,7 @@ export function ReportedContentPage() {
                     <div className="flex items-center justify-between">
                       <p className="font-medium">{r.reason}</p>
                       <div className="flex items-center gap-2">
-                        <Badge variant={STATUS_VARIANT[r.status]}>{r.status}</Badge>
+                        <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>
                         {r.status === "Open" && (
                           <Button size="sm" variant="outline"
                             onClick={() => setStatusMutation.mutate({ id: r.id, s: "Dismissed" })}>

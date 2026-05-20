@@ -4,7 +4,7 @@ import { Check, X, Stethoscope, ShoppingBag, HeartHandshake, Sparkles, Users as 
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Can } from "@/components/auth/Can";
@@ -104,7 +104,7 @@ function UserRegistrationQueue() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="muted">Pending</Badge>
+              <Badge variant={statusBadgeVariant("Pending")}>Pending</Badge>
               <Can permission="users.approve">
                 <Button size="sm" onClick={() => approve(u.id, u.displayName)}>
                   <Check className="h-3.5 w-3.5 mr-1" /> Approve
@@ -166,7 +166,7 @@ function AdoptionQueue() {
               <p className="text-xs text-muted-foreground">by {it.ownerName} · {new Date(it.createdAt).toLocaleString()}</p>
             </div>
             <div className="flex gap-2">
-              <Badge variant="muted">Pending</Badge>
+              <Badge variant={statusBadgeVariant("Pending")}>Pending</Badge>
               <Can permission="adoption.approve">
                 <Button size="sm" onClick={() => approve(it.id)}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
               </Can>

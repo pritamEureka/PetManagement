@@ -2,19 +2,10 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Truck, Phone, Mail, Package, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { deliveriesApi, type DeliveryAssignmentStatus } from "@/api/marketplace";
-
-const STATUS_TONE: Record<DeliveryAssignmentStatus, "default" | "outline" | "destructive" | "secondary"> = {
-  Assigned: "outline",
-  PickedUp: "secondary",
-  InTransit: "secondary",
-  OutForDelivery: "default",
-  Delivered: "default",
-  Failed: "destructive"
-};
 
 export function DeliveryManagementPage() {
   const [statusFilter, setStatusFilter] = useState<DeliveryAssignmentStatus | "all">("all");
@@ -100,7 +91,7 @@ export function DeliveryManagementPage() {
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono font-semibold">{a.orderNumber}</span>
-                      <Badge variant={STATUS_TONE[a.status]}>{a.status}</Badge>
+                      <Badge variant={statusBadgeVariant(a.status)}>{a.status}</Badge>
                       <span className="text-muted-foreground text-xs">${a.orderTotal.toFixed(2)}</span>
                     </div>
                     <p className="text-xs text-muted-foreground truncate">

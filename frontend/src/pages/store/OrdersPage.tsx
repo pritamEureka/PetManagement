@@ -2,16 +2,11 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Package, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { ordersV2Api } from "@/api/marketplace";
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  Created: "outline", Confirmed: "secondary", Packed: "secondary",
-  Shipped: "default", Delivered: "default", Cancelled: "destructive", Returned: "outline"
-};
 
 export function OrdersPage() {
   const { data, isLoading } = useQuery({
@@ -41,9 +36,9 @@ export function OrdersPage() {
                   <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
                 </div>
                 <div className="flex gap-2 flex-wrap justify-end">
-                  <Badge variant={STATUS_VARIANT[o.status] ?? "outline"}>{o.status}</Badge>
-                  <Badge variant="outline">{o.paymentStatus}</Badge>
-                  <Badge variant="outline" className="flex items-center gap-1">
+                  <Badge variant={statusBadgeVariant(o.status)}>{o.status}</Badge>
+                  <Badge variant={statusBadgeVariant(o.paymentStatus)}>{o.paymentStatus}</Badge>
+                  <Badge variant={statusBadgeVariant(o.shipmentStatus)} className="flex items-center gap-1">
                     <RefreshCw className="h-3 w-3" /> {o.shipmentStatus}
                   </Badge>
                 </div>

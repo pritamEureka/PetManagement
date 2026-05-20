@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
@@ -26,6 +26,33 @@ import { EditUserDialog } from "@/components/admin/EditUserDialog";
 import { ViewUserDialog } from "@/components/admin/ViewUserDialog";
 import { toast } from "@/components/ui/sonner";
 import { useAuthStore } from "@/store/authStore";
+
+const ROLE_BADGE_CLASSES: Record<string, string> = {
+  superadmin: "border-fuchsia-200 bg-fuchsia-100 text-fuchsia-800 dark:border-fuchsia-900/60 dark:bg-fuchsia-950/60 dark:text-fuchsia-200",
+  admin: "border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-900/60 dark:bg-violet-950/60 dark:text-violet-200",
+  moderator: "border-rose-200 bg-rose-100 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/60 dark:text-rose-200",
+  user: "border-slate-200 bg-slate-100 text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200",
+  doctor: "border-teal-200 bg-teal-100 text-teal-800 dark:border-teal-900/60 dark:bg-teal-950/60 dark:text-teal-200",
+  vet: "border-teal-200 bg-teal-100 text-teal-800 dark:border-teal-900/60 dark:bg-teal-950/60 dark:text-teal-200",
+  storeowner: "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-200",
+  deliveryuser: "border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/60 dark:text-sky-200"
+};
+
+const FALLBACK_ROLE_BADGE_CLASSES = [
+  "border-cyan-200 bg-cyan-100 text-cyan-800 dark:border-cyan-900/60 dark:bg-cyan-950/60 dark:text-cyan-200",
+  "border-lime-200 bg-lime-100 text-lime-800 dark:border-lime-900/60 dark:bg-lime-950/60 dark:text-lime-200",
+  "border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-900/60 dark:bg-orange-950/60 dark:text-orange-200",
+  "border-indigo-200 bg-indigo-100 text-indigo-800 dark:border-indigo-900/60 dark:bg-indigo-950/60 dark:text-indigo-200"
+];
+
+function roleBadgeClass(role: string) {
+  const key = role.toLowerCase().replace(/[\s_-]/g, "");
+  const known = ROLE_BADGE_CLASSES[key];
+  if (known) return known;
+
+  const hash = Array.from(key).reduce((total, char) => total + char.charCodeAt(0), 0);
+  return FALLBACK_ROLE_BADGE_CLASSES[hash % FALLBACK_ROLE_BADGE_CLASSES.length];
+}
 
 export function UsersPage() {
   const qc = useQueryClient();
@@ -104,18 +131,18 @@ export function UsersPage() {
         <div className="flex flex-wrap gap-1">
           {u.roles.length === 0
             ? <span className="text-xs text-muted-foreground">—</span>
-            : u.roles.map((r) => <Badge key={r} variant="outline" className="text-[10px]">{r}</Badge>)}
+            : u.roles.map((r) => <Badge key={r} variant="outline" className={`text-[10px] ${roleBadgeClass(r)}`}>{r}</Badge>)}
         </div>
       )
     },
     {
       key: "status", header: "Status", className: "w-32",
       render: (u) =>
-        u.isSuspended ? <Badge variant="destructive">Suspended</Badge>
-                       : u.approvalStatus === "Pending" ? <Badge variant="secondary">Pending</Badge>
-                       : u.approvalStatus === "Rejected" ? <Badge variant="destructive">Rejected</Badge>
-                       : u.isActive ? <Badge variant="secondary">Active</Badge>
-                                    : <Badge variant="muted">Inactive</Badge>
+        u.isSuspended ? <Badge variant={statusBadgeVariant("Suspended")}>Suspended</Badge>
+                       : u.approvalStatus === "Pending" ? <Badge variant={statusBadgeVariant("Pending")}>Pending</Badge>
+                       : u.approvalStatus === "Rejected" ? <Badge variant={statusBadgeVariant("Rejected")}>Rejected</Badge>
+                       : u.isActive ? <Badge variant={statusBadgeVariant("Active")}>Active</Badge>
+                                    : <Badge variant={statusBadgeVariant("Inactive")}>Inactive</Badge>
     },
     {
       key: "joined", header: "Joined", className: "w-32",

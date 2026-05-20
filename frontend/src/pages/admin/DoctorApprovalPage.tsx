@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Check, X, Stethoscope, FileText, ShieldCheck, Ban } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -76,7 +76,7 @@ export function DoctorApprovalPage() {
                     {d.primarySpecialty ?? "—"}{d.city ? ` · ${d.city}` : ""} · ${d.consultationFee.toFixed(2)} fee
                   </p>
                 </div>
-                <Badge variant={d.approvalStatus === "Approved" ? "default" : d.approvalStatus === "Suspended" ? "destructive" : "muted"}>
+                <Badge variant={statusBadgeVariant(d.approvalStatus)}>
                   {d.approvalStatus}
                 </Badge>
                 <Button size="sm" variant="outline" onClick={() => setCredsForId(credsForId === d.id ? null : d.id)}>
@@ -107,7 +107,7 @@ export function DoctorApprovalPage() {
                           {c.title}{c.documentNumber ? ` · #${c.documentNumber}` : ""}
                         </a>
                         <div className="flex items-center gap-2">
-                          {c.verified ? <Badge variant="default">Verified</Badge> : <Badge variant="muted">Pending</Badge>}
+                          {c.verified ? <Badge variant={statusBadgeVariant("Verified")}>Verified</Badge> : <Badge variant={statusBadgeVariant("Pending")}>Pending</Badge>}
                           <Button size="sm" variant={c.verified ? "outline" : "default"} onClick={() => verifyCred(c, !c.verified)}>
                             {c.verified ? "Unverify" : "Verify"}
                           </Button>

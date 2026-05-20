@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Truck, MapPin, Phone, MessageSquare, Package, CheckCircle2, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -18,15 +18,6 @@ const NEXT: Record<DeliveryAssignmentStatus, DeliveryAssignmentStatus[]> = {
   OutForDelivery: ["Delivered", "Failed"],
   Delivered:      [],
   Failed:         []
-};
-
-const TONE: Record<DeliveryAssignmentStatus, "default" | "outline" | "destructive" | "secondary"> = {
-  Assigned: "outline",
-  PickedUp: "secondary",
-  InTransit: "secondary",
-  OutForDelivery: "default",
-  Delivered: "default",
-  Failed: "destructive"
 };
 
 const LABEL: Record<DeliveryAssignmentStatus, string> = {
@@ -107,7 +98,7 @@ function DeliveryCard({ a, onAct, disabled }: {
           <p className="text-xs text-muted-foreground">Assigned {new Date(a.assignedAt).toLocaleString()}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <Badge variant={TONE[a.status]}>{a.status}</Badge>
+          <Badge variant={statusBadgeVariant(a.status)}>{a.status}</Badge>
           <p className="text-sm font-semibold">${a.orderTotal.toFixed(2)}</p>
         </div>
       </CardHeader>

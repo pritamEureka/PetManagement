@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ShoppingBag, Package, DollarSign, Star, Boxes, Settings, Plus, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { storesApi } from "@/api/marketplace";
 
 export function StoreDashboardPage() {
@@ -34,7 +34,7 @@ export function StoreDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShoppingBag className="h-6 w-6 text-primary" /> {store.name}
-            <Badge variant={store.approvalStatus === "Approved" ? "default" : "outline"}>{store.approvalStatus}</Badge>
+            <Badge variant={statusBadgeVariant(store.approvalStatus)}>{store.approvalStatus}</Badge>
           </h1>
           <p className="text-sm text-muted-foreground">Orders, inventory, and product performance.</p>
         </div>
@@ -49,7 +49,7 @@ export function StoreDashboardPage() {
         <Card>
           <CardContent className="py-3 flex items-center gap-2 text-sm">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
-            Your store is <Badge variant="outline">{store.approvalStatus}</Badge>. Products can be created but won't be listed publicly until approved.
+            Your store is <Badge variant={statusBadgeVariant(store.approvalStatus)}>{store.approvalStatus}</Badge>. Products can be created but won't be listed publicly until approved.
           </CardContent>
         </Card>
       )}

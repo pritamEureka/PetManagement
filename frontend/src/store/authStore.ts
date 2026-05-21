@@ -19,6 +19,8 @@ interface AuthState {
   logout: () => Promise<void>;
   setSuspensionMessage: (msg: string | null) => void;
   clearTwoFactor: () => void;
+  /** Merge fresh user fields after a self-service profile edit (display name, email, avatarUrl, ...). */
+  patchUser: (patch: Partial<NonNullable<AuthResponse["user"]>>) => void;
   hasPermission: (perm: string) => boolean;
   hasAnyRole: (...roles: string[]) => boolean;
 }
@@ -93,6 +95,11 @@ export const useAuthStore = create<AuthState>()(
 
       setSuspensionMessage: (msg) => set({ suspensionMessage: msg }),
       clearTwoFactor:       ()    => set({ needsTwoFactor: false }),
+      patchUser: (patch) => {
+        const u = get().user;
+        if (!u) return;
+        set({ user: { ...u, ...patch } });
+      },
 
       hasPermission: (perm) => {
         const u = get().user;

@@ -18,6 +18,7 @@ import { FeedPage } from "@/pages/FeedPage";
 import { PostDetailPage } from "@/pages/PostDetailPage";
 import { UserDashboardPage } from "@/pages/UserDashboardPage";
 import { UserProfilePage } from "@/pages/UserProfilePage";
+import { ProfilePage } from "@/pages/ProfilePage";
 import { SavedPostsPage } from "@/pages/feed/SavedPostsPage";
 import { MyPostsPage } from "@/pages/feed/MyPostsPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
@@ -172,6 +173,7 @@ export default function App() {
               <Route path="/feed/mine" element={<MyPostsPage />} />
               <Route path="/feed/:id" element={<PostDetailPage />} />
               <Route path="/u/:userId" element={<UserProfilePage />} />
+              <Route path="/profile" element={<ProfilePage />} />
 
               <Route element={<ProtectedRoute permission="pets.view" />}>
                 <Route path="/pets" element={<PetsPage />} />

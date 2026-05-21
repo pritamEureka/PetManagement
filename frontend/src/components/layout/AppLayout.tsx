@@ -444,44 +444,53 @@ export function AppLayout() {
             collapsed ? "justify-center" : "gap-3",
           )}
         >
-          <Avatar
+          <Link
+            to="/profile"
+            title="My profile"
             className={cn(
-              "shrink-0 transition-all duration-300",
-              collapsed ? "h-8 w-8" : "h-9 w-9",
+              "flex items-center min-w-0 rounded-md hover:bg-muted/60 transition-colors",
+              collapsed ? "p-1" : "gap-3 p-1 flex-1",
             )}
           >
-            <AvatarImage src={user?.avatarUrl ?? undefined} />
-            <AvatarFallback>{user?.displayName?.[0] ?? "?"}</AvatarFallback>
-          </Avatar>
-          <div
-            className={cn(
-              "transition-all duration-300 overflow-hidden",
-              collapsed ? "w-0 opacity-0" : "w-auto opacity-100 flex-1 min-w-0",
-            )}
-          >
-            <p className="text-sm font-medium truncate">{user?.displayName}</p>
-            <p className="text-xs font-medium text-slate-700 dark:text-muted-foreground truncate">
-              {user?.email}
-            </p>
-            {roles.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {roles.slice(0, 2).map((r) => (
-                  <Badge
-                    key={r}
-                    variant="outline"
-                    className="text-[9px] px-1.5 py-0"
-                  >
-                    {r}
-                  </Badge>
-                ))}
-                {roles.length > 2 && (
-                  <Badge variant="muted" className="text-[9px] px-1.5 py-0">
-                    +{roles.length - 2}
-                  </Badge>
-                )}
-              </div>
-            )}
-          </div>
+            <Avatar
+              className={cn(
+                "shrink-0 transition-all duration-300",
+                collapsed ? "h-8 w-8" : "h-9 w-9",
+              )}
+            >
+              <AvatarImage src={user?.avatarUrl ?? undefined} />
+              <AvatarFallback>{user?.displayName?.[0] ?? "?"}</AvatarFallback>
+            </Avatar>
+            <div
+              className={cn(
+                "transition-all duration-300 overflow-hidden",
+                collapsed ? "w-0 opacity-0" : "w-auto opacity-100 flex-1 min-w-0",
+              )}
+            >
+              <p className="text-sm font-medium truncate">{user?.displayName}</p>
+              <p className="text-xs font-medium text-slate-700 dark:text-muted-foreground truncate">
+                {user?.email}
+              </p>
+              {roles.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {roles.slice(0, 2).map((r) => (
+                    <Badge
+                      key={r}
+                      variant="outline"
+                      className="text-[9px] px-1.5 py-0"
+                    >
+                      {r}
+                    </Badge>
+                  ))}
+                  {roles.length > 2 && (
+                    <Badge variant="muted" className="text-[9px] px-1.5 py-0">
+                      +{roles.length - 2}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </Link>
           <div
             className={cn(
               "flex flex-col gap-1 transition-all duration-300 overflow-hidden",
@@ -550,20 +559,26 @@ export function AppLayout() {
                 />
               </div>
               <div className="p-3 border-t flex items-center gap-3 shrink-0">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.avatarUrl ?? undefined} />
-                  <AvatarFallback>
-                    {user?.displayName?.[0] ?? "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {user?.displayName}
-                  </p>
-                  <p className="text-xs font-medium text-slate-700 dark:text-muted-foreground truncate">
-                    {user?.email}
-                  </p>
-                </div>
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 flex-1 min-w-0 rounded-md hover:bg-muted/60 transition-colors p-1"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatarUrl ?? undefined} />
+                    <AvatarFallback>
+                      {user?.displayName?.[0] ?? "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {user?.displayName}
+                    </p>
+                    <p className="text-xs font-medium text-slate-700 dark:text-muted-foreground truncate">
+                      {user?.email}
+                    </p>
+                  </div>
+                </Link>
                 <Button
                   variant="ghost"
                   size="icon"

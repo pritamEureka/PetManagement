@@ -28,6 +28,8 @@ export interface AdoptionListingSummary {
   isSaved: boolean;
   isOwn: boolean;
   createdAt: string;
+  /** Km from the viewer; only when the search sent a location and the listing has one. */
+  distanceKm?: number | null;
 }
 
 export interface AdoptionListingDetail extends AdoptionListingSummary {
@@ -45,6 +47,9 @@ export interface AdoptionListingDetail extends AdoptionListingSummary {
   decidedAt?: string | null;
   adoptedAt?: string | null;
   requestCount: number;
+  /** Approximate (~1 km) point the lister shared. */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface AdoptionRequestRow {
@@ -65,13 +70,16 @@ const unwrap = <T,>(p: Promise<{ data: { data: T } | T }>) =>
     return (body && typeof body === "object" && "data" in body ? body.data : body) as T;
   });
 
+export type AdoptionSort = "nearest" | "newest" | "oldest" | "fee_asc" | "fee_desc";
+
 interface SearchParams {
   cursor?: string; pageSize?: number;
   animalType?: string; breed?: string; size?: string; gender?: string;
   location?: string; maxFee?: number;
   vaccinatedOnly?: boolean; neuteredOnly?: boolean;
   goodWithChildren?: boolean; goodWithOtherPets?: boolean;
-  sort?: string;
+  sort?: AdoptionSort;
+  lat?: number; lng?: number; radiusKm?: number; postedWithinDays?: number;
 }
 
 export const adoptionApi = {
@@ -91,7 +99,8 @@ export const adoptionApi = {
   remove:      (id: string) => api.delete(`/v1/adoption/listings/${id}`),
   submit:      (id: string) => api.post(`/v1/adoption/listings/${id}/submit`),
   close:       (id: string) => api.post(`/v1/adoption/listings/${id}/close`),
-  markAdopted: (id: string, adoptedByUserId?: string) => api.post(`/v1/adoption/listings/${id}/adopted`, { adoptedByUserId }),
+  markAdopted: (id: string, adoptedByUserId?: string, opts?: { transferPetProfile?: boolean; includeHealthHistory?: boolean }) =>
+    api.post(`/v1/adoption/listings/${id}/adopted`, { adoptedByUserId, transferPetProfile: opts?.transferPetProfile ?? false, includeHealthHistory: opts?.includeHealthHistory ?? false }),
 
   approve:     (id: string, adminNotes?: string) => api.post(`/v1/adoption/listings/${id}/approve`, { adminNotes }),
   reject:      (id: string, adminNotes?: string) => api.post(`/v1/adoption/listings/${id}/reject`, { adminNotes }),

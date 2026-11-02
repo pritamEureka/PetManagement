@@ -42,6 +42,8 @@ public class PrescriptionService : IPrescriptionService
         };
         _db.Prescriptions.Add(rx);
         appt.PrescriptionFileUrl = input.FileUrl;
+        // Pet history: attach the file to the visit record and start medication courses.
+        await Pets.PetClinicalSync.ImportPrescriptionAsync(_db, appt, rx, ct);
 
         _db.Notifications.Add(new InAppNotification
         {

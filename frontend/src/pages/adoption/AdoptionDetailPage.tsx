@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { adoptionApi, type AdoptionListingStatus } from "@/api/adoption";
+import { useGeolocation, formatDistance, haversineKm } from "@/hooks/useGeolocation";
 import { toast } from "@/components/ui/sonner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Can } from "@/components/auth/Can";
@@ -30,6 +31,11 @@ export function AdoptionDetailPage() {
     queryFn: () => adoptionApi.get(id),
     enabled: !!id
   });
+  // No prompt here — reuses the location the list page already obtained this session.
+  const { coords } = useGeolocation();
+  const distance = coords && listing?.latitude != null && listing?.longitude != null
+    ? formatDistance(haversineKm(coords.lat, coords.lng, listing.latitude, listing.longitude))
+    : null;
 
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -136,8 +142,18 @@ export function AdoptionDetailPage() {
               {listing.description && (
                 <p className="text-sm whitespace-pre-wrap">{listing.description}</p>
               )}
-              {listing.location && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {listing.location}</p>
+              {(listing.location || listing.latitude != null) && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                  <MapPin className="h-3 w-3" />
+                  {distance && <span className="font-medium text-foreground">{distance}</span>}
+                  {distance && listing.location ? "·" : ""} {listing.location}
+                  {listing.latitude != null && listing.longitude != null && (
+                    <a className="underline ml-1" target="_blank" rel="noreferrer"
+                      href={`https://www.google.com/maps/search/?api=1&query=${listing.latitude},${listing.longitude}`}>
+                      Approximate area on map
+                    </a>
+                  )}
+                </p>
               )}
             </CardContent>
           </Card>

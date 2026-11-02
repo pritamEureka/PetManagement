@@ -21,6 +21,7 @@ public class PostgresFixture : IAsyncLifetime
         await _pg.StartAsync();
         var opts = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(_pg.GetConnectionString())
+            .UseSnakeCaseNamingConvention()   // match production (DependencyInjection.AddInfrastructure)
             .Options;
         Db = new ApplicationDbContext(opts);
         await Db.Database.EnsureCreatedAsync();

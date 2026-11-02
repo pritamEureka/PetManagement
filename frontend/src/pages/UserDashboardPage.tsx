@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { PawPrint, Calendar, ShoppingBag, HeartHandshake, MessageSquare, Stethoscope, Plus, Bell, ArrowRight } from "lucide-react";
+import { PawPrint, Calendar, ShoppingBag, HeartHandshake, MessageSquare, Stethoscope, Plus, Bell, ArrowRight, Scissors, Search } from "lucide-react";
+import { UpcomingCareWidget, TodayDosesWidget } from "@/components/pets/CareWidgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -78,8 +79,16 @@ export function UserDashboardPage() {
             <QuickAction to="/adoption" icon={HeartHandshake} title="Browse adoptions" hint="Pets near you" />
             <QuickAction to="/store" icon={ShoppingBag} title="Shop the marketplace" hint="Food, accessories, more" />
             <QuickAction to="/messages" icon={MessageSquare} title="Open messages" hint="Talk to vets & sellers" />
+            <QuickAction to="/services" icon={Scissors} title="Grooming & sitting" hint="Groomers, trainers, walkers" />
+            <QuickAction to="/lost-found" icon={Search} title="Lost & found" hint="Pets missing near you" />
           </CardContent>
         </Card>
+      </div>
+
+      {/* Pet care */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <UpcomingCareWidget />
+        <TodayDosesWidget />
       </div>
 
       {/* Recent orders */}

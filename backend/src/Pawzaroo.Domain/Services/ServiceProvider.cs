@@ -19,6 +19,12 @@ public class ServiceProviderProfile : AuditableEntity
     public ApprovalStatus ApprovalStatus { get; set; } = ApprovalStatus.Pending;
     public decimal RatingAverage { get; set; }
     public int RatingCount { get; set; }
+    public string? LogoUrl { get; set; }
+    /// <summary>Comma list of AnimalType names served; null = all.</summary>
+    public string? AnimalTypes { get; set; }
+    public int DefaultDurationMinutes { get; set; } = 60;
+    public string? AdminNotes { get; set; }
+    public DateTime? ApprovedAt { get; set; }
 
     public ICollection<ServiceBooking> Bookings { get; set; } = new List<ServiceBooking>();
 }
@@ -36,6 +42,10 @@ public class ServiceBooking : AuditableEntity
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
     public decimal Amount { get; set; }
     public string? Notes { get; set; }
+    public int DurationMinutes { get; set; } = 60;
+    public string? CancellationReason { get; set; }
+    public DateTime? ConfirmedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
 }
 
 public class ServiceReview : AuditableEntity

@@ -80,6 +80,8 @@ function toFormInput(l: AdoptionListingDetail): AdoptionListingInput {
     goodWithChildren: l.goodWithChildren ?? null,
     goodWithOtherPets: l.goodWithOtherPets ?? null,
     location: l.location ?? "",
+    latitude: l.latitude ?? null,
+    longitude: l.longitude ?? null,
     adoptionFee: l.adoptionFee,
     reasonForListing: l.reasonForListing ?? "",
     contactPreference: l.contactPreference as any,

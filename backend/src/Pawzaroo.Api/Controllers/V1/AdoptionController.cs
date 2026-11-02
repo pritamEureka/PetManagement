@@ -38,11 +38,14 @@ public class AdoptionController : ControllerBase
         [FromQuery] string? location = null, [FromQuery] decimal? maxFee = null,
         [FromQuery] bool? vaccinatedOnly = null, [FromQuery] bool? neuteredOnly = null,
         [FromQuery] bool? goodWithChildren = null, [FromQuery] bool? goodWithOtherPets = null,
-        [FromQuery] string? sort = null, CancellationToken ct = default)
+        [FromQuery] string? sort = null,
+        [FromQuery] double? lat = null, [FromQuery] double? lng = null,
+        [FromQuery] double? radiusKm = null, [FromQuery] int? postedWithinDays = null,
+        CancellationToken ct = default)
         => _listings.SearchAsync(new AdoptionListingQuery(
             AdoptionListingScope.Public, cursor, pageSize, animalType, breed, size, gender,
             location, maxFee, vaccinatedOnly, neuteredOnly, goodWithChildren, goodWithOtherPets,
-            Status: null, sort), ct);
+            Status: null, sort, lat, lng, radiusKm, postedWithinDays), ct);
 
     [HttpGet("listings/mine")]
     [Authorize]
@@ -118,7 +121,7 @@ public class AdoptionController : ControllerBase
     [Audit("Adoption", "mark_adopted", entityName: "AdoptionListing")]
     public async Task<IActionResult> MarkAdopted(Guid id, [FromBody] MarkAdoptedInput input, CancellationToken ct)
     {
-        await _listings.MarkAdoptedAsync(id, input.AdoptedByUserId, ct);
+        await _listings.MarkAdoptedAsync(id, input.AdoptedByUserId, input.TransferPetProfile, input.IncludeHealthHistory, ct);
         return NoContent();
     }
 

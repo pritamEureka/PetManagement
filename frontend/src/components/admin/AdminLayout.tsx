@@ -4,7 +4,7 @@ import {
   ShieldCheck, Users, KeyRound, Stethoscope, ShoppingBag, HeartHandshake,
   Flag, Package, Calendar, Percent, Star, Bell, History, BarChart3,
   Settings, LayoutGrid, Home, LogOut, PawPrint, Search, Menu, PanelLeftClose, PanelLeft,
-  Ticket, Truck
+  Ticket, Truck, Scissors
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
@@ -66,6 +66,7 @@ const NAV: { heading: string; items: NavItem[] }[] = [
       { to: "/admin/approvals",          label: "All approvals", icon: ShieldCheck,     anyOf: APPROVAL_PERMISSIONS },
       { to: "/admin/doctor-approvals",   label: "Vets",        icon: Stethoscope,    anyOf: ["vets.approve","vets.reject","vets.suspend"] },
       { to: "/admin/store-approvals",    label: "Stores",      icon: ShoppingBag,    anyOf: ["stores.approve","stores.reject","sellers.approve"] },
+      { to: "/admin/service-provider-approvals", label: "Service providers", icon: Scissors, anyOf: ["services.approve","services.reject","services.suspend"] },
       { to: "/admin/adoption-approvals", label: "Adoption",    icon: HeartHandshake, anyOf: ["adoption.approve","adoption.reject"] }
     ]
   },

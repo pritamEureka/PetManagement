@@ -275,6 +275,8 @@ public class AppointmentService : IAppointmentService
         if (!await _db.Doctors.AnyAsync(d => d.Id == appt.DoctorId && d.UserId == uid, ct)) throw new ForbiddenException();
         appt.Status = AppointmentStatus.Completed;
         appt.CompletedAt = DateTime.UtcNow;
+        // Mirror the visit into the pet's health history in the same transaction.
+        await Pets.PetClinicalSync.UpsertVisitRecordAsync(_db, appt, ct);
         await _db.SaveChangesAsync(ct);
         await _kafka.PublishAsync(VetTopics.Appointments, new AppointmentCompleted(appt.Id, DateTime.UtcNow), appt.Id.ToString(), ct);
     }

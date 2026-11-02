@@ -20,6 +20,8 @@ public class AdoptionListingExtendedConfiguration : IEntityTypeConfiguration<Ado
         e.HasIndex(x => x.Status);
         e.HasIndex(x => new { x.Status, x.CreatedAt });
         e.HasIndex(x => new { x.AnimalType, x.Status });
+        // Bounding-box prefilter for radius search (lat/lng range scans).
+        e.HasIndex(x => new { x.Status, x.Latitude, x.Longitude });
         e.HasIndex(x => x.OwnerId);
 
         e.HasOne(x => x.DecidedByUser).WithMany().HasForeignKey(x => x.DecidedByUserId).OnDelete(DeleteBehavior.SetNull);

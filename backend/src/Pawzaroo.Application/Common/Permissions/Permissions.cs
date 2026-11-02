@@ -98,6 +98,15 @@ public static class Permissions
         public const string Create = "pets.create";
         public const string Edit   = "pets.edit";
         public const string Delete = "pets.delete";
+        /// <summary>Read any pet's full record regardless of ownership (support / admin).</summary>
+        public const string ReadAny = "pets.read_any";
+    }
+
+    public static class LostFound
+    {
+        public const string View     = "lost_found.view";
+        public const string Create   = "lost_found.create";
+        public const string Moderate = "lost_found.moderate";
     }
 
     public static class Vets
@@ -183,6 +192,8 @@ public static class Permissions
         public const string Suspend = "services.suspend";
         public const string Book    = "services.book";
         public const string Cancel  = "services.cancel";
+        /// <summary>Register / manage one's own provider profile and incoming bookings.</summary>
+        public const string Edit    = "services.edit";
     }
 
     public static class Breeders

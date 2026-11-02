@@ -20,7 +20,12 @@ public record AdoptionListingQuery(
     bool? GoodWithChildren = null,
     bool? GoodWithOtherPets = null,
     AdoptionListingStatus? Status = null,
-    string? Sort = null);
+    /// <summary>"nearest" | "newest" | "oldest" | "fee_asc" | "fee_desc". Defaults to nearest when the viewer's point is given.</summary>
+    string? Sort = null,
+    double? Latitude = null,
+    double? Longitude = null,
+    double? RadiusKm = null,
+    int? PostedWithinDays = null);
 
 public interface IAdoptionListingService
 {
@@ -37,8 +42,8 @@ public interface IAdoptionListingService
     /// <summary>Owner closes a listing (e.g. before approval, or after).</summary>
     Task CloseAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Owner marks adopted (Approved -> Adopted), optionally captures adopter.</summary>
-    Task MarkAdoptedAsync(Guid id, Guid? adoptedByUserId, CancellationToken ct = default);
+    /// <summary>Owner marks adopted (Approved -> Adopted), optionally captures adopter and hands a linked pet profile over.</summary>
+    Task MarkAdoptedAsync(Guid id, Guid? adoptedByUserId, bool transferPetProfile, bool includeHealthHistory, CancellationToken ct = default);
 
     Task ApproveAsync(Guid id, string? adminNotes, CancellationToken ct = default);
     Task RejectAsync(Guid id, string? adminNotes, CancellationToken ct = default);

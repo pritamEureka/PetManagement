@@ -1,5 +1,5 @@
 import { useFormContext, useFieldArray } from "react-hook-form";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, LocateFixed, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,7 +149,8 @@ export function AdoptionListingFormFields() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="location">Location</Label>
-            <Input id="location" placeholder="City, Country" {...register("location")} />
+            <Input id="location" placeholder="Area, City" {...register("location")} />
+            <ListingPointPicker />
           </div>
           <div>
             <Label htmlFor="fee">Adoption fee</Label>
@@ -208,5 +209,60 @@ function TriSelect({ value, onChange }: { value: boolean | null; onChange: (v: b
         <SelectItem value="no">No</SelectItem>
       </SelectContent>
     </Select>
+  );
+}
+
+/**
+ * Lets the lister attach an approximate point so the listing ranks in
+ * "near me" searches. The server rounds it to ~1 km; the exact address is
+ * never stored.
+ */
+function ListingPointPicker() {
+  const { watch, setValue } = useFormContext<AdoptionListingInput>();
+  const lat = watch("latitude");
+  const lng = watch("longitude");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasPoint = lat != null && lng != null;
+
+  function locate() {
+    setError(null);
+    if (!navigator.geolocation) { setError("Location isn't available in this browser."); return; }
+    setBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setValue("latitude", pos.coords.latitude, { shouldDirty: true });
+        setValue("longitude", pos.coords.longitude, { shouldDirty: true });
+        setBusy(false);
+      },
+      (err) => {
+        setBusy(false);
+        setError(err.code === err.PERMISSION_DENIED
+          ? "Location permission was denied — allow it in your browser to show this pet to people nearby."
+          : "Couldn't get your location. Try again.");
+      },
+      { enableHighAccuracy: false, timeout: 10_000 }
+    );
+  }
+
+  function clear() {
+    setValue("latitude", null, { shouldDirty: true });
+    setValue("longitude", null, { shouldDirty: true });
+  }
+
+  return (
+    <div className="mt-1.5 space-y-1">
+      {hasPoint ? (
+        <p className="text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 flex-wrap">
+          <LocateFixed className="h-3.5 w-3.5" /> Shown to people nearby (approx. 1 km)
+          <button type="button" className="underline text-muted-foreground" onClick={clear}>Remove</button>
+        </p>
+      ) : (
+        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={locate} disabled={busy}>
+          <LocateFixed className="h-3.5 w-3.5 mr-1" /> {busy ? "Locating..." : "Use my location"}
+        </Button>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
   );
 }

@@ -51,23 +51,34 @@ export const genders = ["Unknown", "Male", "Female"] as const;
 export const contactPreferences = ["Chat", "Phone", "Email"] as const;
 export const consultationTypes = ["Online", "Offline", "Both"] as const;
 
+export const animalSizes = ["Tiny", "Small", "Medium", "Large", "ExtraLarge"] as const;
+
+// The API binds Guid? / DateTime? / enum? fields — an empty string fails model
+// binding, so blank form values must go over the wire as null.
+const blankToNull = (v: unknown) => (v === "" || v === undefined ? null : v);
+
 export const petSchema = z.object({
   name: z.string().min(1).max(128),
   animalType: z.enum(animalTypes),
   breed: z.string().max(128).optional().or(z.literal("")),
   gender: z.enum(genders).default("Unknown"),
-  birthDate: z.string().optional().or(z.literal("")),
-  weightKg: z.coerce.number().nonnegative().optional(),
+  birthDate: z.preprocess(blankToNull, z.string().nullable().optional())
+    .refine((v) => !v || new Date(v) <= new Date(), "Birth date can't be in the future"),
+  weightKg: z.preprocess((v) => (v === "" || v === 0 || v === "0" || v == null ? null : v),
+    z.coerce.number().positive().max(5000).nullable().optional()),
   color: z.string().max(64).optional().or(z.literal("")),
   tagNumber: z.string().max(64).optional().or(z.literal("")),
   primaryPhotoUrl: z.string().url().optional().or(z.literal("")),
   allergies: z.string().max(1000).optional().or(z.literal("")),
   dietNotes: z.string().max(2000).optional().or(z.literal("")),
-  isAvailableForAdoption: z.boolean().default(false)
+  isAvailableForAdoption: z.boolean().default(false),
+  size: z.preprocess(blankToNull, z.enum(animalSizes).nullable().optional()),
+  microchipNumber: z.string().max(64).optional().or(z.literal("")),
+  sireId: z.preprocess(blankToNull, z.string().uuid().nullable().optional()),
+  damId: z.preprocess(blankToNull, z.string().uuid().nullable().optional()),
+  groupId: z.preprocess(blankToNull, z.string().uuid().nullable().optional())
 });
 export type PetInput = z.infer<typeof petSchema>;
-
-export const animalSizes = ["Tiny", "Small", "Medium", "Large", "ExtraLarge"] as const;
 export const homeEnvironments = ["Apartment", "House", "HouseWithYard", "Farm", "Other"] as const;
 
 export const adoptionListingSchema = z.object({
@@ -88,6 +99,8 @@ export const adoptionListingSchema = z.object({
   goodWithChildren: z.boolean().nullable().optional(),
   goodWithOtherPets: z.boolean().nullable().optional(),
   location: z.string().max(256).optional().or(z.literal("")),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
   adoptionFee: z.coerce.number().nonnegative().default(0),
   reasonForListing: z.string().max(2000).optional().or(z.literal("")),
   contactPreference: z.enum(contactPreferences),

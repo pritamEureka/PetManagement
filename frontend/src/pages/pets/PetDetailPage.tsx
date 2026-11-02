@@ -1,28 +1,61 @@
-import { useQuery } from "@tanstack/react-query";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, PawPrint, Syringe, Stethoscope, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, PawPrint, Pencil } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { petsApi } from "@/api/pets";
-import { api } from "@/api/client";
+import { petsApi, canEditPet } from "@/api/pets";
+import { PetFormDialog } from "./PetFormDialog";
+import { accessLabel } from "./PetsPage";
+import { OverviewTab } from "./detail/OverviewTab";
+import { HealthTab } from "./detail/HealthTab";
+import { MedicationsTab } from "./detail/MedicationsTab";
+import { WeightTab } from "./detail/WeightTab";
+import { CareTab } from "./detail/CareTab";
+import { FamilyTab } from "./detail/FamilyTab";
+import { MoneyTab } from "./detail/MoneyTab";
+import { ShareTab } from "./detail/ShareTab";
+
+function ageLabel(birthDate?: string | null) {
+  if (!birthDate) return null;
+  const months = Math.floor((Date.now() - new Date(birthDate).getTime()) / (30.44 * 864e5));
+  if (months < 1) return "under a month";
+  if (months < 24) return `${months} mo`;
+  return `${Math.floor(months / 12)} yrs`;
+}
 
 export function PetDetailPage() {
   const { id = "" } = useParams();
-  const { data: pet, isLoading } = useQuery({
-    queryKey: ["pets", id],
-    queryFn: () => api.get(`/pets/${id}`).then((r) => r.data),
-    enabled: !!id
-  });
+  const qc = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const [editOpen, setEditOpen] = useState(false);
+  const { data: pet, isLoading, isError } = useQuery({ queryKey: ["pets", id], queryFn: () => petsApi.get(id), enabled: !!id, retry: false });
 
-  if (isLoading) return <div className="space-y-3 max-w-3xl mx-auto"><Skeleton className="h-56" /><Skeleton className="h-32" /></div>;
-  if (!pet) return <p className="text-muted-foreground">Pet not found.</p>;
+  if (isLoading) return <div className="space-y-3 max-w-4xl mx-auto"><Skeleton className="h-56" /><Skeleton className="h-32" /></div>;
+  if (isError || !pet) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-3">
+        <Button variant="ghost" size="sm" asChild><Link to="/pets"><ArrowLeft className="h-4 w-4 mr-1" /> All pets</Link></Button>
+        <p className="text-muted-foreground">Pet not found, or you don't have access to it.</p>
+      </div>
+    );
+  }
 
-  const vacs = pet.vaccinations ?? [];
-  const med = pet.medicalRecords ?? [];
-  const groom = pet.groomingRecords ?? [];
+  const editor = canEditPet(pet.myAccess);
+  const tabs = [
+    { key: "overview", label: "Overview" },
+    { key: "health", label: "Health" },
+    { key: "medications", label: "Medications" },
+    { key: "weight", label: "Weight" },
+    ...(pet.myAccess !== "Vet" ? [{ key: "care", label: "Daily care" }, { key: "family", label: "Care team" }] : []),
+    ...(editor ? [{ key: "money", label: "Expenses" }] : []),
+    { key: "share", label: "Share & ID" },
+  ];
+  const active = tabs.some((t) => t.key === params.get("tab")) ? params.get("tab")! : "overview";
+  const age = ageLabel(pet.birthDate);
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
@@ -35,72 +68,48 @@ export function PetDetailPage() {
             : <div className="flex items-center justify-center h-full text-muted-foreground"><PawPrint className="h-16 w-16" /></div>}
         </div>
         <CardContent className="pt-6 space-y-2">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-2xl font-bold">{pet.name}</h1>
               <p className="text-sm text-muted-foreground">
                 {pet.animalType}{pet.breed ? ` · ${pet.breed}` : ""}{pet.gender !== "Unknown" ? ` · ${pet.gender}` : ""}
-                {pet.weightKg ? ` · ${pet.weightKg} kg` : ""}
+                {age ? ` · ${age}` : ""}{pet.weightKg ? ` · ${pet.weightKg} kg` : ""}{pet.groupName ? ` · ${pet.groupName}` : ""}
               </p>
+              {pet.myAccess !== "Owner" && <p className="text-xs text-muted-foreground mt-1">Owned by {pet.ownerName}</p>}
             </div>
-            {pet.isAvailableForAdoption && <Badge>Available for adoption</Badge>}
+            <div className="flex items-center gap-2 flex-wrap">
+              {pet.isLost && <Badge variant="destructive">Lost</Badge>}
+              {pet.isAvailableForAdoption && <Badge>Available for adoption</Badge>}
+              {pet.myAccess !== "Owner" && <Badge variant="info">You: {accessLabel(pet.myAccess)}</Badge>}
+              {editor && <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</Button>}
+            </div>
           </div>
           {pet.tagNumber && <p className="text-xs">Tag #{pet.tagNumber}</p>}
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="vaccinations">
-        <TabsList>
-          <TabsTrigger value="vaccinations"><Syringe className="h-3.5 w-3.5 mr-1" /> Vaccinations</TabsTrigger>
-          <TabsTrigger value="medical"><Stethoscope className="h-3.5 w-3.5 mr-1" /> Medical</TabsTrigger>
-          <TabsTrigger value="grooming"><Sparkles className="h-3.5 w-3.5 mr-1" /> Grooming</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="vaccinations">
-          {vacs.length === 0
-            ? <Empty title="No vaccinations recorded" />
-            : <RecordList rows={vacs.map((v: any) => ({ id: v.id, title: v.vaccineName, date: v.administeredOn, note: v.notes }))} />}
-        </TabsContent>
-        <TabsContent value="medical">
-          {med.length === 0
-            ? <Empty title="No medical records" />
-            : <RecordList rows={med.map((m: any) => ({ id: m.id, title: m.diagnosis ?? "Visit", date: m.visitDate, note: m.treatment ?? m.notes }))} />}
-        </TabsContent>
-        <TabsContent value="grooming">
-          {groom.length === 0
-            ? <Empty title="No grooming visits" />
-            : <RecordList rows={groom.map((g: any) => ({ id: g.id, title: g.serviceType, date: g.performedOn, note: g.notes }))} />}
-        </TabsContent>
-        <TabsContent value="notes">
-          <Card><CardContent className="pt-6 space-y-3 text-sm">
-            <div><p className="font-medium">Allergies</p><p className="text-muted-foreground">{pet.allergies || "—"}</p></div>
-            <div><p className="font-medium">Diet</p><p className="text-muted-foreground">{pet.dietNotes || "—"}</p></div>
-          </CardContent></Card>
-        </TabsContent>
+      <Tabs value={active} onValueChange={(v) => setParams({ tab: v }, { replace: true })}>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="w-max">
+            {tabs.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
+          </TabsList>
+        </div>
+        <TabsContent value="overview"><OverviewTab pet={pet} /></TabsContent>
+        <TabsContent value="health"><HealthTab pet={pet} /></TabsContent>
+        <TabsContent value="medications"><MedicationsTab pet={pet} /></TabsContent>
+        <TabsContent value="weight"><WeightTab pet={pet} /></TabsContent>
+        <TabsContent value="care"><CareTab pet={pet} /></TabsContent>
+        <TabsContent value="family"><FamilyTab pet={pet} /></TabsContent>
+        <TabsContent value="money"><MoneyTab pet={pet} /></TabsContent>
+        <TabsContent value="share"><ShareTab pet={pet} /></TabsContent>
       </Tabs>
-    </div>
-  );
-}
 
-function Empty({ title }: { title: string }) {
-  return <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">{title}</CardContent></Card>;
-}
-
-function RecordList({ rows }: { rows: { id: string; title: string; date: string; note?: string | null }[] }) {
-  return (
-    <div className="space-y-2">
-      {rows.map((r) => (
-        <Card key={r.id}>
-          <CardContent className="py-3 flex items-start justify-between gap-3">
-            <div>
-              <p className="font-medium">{r.title}</p>
-              {r.note && <p className="text-xs text-muted-foreground mt-0.5">{r.note}</p>}
-            </div>
-            <Badge variant="muted">{new Date(r.date).toLocaleDateString()}</Badge>
-          </CardContent>
-        </Card>
-      ))}
+      <PetFormDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        editing={pet}
+        onSaved={() => { qc.invalidateQueries({ queryKey: ["pets", id] }); qc.invalidateQueries({ queryKey: ["pets", "mine"] }); }}
+      />
     </div>
   );
 }

@@ -35,6 +35,8 @@ import {
   Search,
   LayoutDashboard,
   ClipboardPlus,
+  Siren,
+  Scissors,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -58,6 +60,8 @@ const USER_NAV: NavItem[] = [
   { to: "/feed/mine", label: "My posts", icon: UserIcon, perm: "posts.view" },
   { to: "/feed/saved", label: "Saved", icon: Bookmark, perm: "posts.view" },
   { to: "/pets", label: "My Pets", icon: PawPrint, perm: "pets.view" },
+  { to: "/lost-found", label: "Lost & found", icon: Siren, perm: "lost_found.view" },
+  { to: "/services", label: "Pet services", icon: Scissors, perm: "services.view" },
   {
     to: "/adoption",
     label: "Adoption",

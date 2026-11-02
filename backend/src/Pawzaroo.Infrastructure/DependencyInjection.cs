@@ -61,6 +61,18 @@ public static class DependencyInjection
         services.AddScoped<Application.Modules.Adoption.Services.ISavedAdoptionService,      Modules.Adoption.SavedAdoptionService>();
         services.AddScoped<Application.Modules.Adoption.Services.IAdoptionWantedPostService, Modules.Adoption.AdoptionWantedPostService>();
 
+        // Pets module services
+        services.AddScoped<Application.Modules.Pets.Services.IPetAccessService,   Modules.Pets.PetAccessService>();
+        services.AddScoped<Application.Modules.Pets.Services.IPetService,         Modules.Pets.PetService>();
+        services.AddScoped<Application.Modules.Pets.Services.IPetCareService,     Modules.Pets.PetCareService>();
+        services.AddScoped<Application.Modules.Pets.Services.IPetFinanceService,  Modules.Pets.PetFinanceService>();
+        services.AddScoped<Application.Modules.Pets.Services.IPetSharingService,  Modules.Pets.PetSharingService>();
+        services.AddScoped<Application.Modules.Pets.Services.ILivestockService,   Modules.Pets.LivestockService>();
+        services.AddScoped<Application.Modules.Pets.Services.ILostFoundService,   Modules.Pets.LostFoundService>();
+
+        // Pet services marketplace (grooming / training / boarding / walking)
+        services.AddScoped<Application.Modules.PetServices.IPetServicesMarketplace, Modules.PetServices.PetServicesMarketplace>();
+
         // Messaging module services
         services.AddSingleton<IPresenceService, Modules.Messaging.PresenceService>();
         services.AddScoped<Application.Modules.Messaging.Services.IMessagingService,         Modules.Messaging.MessagingService>();

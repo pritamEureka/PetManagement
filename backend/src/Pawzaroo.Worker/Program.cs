@@ -22,6 +22,7 @@ builder.Services.AddHostedService<OrderEventProjectorJob>();
 builder.Services.AddHostedService<FeedDenormalizerJob>();
 builder.Services.AddHostedService<AuditLogConsumerJob>();
 builder.Services.AddHostedService<AppointmentReminderJob>();
+builder.Services.AddHostedService<PetCareReminderJob>();
 
 var host = builder.Build();
 await host.RunAsync();

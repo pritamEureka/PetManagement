@@ -41,6 +41,20 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<VaccinationRecord> VaccinationRecords => Set<VaccinationRecord>();
     public DbSet<MedicalRecord> MedicalRecords => Set<MedicalRecord>();
     public DbSet<GroomingRecord> GroomingRecords => Set<GroomingRecord>();
+    public DbSet<PetWeightLog> PetWeightLogs => Set<PetWeightLog>();
+    public DbSet<PetMedication> PetMedications => Set<PetMedication>();
+    public DbSet<MedicationDoseLog> MedicationDoseLogs => Set<MedicationDoseLog>();
+    public DbSet<PetCaretaker> PetCaretakers => Set<PetCaretaker>();
+    public DbSet<PetCareRoutine> PetCareRoutines => Set<PetCareRoutine>();
+    public DbSet<PetCareLog> PetCareLogs => Set<PetCareLog>();
+    public DbSet<PetExpense> PetExpenses => Set<PetExpense>();
+    public DbSet<PetInsurancePolicy> PetInsurancePolicies => Set<PetInsurancePolicy>();
+    public DbSet<PetHealthShareLink> PetHealthShareLinks => Set<PetHealthShareLink>();
+    public DbSet<PetOwnershipTransfer> PetOwnershipTransfers => Set<PetOwnershipTransfer>();
+    public DbSet<PetGroup> PetGroups => Set<PetGroup>();
+    public DbSet<ProductionLog> ProductionLogs => Set<ProductionLog>();
+    public DbSet<BreedingRecord> BreedingRecords => Set<BreedingRecord>();
+    public DbSet<LostFoundReport> LostFoundReports => Set<LostFoundReport>();
 
     // Social
     public DbSet<Post> Posts => Set<Post>();

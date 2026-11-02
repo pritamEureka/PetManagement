@@ -3,6 +3,9 @@
     <RootNamespace>Pawzaroo.Infrastructure</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Pawzaroo.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- Brings HttpContext, IHeaderDictionary.UserAgent, AddHttpContextAccessor,
          and the IConfigurationSection overload of services.Configure<T>(). -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

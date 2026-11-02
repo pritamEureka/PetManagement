@@ -20,17 +20,20 @@ public class AdoptionListingService : IAdoptionListingService
     private readonly IKafkaProducer _kafka;
     private readonly IAuditLogger _audit;
     private readonly IRedisCacheService _cache;
+    private readonly Application.Modules.Pets.Services.IPetSharingService _petSharing;
 
     private const string FirstPageCacheKey = "adoption:first-page";
 
     public AdoptionListingService(ApplicationDbContext db, ICurrentUserService current,
-        IKafkaProducer kafka, IAuditLogger audit, IRedisCacheService cache)
+        IKafkaProducer kafka, IAuditLogger audit, IRedisCacheService cache,
+        Application.Modules.Pets.Services.IPetSharingService petSharing)
     {
         _db = db;
         _current = current;
         _kafka = kafka;
         _audit = audit;
         _cache = cache;
+        _petSharing = petSharing;
     }
 
     private bool IsAdmin =>
@@ -46,7 +49,9 @@ public class AdoptionListingService : IAdoptionListingService
                          && q.AnimalType is null && q.Breed is null && q.Size is null && q.Gender is null
                          && q.Location is null && q.MaxFee is null
                          && q.VaccinatedOnly is null && q.NeuteredOnly is null
-                         && q.GoodWithChildren is null && q.GoodWithOtherPets is null && q.Status is null;
+                         && q.GoodWithChildren is null && q.GoodWithOtherPets is null && q.Status is null
+                         && q.Sort is null && q.Latitude is null && q.Longitude is null
+                         && q.RadiusKm is null && q.PostedWithinDays is null;
         if (isHotPath)
         {
             var cached = await _cache.GetAsync<CursorPage<AdoptionListingSummaryDto>>(FirstPageCacheKey, ct);
@@ -81,7 +86,16 @@ public class AdoptionListingService : IAdoptionListingService
         if (!string.IsNullOrWhiteSpace(q.Breed))    query = query.Where(l => l.Breed != null && l.Breed.Contains(q.Breed));
         if (q.Size.HasValue)            query = query.Where(l => l.Size == q.Size);
         if (q.Gender.HasValue)          query = query.Where(l => l.Gender == q.Gender);
-        if (!string.IsNullOrWhiteSpace(q.Location)) query = query.Where(l => l.Location != null && l.Location.Contains(q.Location));
+        if (!string.IsNullOrWhiteSpace(q.Location))
+        {
+            var place = $"%{q.Location.Trim()}%";
+            query = query.Where(l => l.Location != null && EF.Functions.ILike(l.Location, place));
+        }
+        if (q.PostedWithinDays is > 0)
+        {
+            var since = DateTime.UtcNow.AddDays(-Math.Min(q.PostedWithinDays.Value, 3650));
+            query = query.Where(l => l.CreatedAt >= since);
+        }
         if (q.MaxFee.HasValue)          query = query.Where(l => l.AdoptionFee <= q.MaxFee);
         if (q.VaccinatedOnly == true)   query = query.Where(l => l.Vaccinated);
         if (q.NeuteredOnly == true)     query = query.Where(l => l.NeuteredSpayed);
@@ -90,23 +104,96 @@ public class AdoptionListingService : IAdoptionListingService
         if (q.Status.HasValue && q.Scope is AdoptionListingScope.AdminAll or AdoptionListingScope.Mine)
             query = query.Where(l => l.Status == q.Status);
 
-        var cur = AdoptionCursor.Decode(q.Cursor);
-        if (cur is { } c)
-            query = query.Where(l => l.CreatedAt < c.CreatedAt || (l.CreatedAt == c.CreatedAt && l.Id.CompareTo(c.Id) < 0));
+        // ---- Geo: viewer point, optional radius, distance per row ----
+        var hasPoint = GeoSearch.IsValidPoint(q.Latitude, q.Longitude);
+        var sort = (q.Sort ?? (hasPoint ? "nearest" : "newest")).Trim().ToLowerInvariant();
+        if (sort == "nearest" && !hasPoint) sort = "newest";
 
-        var take = Math.Clamp(q.PageSize, 1, 50);
-        var rows = await query
-            .OrderByDescending(l => l.CreatedAt).ThenByDescending(l => l.Id)
-            .Take(take + 1)
-            .Select(l => new
+        IQueryable<RankedListing> ranked;
+        if (hasPoint)
+        {
+            var lat0 = q.Latitude!.Value;
+            var lng0 = q.Longitude!.Value;
+            if (q.RadiusKm is > 0)
             {
-                l.Id, l.Title, l.PetName, l.AnimalType, l.Breed, l.Gender, l.Size,
-                l.AgeMonths, l.Location, l.AdoptionFee, l.Vaccinated, l.NeuteredSpayed,
-                Photos = l.Photos.OrderBy(p => p.OrderIndex).Select(p => p.Url).ToList(),
-                l.OwnerId, OwnerName = l.Owner.DisplayName, OwnerAvatar = l.Owner.AvatarUrl,
-                l.Status, l.CreatedAt,
-                IsSaved = uid != null && _db.SavedAdoptionListings.Any(s => s.UserId == uid && s.AdoptionListingId == l.Id),
-                IsOwn = uid != null && l.OwnerId == uid
+                var (dLat, dLng) = GeoSearch.BoundingBox(lat0, q.RadiusKm.Value);
+                double minLat = lat0 - dLat, maxLat = lat0 + dLat, minLng = lng0 - dLng, maxLng = lng0 + dLng;
+                query = query.Where(l => l.Latitude != null && l.Longitude != null
+                    && l.Latitude >= minLat && l.Latitude <= maxLat
+                    && l.Longitude >= minLng && l.Longitude <= maxLng);
+            }
+
+            // Haversine, translated by Npgsql to SQL trig. LEAST(1, a) guards asin()
+            // against floating-point overshoot ("input is out of range").
+            const double R = GeoSearch.EarthRadiusKm;
+            const double Rad = Math.PI / 180;
+            var lat0R = lat0 * Rad;
+            var lng0R = lng0 * Rad;
+            var cosLat0 = Math.Cos(lat0R);
+            ranked = query.Select(l => new RankedListing
+            {
+                L = l,
+                Dist = l.Latitude != null && l.Longitude != null
+                    ? (double?)(2 * R * Math.Asin(Math.Sqrt(Math.Min(1.0,
+                        Math.Pow(Math.Sin((l.Latitude.Value * Rad - lat0R) / 2), 2)
+                        + cosLat0 * Math.Cos(l.Latitude.Value * Rad)
+                          * Math.Pow(Math.Sin((l.Longitude.Value * Rad - lng0R) / 2), 2)))))
+                    : null
+            });
+            if (q.RadiusKm is > 0)
+            {
+                var radius = q.RadiusKm.Value;
+                ranked = ranked.Where(x => x.Dist != null && x.Dist <= radius);
+            }
+        }
+        else
+        {
+            ranked = query.Select(l => new RankedListing { L = l, Dist = null });
+        }
+
+        // ---- Ordering + paging ----
+        // "newest" keeps the keyset cursor (stable under inserts); other orders
+        // page by offset because their sort key isn't unique or monotonic.
+        var take = Math.Clamp(q.PageSize, 1, 50);
+        var offset = 0;
+        if (sort == "newest")
+        {
+            var cur = AdoptionCursor.Decode(q.Cursor);
+            if (cur is { } c)
+                ranked = ranked.Where(x => x.L.CreatedAt < c.CreatedAt || (x.L.CreatedAt == c.CreatedAt && x.L.Id.CompareTo(c.Id) < 0));
+            ranked = ranked.OrderByDescending(x => x.L.CreatedAt).ThenByDescending(x => x.L.Id);
+        }
+        else
+        {
+            offset = AdoptionCursor.DecodeOffset(q.Cursor) ?? 0;
+            ranked = sort switch
+            {
+                // Listings without a point go last, then newest first among equals.
+                "nearest" => ranked.OrderBy(x => x.Dist == null).ThenBy(x => x.Dist)
+                                   .ThenByDescending(x => x.L.CreatedAt).ThenByDescending(x => x.L.Id),
+                "oldest" => ranked.OrderBy(x => x.L.CreatedAt).ThenBy(x => x.L.Id),
+                "fee_asc" => ranked.OrderBy(x => x.L.AdoptionFee).ThenByDescending(x => x.L.CreatedAt).ThenByDescending(x => x.L.Id),
+                "fee_desc" => ranked.OrderByDescending(x => x.L.AdoptionFee).ThenByDescending(x => x.L.CreatedAt).ThenByDescending(x => x.L.Id),
+                _ => throw new Shared.Exceptions.ValidationException(new Dictionary<string, string[]>
+                {
+                    ["sort"] = new[] { "Use nearest, newest, oldest, fee_asc or fee_desc." }
+                })
+            };
+            if (offset > 0) ranked = ranked.Skip(offset);
+        }
+
+        var rows = await ranked
+            .Take(take + 1)
+            .Select(x => new
+            {
+                x.L.Id, x.L.Title, x.L.PetName, x.L.AnimalType, x.L.Breed, x.L.Gender, x.L.Size,
+                x.L.AgeMonths, x.L.Location, x.L.AdoptionFee, x.L.Vaccinated, x.L.NeuteredSpayed,
+                Photos = x.L.Photos.OrderBy(p => p.OrderIndex).Select(p => p.Url).ToList(),
+                x.L.OwnerId, OwnerName = x.L.Owner.DisplayName, OwnerAvatar = x.L.Owner.AvatarUrl,
+                x.L.Status, x.L.CreatedAt,
+                IsSaved = uid != null && _db.SavedAdoptionListings.Any(s => s.UserId == uid && s.AdoptionListingId == x.L.Id),
+                IsOwn = uid != null && x.L.OwnerId == uid,
+                x.Dist
             })
             .ToListAsync(ct);
 
@@ -114,14 +201,15 @@ public class AdoptionListingService : IAdoptionListingService
         if (rows.Count > take)
         {
             var last = rows[take - 1];
-            next = AdoptionCursor.Encode(last.CreatedAt, last.Id);
+            next = sort == "newest" ? AdoptionCursor.Encode(last.CreatedAt, last.Id) : AdoptionCursor.EncodeOffset(offset + take);
             rows.RemoveAt(rows.Count - 1);
         }
 
         var items = rows.Select(r => new AdoptionListingSummaryDto(
             r.Id, r.Title, r.PetName, r.AnimalType, r.Breed, r.Gender, r.Size, r.AgeMonths,
             r.Location, r.AdoptionFee, r.Vaccinated, r.NeuteredSpayed, r.Photos,
-            r.OwnerId, r.OwnerName, r.OwnerAvatar, r.Status, r.IsSaved, r.IsOwn, r.CreatedAt
+            r.OwnerId, r.OwnerName, r.OwnerAvatar, r.Status, r.IsSaved, r.IsOwn, r.CreatedAt,
+            r.Dist is { } d ? Math.Round(d, 1) : null
         )).ToList();
 
         var page = new CursorPage<AdoptionListingSummaryDto>(items, next);
@@ -144,7 +232,9 @@ public class AdoptionListingService : IAdoptionListingService
                 uid != null && _db.SavedAdoptionListings.Any(s => s.UserId == uid && s.AdoptionListingId == l.Id),
                 uid != null && l.OwnerId == uid,
                 l.Requests.Count,
-                l.CreatedAt))
+                l.CreatedAt,
+                l.Latitude,
+                l.Longitude))
             .SingleOrDefaultAsync(ct);
     }
 
@@ -208,6 +298,7 @@ public class AdoptionListingService : IAdoptionListingService
         listing.GoodWithChildren = input.GoodWithChildren;
         listing.GoodWithOtherPets = input.GoodWithOtherPets;
         listing.Location = input.Location;
+        (listing.Latitude, listing.Longitude) = GeoSearch.Approximate(input.Latitude, input.Longitude);
         listing.AdoptionFee = input.AdoptionFee;
         listing.ReasonForListing = input.ReasonForListing;
         listing.ContactPreference = input.ContactPreference;
@@ -281,7 +372,8 @@ public class AdoptionListingService : IAdoptionListingService
             listing.Id.ToString(), ct);
     }
 
-    public async Task MarkAdoptedAsync(Guid id, Guid? adoptedByUserId, CancellationToken ct = default)
+    public async Task MarkAdoptedAsync(Guid id, Guid? adoptedByUserId, bool transferPetProfile, bool includeHealthHistory,
+        CancellationToken ct = default)
     {
         var uid = _current.UserId ?? throw new ForbiddenException();
         var listing = await _db.AdoptionListings.SingleOrDefaultAsync(l => l.Id == id, ct)
@@ -294,6 +386,13 @@ public class AdoptionListingService : IAdoptionListingService
         listing.AdoptedAt = DateTime.UtcNow;
         listing.AdoptedByUserId = adoptedByUserId;
         await _db.SaveChangesAsync(ct);
+
+        // Hand the linked pet profile to the adopter. Only the listing owner can
+        // consent to this — an admin closing a listing never moves someone's pet.
+        if (transferPetProfile && listing.PetId is { } petId && adoptedByUserId is { } adopterId && listing.OwnerId == uid
+            && await _db.Pets.AnyAsync(p => p.Id == petId && p.OwnerId == uid, ct))
+            await _petSharing.TransferOwnershipAsync(petId, adopterId, listing.Id, includeHealthHistory, ct);
+
         await _cache.RemoveAsync(FirstPageCacheKey, ct);
         await _audit.LogAsync("mark_adopted", "AdoptionListing", listing.Id.ToString(), "Adoption",
             newValues: new { adoptedByUserId }, ct: ct);
@@ -386,9 +485,17 @@ public class AdoptionListingService : IAdoptionListingService
             ContactPreference = input.ContactPreference,
             Status = AdoptionListingStatus.Draft
         };
+        (listing.Latitude, listing.Longitude) = GeoSearch.Approximate(input.Latitude, input.Longitude);
         if (input.PhotoUrls is { Count: > 0 })
             for (int i = 0; i < input.PhotoUrls.Count; i++)
                 listing.Photos.Add(new AdoptionListingPhoto { Url = input.PhotoUrls[i], OrderIndex = i });
         return listing;
     }
+}
+
+/// <summary>Listing plus its distance from the viewer — a named type so EF can order/filter on Dist.</summary>
+internal sealed class RankedListing
+{
+    public AdoptionListing L { get; init; } = default!;
+    public double? Dist { get; init; }
 }

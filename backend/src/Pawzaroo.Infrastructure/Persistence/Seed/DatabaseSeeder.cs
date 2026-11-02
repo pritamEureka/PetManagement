@@ -86,6 +86,7 @@ public static class DatabaseSeeder
             P.Moderation.View, P.Moderation.Moderate, P.Moderation.Approve, P.Moderation.Reject,
             P.Reports.View, P.Reports.Moderate,
             P.Users.View, P.Users.Suspend, P.Users.Restore,
+            P.LostFound.View, P.LostFound.Moderate,
         }, ct);
 
         await GrantAsync(db, support, new[]
@@ -95,6 +96,7 @@ public static class DatabaseSeeder
             P.Appointments.View, P.Appointments.Reschedule, P.Appointments.Cancel,
             P.Messaging.View, P.Messaging.Chat, P.Messaging.Moderate,
             P.Reports.View, P.Audit.View,
+            P.Pets.ReadAny,
         }, ct);
 
         await GrantAsync(db, vet, new[]
@@ -103,6 +105,7 @@ public static class DatabaseSeeder
             P.Appointments.View, P.Appointments.Create, P.Appointments.Cancel,
             P.Appointments.Reschedule, P.Appointments.Chat,
             P.Prescriptions.View, P.Prescriptions.Create, P.Prescriptions.Edit,
+            P.LostFound.View, P.LostFound.Create,
             P.Pets.View,
             P.Posts.View, P.Posts.Create,
             P.Messaging.View, P.Messaging.Chat,
@@ -132,7 +135,8 @@ public static class DatabaseSeeder
 
         await GrantAsync(db, serviceP, new[]
         {
-            P.Services.View, P.Services.Book, P.Services.Cancel,
+            P.Services.View, P.Services.Book, P.Services.Cancel, P.Services.Edit,
+            P.LostFound.View, P.LostFound.Create,
             P.Appointments.View, P.Appointments.Cancel, P.Appointments.Reschedule, P.Appointments.Chat,
             P.Reviews.View,
             P.Posts.View, P.Posts.Create,
@@ -145,6 +149,7 @@ public static class DatabaseSeeder
             P.Pets.View, P.Pets.Create, P.Pets.Edit, P.Pets.Delete,
             P.Adoption.View, P.Adoption.Create, P.Adoption.Edit, P.Adoption.Delete,
             P.Adoption.Publish, P.Adoption.Unpublish,
+            P.LostFound.View, P.LostFound.Create,
             P.AdoptionRequests.View, P.AdoptionRequests.Chat,
             P.Posts.View, P.Posts.Create,
             P.Messaging.View, P.Messaging.Chat,
@@ -156,6 +161,7 @@ public static class DatabaseSeeder
             P.Pets.View, P.Pets.Create, P.Pets.Edit, P.Pets.Delete,
             P.Adoption.View, P.Adoption.Create, P.Adoption.Edit, P.Adoption.Delete,
             P.Adoption.Publish, P.Adoption.Unpublish,
+            P.LostFound.View, P.LostFound.Create,
             P.AdoptionRequests.View, P.AdoptionRequests.Chat,
             P.Posts.View, P.Posts.Create,
             P.Messaging.View, P.Messaging.Chat,
@@ -181,7 +187,8 @@ public static class DatabaseSeeder
             P.Appointments.Reschedule, P.Appointments.Chat,
             P.Stores.View, P.Products.View,
             P.Orders.View, P.Orders.Cancel,
-            P.Services.View, P.Services.Book,
+            P.Services.View, P.Services.Book, P.Services.Cancel,
+            P.LostFound.View, P.LostFound.Create,
             P.Reviews.View,
             P.Messaging.View, P.Messaging.Chat,
             P.Notifications.View,

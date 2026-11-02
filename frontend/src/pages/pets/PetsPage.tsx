@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, PawPrint } from "lucide-react";
+import { Plus, Pencil, Trash2, PawPrint, Wallet, Tractor } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Can } from "@/components/auth/Can";
-import { petsApi, type Pet } from "@/api/pets";
+import { petsApi, canEditPet, type Pet, type PetAccessLevel } from "@/api/pets";
 import { toast } from "@/components/ui/sonner";
 import { PetFormDialog } from "./PetFormDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
@@ -42,9 +42,13 @@ export function PetsPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><PawPrint className="h-6 w-6 text-primary" /> My pets</h1>
           <p className="text-sm text-muted-foreground">Health records, vaccinations, photos — one card per pet.</p>
         </div>
-        <Can permission="pets.create">
-          <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> Add pet</Button>
-        </Can>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild><Link to="/pets/expenses"><Wallet className="h-4 w-4 mr-2" /> Expenses</Link></Button>
+          <Button variant="outline" asChild><Link to="/livestock"><Tractor className="h-4 w-4 mr-2" /> Herds &amp; breeding</Link></Button>
+          <Can permission="pets.create">
+            <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> Add pet</Button>
+          </Can>
+        </div>
       </div>
 
       {isLoading ? (
@@ -63,26 +67,43 @@ export function PetsPage() {
                 {p.primaryPhotoUrl
                   ? <img src={p.primaryPhotoUrl} alt={p.name} className="object-cover w-full h-full" />
                   : <div className="flex items-center justify-center h-full text-muted-foreground"><PawPrint className="h-10 w-10" /></div>}
-                {p.isAvailableForAdoption && (
-                  <Badge className="absolute top-2 right-2">Adoption</Badge>
-                )}
+                <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                  {p.isLost && <Badge variant="destructive">Lost</Badge>}
+                  {p.isAvailableForAdoption && <Badge>Adoption</Badge>}
+                  {p.overdueVaccinations > 0 && <Badge variant="warning">{p.overdueVaccinations} vaccine overdue</Badge>}
+                </div>
               </Link>
               <CardContent className="pt-4 space-y-3">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-lg">{p.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {p.animalType}{p.breed ? ` · ${p.breed}` : ""}{p.gender !== "Unknown" ? ` · ${p.gender}` : ""}
+                      {p.groupName ? ` · ${p.groupName}` : ""}
                     </p>
+                    {p.nextVaccinationDue && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Next vaccine {new Date(p.nextVaccinationDue).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
+                  {p.myAccess !== "Owner" && <Badge variant="info">Shared · {accessLabel(p.myAccess)}</Badge>}
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(p)}>
-                    <Pencil className="h-3 w-3 mr-1" /> Edit
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => onDelete(p)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  {canEditPet(p.myAccess) ? (
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(p)}>
+                      <Pencil className="h-3 w-3 mr-1" /> Edit
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" className="flex-1" asChild>
+                      <Link to={`/pets/${p.id}`}>Open</Link>
+                    </Button>
+                  )}
+                  {p.myAccess === "Owner" && (
+                    <Button size="sm" variant="destructive" onClick={() => onDelete(p)} aria-label={`Remove ${p.name}`}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -108,6 +129,10 @@ export function PetsPage() {
       />
     </div>
   );
+}
+
+export function accessLabel(a: PetAccessLevel) {
+  return a === "CoOwner" ? "co-owner" : a === "Vet" ? "treating vet" : a.toLowerCase();
 }
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {

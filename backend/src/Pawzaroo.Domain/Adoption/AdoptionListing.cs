@@ -37,6 +37,9 @@ public class AdoptionListing : AuditableEntity
 
     // Logistics
     public string? Location { get; set; }
+    /// <summary>Approximate point (rounded to ~1 km) for "near me" search. Never the exact address.</summary>
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public decimal AdoptionFee { get; set; }
     public string? ReasonForListing { get; set; }
     public ContactPreference ContactPreference { get; set; }

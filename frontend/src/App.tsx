@@ -21,12 +21,18 @@ import { UserProfilePage } from "@/pages/UserProfilePage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { SavedPostsPage } from "@/pages/feed/SavedPostsPage";
 import { MyPostsPage } from "@/pages/feed/MyPostsPage";
-import { PlaceholderPage } from "@/pages/PlaceholderPage";
+import { PrivacyPage, TermsPage } from "@/pages/LegalPages";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 
 // Pets
 import { PetsPage } from "@/pages/pets/PetsPage";
 import { PetDetailPage } from "@/pages/pets/PetDetailPage";
+import { PetExpensesPage } from "@/pages/pets/PetExpensesPage";
+import { LivestockPage } from "@/pages/livestock/LivestockPage";
+import { PublicPetPage } from "@/pages/public/PublicPetPage";
+import { LostFoundListPage, LostFoundDetailPage, CreateLostFoundPage, MyLostFoundPage } from "@/pages/lostFound/LostFoundPages";
+import { ServicesPage, ServiceProviderDetailPage, MyServiceBookingsPage, ProviderDashboardPage } from "@/pages/services/PetServicesPages";
+import { ServiceProviderApprovalPage } from "@/pages/admin/ServiceProviderApprovalPage";
 
 // Adoption
 import { AdoptionListPage } from "@/pages/adoption/AdoptionListPage";
@@ -123,7 +129,9 @@ const ADMIN_ACCESS_PERMISSIONS = [
   "vets.suspend",
   "stores.approve",
   "stores.reject",
-  "sellers.approve"
+  "sellers.approve",
+  "services.approve",
+  "lost_found.moderate"
 ];
 
 const APPROVAL_PERMISSIONS = [
@@ -149,8 +157,9 @@ export default function App() {
           {/* Public marketing */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/privacy" element={<PlaceholderPage title="Privacy" />} />
-            <Route path="/terms"   element={<PlaceholderPage title="Terms" />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms"   element={<TermsPage />} />
+            <Route path="/p/:code" element={<PublicPetPage />} />
           </Route>
 
           {/* Auth */}
@@ -177,7 +186,25 @@ export default function App() {
 
               <Route element={<ProtectedRoute permission="pets.view" />}>
                 <Route path="/pets" element={<PetsPage />} />
+                <Route path="/pets/expenses" element={<PetExpensesPage />} />
                 <Route path="/pets/:id" element={<PetDetailPage />} />
+                <Route path="/livestock" element={<LivestockPage />} />
+              </Route>
+
+              <Route element={<ProtectedRoute permission="lost_found.view" />}>
+                <Route path="/lost-found" element={<LostFoundListPage />} />
+                <Route path="/lost-found/mine" element={<MyLostFoundPage />} />
+                <Route path="/lost-found/new" element={<CreateLostFoundPage />} />
+                <Route path="/lost-found/:id" element={<LostFoundDetailPage />} />
+              </Route>
+
+              <Route element={<ProtectedRoute permission="services.view" />}>
+                <Route path="/services" element={<ServicesPage />} />
+                <Route path="/services/bookings" element={<MyServiceBookingsPage />} />
+                <Route path="/services/:id" element={<ServiceProviderDetailPage />} />
+              </Route>
+              <Route element={<ProtectedRoute permission="services.edit" />}>
+                <Route path="/services/dashboard" element={<ProviderDashboardPage />} />
               </Route>
 
               <Route element={<ProtectedRoute permission="adoption.view" />}>
@@ -267,6 +294,9 @@ export default function App() {
               </Route>
               <Route element={<ProtectedRoute anyOf={["stores.approve", "stores.reject", "sellers.approve"]} />}>
                 <Route path="/admin/store-approvals" element={<StoreApprovalPage />} />
+              </Route>
+              <Route element={<ProtectedRoute anyOf={["services.approve", "services.reject", "services.suspend"]} />}>
+                <Route path="/admin/service-provider-approvals" element={<ServiceProviderApprovalPage />} />
               </Route>
 
               {/* Moderation */}

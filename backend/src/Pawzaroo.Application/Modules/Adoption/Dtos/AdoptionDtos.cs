@@ -22,7 +22,9 @@ public record AdoptionListingSummaryDto(
     AdoptionListingStatus Status,
     bool IsSaved,
     bool IsOwn,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    /// <summary>Kilometres from the viewer's location; null when either side has no coordinates.</summary>
+    double? DistanceKm = null);
 
 public record AdoptionListingDetailDto(
     Guid Id,
@@ -58,7 +60,9 @@ public record AdoptionListingDetailDto(
     bool IsSaved,
     bool IsOwn,
     int RequestCount,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    double? Latitude,
+    double? Longitude);
 
 public record AdoptionRequestDto(
     Guid Id,
@@ -92,7 +96,9 @@ public record CreateAdoptionListingInput(
     ContactPreference ContactPreference,
     Guid? PetId,
     IReadOnlyList<string>? PhotoUrls,
-    bool SubmitForApproval);
+    bool SubmitForApproval,
+    double? Latitude = null,
+    double? Longitude = null);
 
 public record UpdateAdoptionListingInput(
     string Title,
@@ -115,11 +121,13 @@ public record UpdateAdoptionListingInput(
     decimal AdoptionFee,
     string? ReasonForListing,
     ContactPreference ContactPreference,
-    IReadOnlyList<string>? PhotoUrls);
+    IReadOnlyList<string>? PhotoUrls,
+    double? Latitude = null,
+    double? Longitude = null);
 
 public record CreateAdoptionRequestInput(string Message);
 
-public record MarkAdoptedInput(Guid? AdoptedByUserId);
+public record MarkAdoptedInput(Guid? AdoptedByUserId, bool TransferPetProfile = true, bool IncludeHealthHistory = true);
 
 public record AdminDecisionInput(string? AdminNotes);
 

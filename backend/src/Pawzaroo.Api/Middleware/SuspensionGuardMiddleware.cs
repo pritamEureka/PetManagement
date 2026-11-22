@@ -28,6 +28,8 @@ public class SuspensionGuardMiddleware
         "/api/v1/auth/refresh",
         "/api/v1/security/me",
         "/api/v1/security/warnings/ack",
+        // Suspended users may still review/revoke sessions, manage passkeys and recover their account.
+        "/api/v1/security-plus/",
     };
 
     public SuspensionGuardMiddleware(RequestDelegate next, IRedisCacheService cache)

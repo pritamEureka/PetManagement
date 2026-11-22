@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Common.Permissions;
+using Pawzaroo.Application.Modules.CommercePlus;
 using Pawzaroo.Application.Modules.Marketplace.Dtos;
 using Pawzaroo.Application.Modules.Marketplace.Events;
 using Pawzaroo.Application.Modules.Marketplace.Services;
@@ -23,10 +24,12 @@ public class OrderService : IOrderService
     private readonly INotificationService _notify;
     private readonly IPaymentGateway _paymentGateway;
     private readonly MarketplaceOptions _market;
+    private readonly ILedgerRecorder _ledger;
 
     public OrderService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
         IAuditLogger audit, IInventoryService inventory, ICommissionConfigurationService commission,
-        INotificationService notify, IPaymentGateway paymentGateway, IOptions<MarketplaceOptions> market)
+        INotificationService notify, IPaymentGateway paymentGateway, IOptions<MarketplaceOptions> market,
+        ILedgerRecorder ledger)
     {
         _db = db;
         _current = current;
@@ -37,6 +40,7 @@ public class OrderService : IOrderService
         _notify = notify;
         _paymentGateway = paymentGateway;
         _market = market.Value;
+        _ledger = ledger;
     }
 
     private Guid Uid() => _current.UserId ?? throw new ForbiddenException();
@@ -105,26 +109,48 @@ public class OrderService : IOrderService
             ShipmentStatus = ShipmentStatus.NotShipped
         };
 
+        // Variant lines: CartItemVariant links a cart line to the chosen variant.
+        var cartLineIds = cartLines.Select(c => c.Id).ToList();
+        var variantLinks = await _db.Set<CartItemVariant>().AsNoTracking()
+            .Where(l => cartLineIds.Contains(l.CartItemId)).ToDictionaryAsync(l => l.CartItemId, l => l.VariantId, ct);
+        var linkedVariantIds = variantLinks.Values.Distinct().ToList();
+        var variantsById = await _db.Set<ProductVariant>().AsNoTracking()
+            .Where(v => linkedVariantIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, ct);
+        // order item -> variant (null for plain product lines); parallel to order.Items
+        var itemVariants = new List<(OrderItem Item, Guid? VariantId)>();
+
         var storeIds = new HashSet<Guid>();
         foreach (var ci in cartLines)
         {
             if (ci.Product.Store.ApprovalStatus != ApprovalStatus.Approved)
                 throw new ConflictException($"Store for '{ci.Product.Name}' is not available.");
 
-            var price = ci.Product.DiscountPrice ?? ci.Product.Price;
+            Guid? variantId = null;
+            ProductVariant? variant = null;
+            if (variantLinks.TryGetValue(ci.Id, out var linkedVid))
+            {
+                if (!variantsById.TryGetValue(linkedVid, out variant) || !variant.IsActive || variant.ProductId != ci.ProductId)
+                    throw new ConflictException($"Selected variant of '{ci.Product.Name}' is no longer available.");
+                variantId = variant.Id;
+            }
+
+            // The charged price: variant override when set, else the product's (discounted) price.
+            var price = variant?.PriceOverride ?? ci.Product.DiscountPrice ?? ci.Product.Price;
             var lineTotal = price * ci.Quantity;
             var commissionPct = await _commission.ResolveAsync(ci.Product.StoreId, ci.Product.CategoryId, DateTime.UtcNow, ct);
             var commission = Math.Round(lineTotal * commissionPct / 100m, 2, MidpointRounding.AwayFromZero);
 
-            order.Items.Add(new OrderItem
+            var orderItem = new OrderItem
             {
                 ProductId = ci.ProductId,
                 StoreId = ci.Product.StoreId,
                 Quantity = ci.Quantity,
-                UnitPrice = price,
+                UnitPrice = price,          // price snapshot (variant-aware)
                 Total = lineTotal,
                 CommissionAmount = commission
-            });
+            };
+            order.Items.Add(orderItem);
+            itemVariants.Add((orderItem, variantId));
             storeIds.Add(ci.Product.StoreId);
         }
 
@@ -164,9 +190,56 @@ public class OrderService : IOrderService
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(ct);
 
+        // Honor the buyer's active stock reservations (if any): other users' active holds on the same
+        // product/variant reduce what is available to this checkout. No reservation = old behaviour.
+        var nowUtc = DateTime.UtcNow;
+        var myHolds = await _db.Set<StockReservation>()
+            .Where(r => r.UserId == uid && r.Status == ReservationStatus.Active && r.ExpiresAt > nowUtc)
+            .ToListAsync(ct);
+        var consumedHolds = new List<StockReservation>();
+        foreach (var (item, variantId) in itemVariants)
+        {
+            var mine = myHolds.Where(r => r.ProductId == item.ProductId && r.VariantId == variantId).ToList();
+            if (mine.Count == 0) continue;
+
+            var othersHeld = await _db.Set<StockReservation>().AsNoTracking()
+                .Where(r => r.UserId != uid && r.ProductId == item.ProductId && r.VariantId == variantId
+                            && r.Status == ReservationStatus.Active && r.ExpiresAt > nowUtc)
+                .SumAsync(r => (int?)r.Quantity, ct) ?? 0;
+            var onHand = variantId is { } hv
+                ? await _db.Set<ProductVariant>().AsNoTracking().Where(v => v.Id == hv).Select(v => v.StockQuantity).FirstOrDefaultAsync(ct)
+                : await _db.Products.AsNoTracking().Where(p => p.Id == item.ProductId).Select(p => p.StockQuantity).FirstOrDefaultAsync(ct);
+            if (onHand - othersHeld < item.Quantity)
+                throw new ConflictException("Some items are no longer available because other customers hold reservations.");
+            consumedHolds.AddRange(mine);
+        }
+
         // Atomic stock decrement per line (throws ConflictException on oversell).
-        foreach (var oi in order.Items)
+        foreach (var (oi, variantId) in itemVariants)
+        {
             await _inventory.DecrementForOrderAsync(oi.ProductId, oi.Quantity, order.Id, ct);
+            if (variantId is not { } vid) continue;
+
+            // Product.StockQuantity mirrors the sum of variant stock, so move the variant row in step.
+            var qty = oi.Quantity;
+            var rows = await _db.Set<ProductVariant>().Where(v => v.Id == vid && v.StockQuantity >= qty)
+                .ExecuteUpdateAsync(s => s.SetProperty(v => v.StockQuantity, v => v.StockQuantity - qty), ct);
+            if (rows == 0) throw new ConflictException("Insufficient stock for the selected variant.");
+
+            // Tag the Sale adjustment so cancel/deny can restock the variant (OrderItem has no variant column).
+            var adj = await _db.InventoryAdjustments
+                .Where(a => a.OrderId == order.Id && a.ProductId == oi.ProductId && a.Reason == InventoryReason.Sale && a.Notes == null)
+                .OrderByDescending(a => a.CreatedAt).FirstOrDefaultAsync(ct);
+            if (adj is not null) { adj.Notes = VariantNotePrefix + vid; await _db.SaveChangesAsync(ct); }
+        }
+
+        foreach (var h in consumedHolds.DistinctBy(h => h.Id))
+        {
+            h.Status = ReservationStatus.Consumed;
+            h.UpdatedAt = DateTime.UtcNow;
+        }
+        var cartLinkRows = await _db.Set<CartItemVariant>().Where(l => cartLineIds.Contains(l.CartItemId)).ToListAsync(ct);
+        _db.Set<CartItemVariant>().RemoveRange(cartLinkRows);
 
         var payment = new Payment
         {
@@ -234,6 +307,37 @@ public class OrderService : IOrderService
         await _audit.LogAsync("order.checkout", "Order", order.Id.ToString(), order.OrderNumber, ct: ct);
         var dto = (await GetByIdAsync(order.Id, ct))!;
         return checkoutUrl is null ? dto : dto with { PaymentCheckoutUrl = checkoutUrl };
+    }
+
+    private const string VariantNotePrefix = "variant:";
+
+    /// <summary>
+    /// Runs after an order is cancelled/denied (stock already restocked at product level):
+    /// restocks variant rows tagged on the Sale adjustments, and - when the order was already paid -
+    /// marks it Refunded and writes the (idempotent) Refund/Reversal ledger entries.
+    /// </summary>
+    private async Task AfterCloseAsync(Order order, CancellationToken ct)
+    {
+        var sales = await _db.InventoryAdjustments.AsNoTracking()
+            .Where(a => a.OrderId == order.Id && a.Reason == InventoryReason.Sale
+                        && a.Notes != null && a.Notes.StartsWith(VariantNotePrefix))
+            .Select(a => new { a.Notes, a.QuantityChange }).ToListAsync(ct);
+        foreach (var s in sales)
+        {
+            if (!Guid.TryParse(s.Notes!.AsSpan(VariantNotePrefix.Length), out var vid)) continue;
+            var qty = -s.QuantityChange;
+            if (qty <= 0) continue;
+            await _db.Set<ProductVariant>().Where(v => v.Id == vid)
+                .ExecuteUpdateAsync(p => p.SetProperty(v => v.StockQuantity, v => v.StockQuantity + qty), ct);
+        }
+
+        if (order.PaymentStatus == PaymentStatus.Paid)
+        {
+            order.PaymentStatus = PaymentStatus.Refunded;
+            await _db.SaveChangesAsync(ct);
+            await _ledger.RecordOrderRefundAsync(order.Id, null, ct);
+            await _audit.LogAsync("order.refund.auto", "Order", order.Id.ToString(), order.Status.ToString(), ct: ct);
+        }
     }
 
     private static string NormalizePaymentMethod(string? raw)
@@ -346,6 +450,7 @@ public class OrderService : IOrderService
         order.UpdatedAt = DateTime.UtcNow;
         order.UpdatedBy = _current.UserId;
         await _db.SaveChangesAsync(ct);
+        if (status == ShipmentStatus.Delivered) await _ledger.RecordOrderEarningsAsync(order.Id, ct);
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new OrderShipmentStatusChanged(order.Id, order.OrderNumber, status.ToString(), trackingNumber, DateTime.UtcNow),
@@ -409,6 +514,7 @@ public class OrderService : IOrderService
             });
         }
         await _db.SaveChangesAsync(ct);
+        await AfterCloseAsync(order, ct);
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new OrderCancelled(order.Id, order.OrderNumber, uid, reason, DateTime.UtcNow), order.Id.ToString(), ct);
@@ -448,6 +554,7 @@ public class OrderService : IOrderService
             });
         }
         await _db.SaveChangesAsync(ct);
+        await AfterCloseAsync(order, ct);
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new OrderStatusChanged(order.Id, order.OrderNumber, OrderStatus.Denied.ToString(), DateTime.UtcNow),
@@ -465,6 +572,8 @@ public class OrderService : IOrderService
         order.UpdatedAt = DateTime.UtcNow;
         order.UpdatedBy = _current.UserId;
         await _db.SaveChangesAsync(ct);
+
+        await _ledger.RecordOrderRefundAsync(order.Id, amount, ct);
 
         var refundAmount = amount ?? order.Total;
         await _kafka.PublishAsync(MarketplaceTopics.PaymentEvents,
@@ -510,6 +619,7 @@ public class OrderService : IOrderService
         if (payment is not null) payment.Status = PaymentStatus.Paid;
 
         await _db.SaveChangesAsync(ct);
+        await _ledger.RecordOrderEarningsAsync(order.Id, ct);
 
         if (payment is not null)
             await _kafka.PublishAsync(MarketplaceTopics.PaymentEvents,

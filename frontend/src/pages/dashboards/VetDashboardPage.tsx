@@ -2,6 +2,7 @@ import { Stethoscope, Calendar, FileText, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { WaitingRoomWidget } from "@/components/vet/WaitingRoomWidget";
 
 export function VetDashboardPage() {
   return (
@@ -17,6 +18,8 @@ export function VetDashboardPage() {
         <StatTile label="Prescriptions issued" value="42" Icon={FileText} />
         <StatTile label="Rating" value="4.8" Icon={Star} />
       </div>
+
+      <WaitingRoomWidget />
 
       <Tabs defaultValue="today">
         <TabsList>

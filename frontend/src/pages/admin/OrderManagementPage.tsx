@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Package, Check, Ban, Printer, Truck, User as UserIcon, Mail, Phone } from "lucide-react";
+import { Package, Check, Ban, Undo2, Printer, Truck, User as UserIcon, Mail, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,12 @@ export function AdminOrderManagementPage() {
     mutationFn: (id: string) => ordersV2Api.deny(id, "Denied by admin"),
     onSuccess: () => { toast.success("Order denied"); invalidateAll(); },
     onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Could not deny.")
+  });
+  const refund = useMutation({
+    // ordersV2Api.refund wraps the call in withStepUp (re-auth dialog on step_up_required).
+    mutationFn: (id: string) => ordersV2Api.refund(id),
+    onSuccess: () => { toast.success("Order refunded"); invalidateAll(); },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Could not refund.")
   });
   const assignDelivery = useMutation({
     mutationFn: (orderId: string) => deliveriesApi.assign(orderId, deliveryUserId, deliveryNotes || undefined),
@@ -160,6 +166,11 @@ export function AdminOrderManagementPage() {
               <Button size="sm" variant="destructive" disabled={!canDeny || deny.isPending}
                 onClick={() => deny.mutate(selected.id)}>
                 <Ban className="h-4 w-4 mr-1" /> Deny
+              </Button>
+              <Button size="sm" variant="outline"
+                disabled={selected.paymentStatus !== "Paid" || refund.isPending}
+                onClick={() => refund.mutate(selected.id)}>
+                <Undo2 className="h-4 w-4 mr-1" /> Refund
               </Button>
               <Button size="sm" variant="outline" asChild>
                 <a href={ordersV2Api.invoiceUrl(selected.id)} target="_blank" rel="noreferrer">

@@ -1,4 +1,5 @@
 import { api } from "./client";
+import { withStepUp } from "@/lib/withStepUp";
 
 // ---------- Shared types --------------------------------------------------
 
@@ -362,7 +363,11 @@ export const ordersV2Api = {
     api.post(`${V1}/orders/${id}/courier`, { courier, trackingNumber }),
   cancel: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/cancel`, { reason }),
   deny: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/deny`, { reason }),
-  refund: (id: string, amount?: number) => api.post(`${V1}/orders/${id}/refund`, { amount }),
+  // Refunds need a recent re-authentication: the server answers 403 step_up_required and withStepUp shows the dialog then retries.
+  refund: (id: string, amount?: number) =>
+    withStepUp(() => api.post(`${V1}/orders/${id}/refund`, { amount })),
+  approveReturn: (id: string, amount?: number) =>
+    withStepUp(() => api.post(`${V1}/orders/returns/${id}/approve`, { amount })),
   /** Absolute path the browser can open in a new tab — server renders text/html. */
   invoiceUrl: (id: string) => `/api${V1}/orders/${id}/invoice`,
 

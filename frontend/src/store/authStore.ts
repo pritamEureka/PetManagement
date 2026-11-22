@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authApi, type AuthResponse, type RegistrationResult } from "@/api/auth";
+import { clearPwaCaches } from "@/lib/pwa";
 
 interface AuthState {
   accessToken: string | null;
@@ -83,6 +84,7 @@ export const useAuthStore = create<AuthState>()(
       async logout() {
         const rt = get().refreshToken;
         try { if (rt) await authApi.logout(rt); } catch { /* ignore */ }
+        clearPwaCaches();
         set({
           accessToken: null,
           refreshToken: null,

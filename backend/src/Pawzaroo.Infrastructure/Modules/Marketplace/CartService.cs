@@ -52,10 +52,25 @@ public class CartService : ICartService
             .Select(p => new { p.Id, p.StoreId, p.IsActive, p.StockQuantity, p.Price, p.DiscountPrice }).FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("Product", input.ProductId);
         if (!product.IsActive) throw new ConflictException("Product is unavailable.");
-        if (product.StockQuantity < input.Quantity)
+
+        // Variant lines are priced/stocked by the variant and kept separate from other lines of the product.
+        ProductVariant? variant = null;
+        if (input.VariantId is { } vid)
+        {
+            variant = await _db.Set<ProductVariant>().AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == vid && v.ProductId == product.Id, ct)
+                ?? throw new NotFoundException("ProductVariant", vid);
+            if (!variant.IsActive) throw new ConflictException("Variant is unavailable.");
+        }
+        var stock = variant?.StockQuantity ?? product.StockQuantity;
+        var unitPrice = variant?.PriceOverride ?? product.DiscountPrice ?? product.Price;
+        if (stock < input.Quantity)
             throw new ConflictException("Requested quantity exceeds available stock.");
 
-        var existing = await _db.CartItems.FirstOrDefaultAsync(i => i.UserId == uid && i.ProductId == input.ProductId, ct);
+        var lines = await _db.CartItems.Where(i => i.UserId == uid && i.ProductId == input.ProductId).ToListAsync(ct);
+        var lineIds = lines.Select(l => l.Id).ToList();
+        var lineLinks = await _db.Set<CartItemVariant>().Where(l => lineIds.Contains(l.CartItemId)).ToListAsync(ct);
+        var existing = lines.FirstOrDefault(l => lineLinks.FirstOrDefault(k => k.CartItemId == l.Id)?.VariantId == variant?.Id);
         if (existing is null)
         {
             existing = new CartItem
@@ -64,14 +79,17 @@ public class CartService : ICartService
                 UserId = uid,
                 ProductId = product.Id,
                 Quantity = input.Quantity,
-                UnitPriceSnapshot = product.DiscountPrice ?? product.Price
+                UnitPriceSnapshot = unitPrice
             };
             _db.CartItems.Add(existing);
+            if (variant is not null)
+                _db.Set<CartItemVariant>().Add(new CartItemVariant { CartItemId = existing.Id, VariantId = variant.Id });
         }
         else
         {
             existing.Quantity += input.Quantity;
-            if (existing.Quantity > product.StockQuantity)
+            existing.UnitPriceSnapshot = unitPrice;
+            if (existing.Quantity > stock)
                 throw new ConflictException("Requested quantity exceeds available stock.");
         }
 
@@ -91,10 +109,12 @@ public class CartService : ICartService
         if (input.Quantity <= 0)
         {
             _db.CartItems.Remove(item);
+            await RemoveLinksAsync(new[] { item.Id }, ct);
         }
         else
         {
-            if (input.Quantity > item.Product.StockQuantity)
+            var lineStock = await LineStockAsync(item, ct);
+            if (input.Quantity > lineStock)
                 throw new ConflictException("Requested quantity exceeds available stock.");
             item.Quantity = input.Quantity;
         }
@@ -108,6 +128,7 @@ public class CartService : ICartService
         var item = await _db.CartItems.FirstOrDefaultAsync(i => i.Id == cartItemId && i.UserId == uid, ct)
                    ?? throw new NotFoundException("CartItem", cartItemId);
         _db.CartItems.Remove(item);
+        await RemoveLinksAsync(new[] { item.Id }, ct);
         await _db.SaveChangesAsync(ct);
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new CartItemRemoved(uid, item.CartId, item.ProductId, DateTime.UtcNow), uid.ToString(), ct);
@@ -119,11 +140,41 @@ public class CartService : ICartService
         var uid = Uid();
         var items = _db.CartItems.Where(i => i.UserId == uid);
         var cartId = await items.Select(i => i.CartId).FirstOrDefaultAsync(ct);
+        await RemoveLinksAsync(await items.Select(i => i.Id).ToListAsync(ct), ct);
         _db.CartItems.RemoveRange(items);
         await _db.SaveChangesAsync(ct);
         if (cartId != Guid.Empty)
             await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
                 new CartCleared(uid, cartId, DateTime.UtcNow), uid.ToString(), ct);
+    }
+
+    private async Task RemoveLinksAsync(IReadOnlyCollection<Guid> cartItemIds, CancellationToken ct)
+    {
+        if (cartItemIds.Count == 0) return;
+        var links = await _db.Set<CartItemVariant>().Where(l => cartItemIds.Contains(l.CartItemId)).ToListAsync(ct);
+        _db.Set<CartItemVariant>().RemoveRange(links);
+    }
+
+    /// <summary>Stock the line is bound by: its variant's stock when it has one, else the product's.</summary>
+    private async Task<int> LineStockAsync(CartItem item, CancellationToken ct)
+    {
+        var vid = await _db.Set<CartItemVariant>().AsNoTracking().Where(l => l.CartItemId == item.Id)
+            .Select(l => (Guid?)l.VariantId).FirstOrDefaultAsync(ct);
+        if (vid is null) return item.Product.StockQuantity;
+        var stock = await _db.Set<ProductVariant>().AsNoTracking().Where(v => v.Id == vid)
+            .Select(v => (int?)v.StockQuantity).FirstOrDefaultAsync(ct);
+        return stock ?? 0;
+    }
+
+    private static string VariantLabel(ProductVariant v)
+    {
+        try
+        {
+            var attrs = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(v.AttributesJson);
+            if (attrs is { Count: > 0 }) return string.Join(" / ", attrs.Values);
+        }
+        catch (System.Text.Json.JsonException) { }
+        return v.Sku;
     }
 
     private async Task<Cart> EnsureCartAsync(Guid uid, CancellationToken ct)
@@ -140,16 +191,35 @@ public class CartService : ICartService
 
     private async Task<CartDto> BuildDto(Guid cartId, Guid uid, CancellationToken ct)
     {
-        var items = await _db.CartItems.AsNoTracking().Where(i => i.UserId == uid)
-            .Select(i => new CartItemDto(
-                i.Id, i.ProductId, i.Product.Name,
-                i.Product.Images.OrderBy(im => im.OrderIndex).Select(im => im.Url).FirstOrDefault(),
-                i.Product.StoreId, i.Product.Store.Name,
+        var rows = await _db.CartItems.AsNoTracking().Where(i => i.UserId == uid)
+            .Select(i => new
+            {
+                i.Id, i.ProductId, ProductName = i.Product.Name,
+                Image = i.Product.Images.OrderBy(im => im.OrderIndex).Select(im => im.Url).FirstOrDefault(),
+                i.Product.StoreId, StoreName = i.Product.Store.Name,
                 i.Quantity,
-                i.Product.DiscountPrice ?? i.Product.Price,
-                (i.Product.DiscountPrice ?? i.Product.Price) * i.Quantity,
-                i.Product.StockQuantity))
+                Unit = i.Product.DiscountPrice ?? i.Product.Price,
+                Stock = i.Product.StockQuantity
+            })
             .ToListAsync(ct);
+
+        var rowIds = rows.Select(r => r.Id).ToList();
+        var links = await _db.Set<CartItemVariant>().AsNoTracking()
+            .Where(l => rowIds.Contains(l.CartItemId)).ToDictionaryAsync(l => l.CartItemId, l => l.VariantId, ct);
+        var variantIds = links.Values.Distinct().ToList();
+        var variants = variantIds.Count == 0
+            ? new Dictionary<Guid, ProductVariant>()
+            : await _db.Set<ProductVariant>().AsNoTracking().Where(v => variantIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, ct);
+
+        var items = rows.Select(r =>
+        {
+            ProductVariant? v = null;
+            if (links.TryGetValue(r.Id, out var vid)) variants.TryGetValue(vid, out v);
+            var unit = v?.PriceOverride ?? r.Unit;
+            return new CartItemDto(r.Id, r.ProductId, r.ProductName, r.Image, r.StoreId, r.StoreName,
+                r.Quantity, unit, unit * r.Quantity, v?.StockQuantity ?? r.Stock,
+                v?.Id, v is null ? null : VariantLabel(v));
+        }).ToList();
 
         var currency = await _db.Carts.AsNoTracking().Where(c => c.Id == cartId).Select(c => c.Currency).FirstOrDefaultAsync(ct) ?? "USD";
         var subtotal = items.Sum(i => i.Total);

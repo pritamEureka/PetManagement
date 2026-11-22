@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Calendar, Video, Building2, X, Pill, RotateCcw, CreditCard, Star } from "lucide-react";
+import { Calendar, Video, Building2, X, Pill, RotateCcw, CreditCard, Star, DoorOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { appointmentsApi, type Appointment, type AppointmentStatus } from "@/api/vets";
 import { AppointmentStatusBadge } from "@/components/vet/AppointmentStatusBadge";
 import { ReviewDialog } from "@/components/vet/ReviewDialog";
+import { AddToCalendarButton } from "@/components/vet/AddToCalendarButton";
 import { toast } from "@/components/ui/sonner";
 import { PromptDialog } from "@/components/common/PromptDialog";
 
@@ -86,8 +87,11 @@ export function MyAppointmentsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="My appointments" icon={Calendar}
-        description="Upcoming, past, and pending vet bookings." />
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+        <PageHeader title="My appointments" icon={Calendar}
+          description="Upcoming, past, and pending vet bookings." />
+        <AddToCalendarButton label="Export all (.ics)" />
+      </div>
 
       <div className="w-full sm:w-64">
         <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
@@ -150,6 +154,8 @@ function AppointmentRow({ a, onCancel, onPay, onJoin, onReview }: {
   const canCancel = upcoming && !["Completed","NoShow","CancelledByUser","CancelledByDoctor","Refunded"].includes(a.status);
   const canPay = a.status === "PendingPayment";
   const canReview = a.status === "Completed";
+  const canRoom = isOnline && upcoming && (a.status === "Confirmed" || a.status === "Rescheduled");
+  const canCalendar = upcoming && ["PendingConfirmation", "Confirmed", "Rescheduled"].includes(a.status);
 
   return (
     <Card>
@@ -166,6 +172,12 @@ function AppointmentRow({ a, onCancel, onPay, onJoin, onReview }: {
           <AppointmentStatusBadge status={a.status} />
           {canPay && <Button size="sm" onClick={onPay}><CreditCard className="h-3.5 w-3.5 mr-1" /> Pay</Button>}
           {isOnline && a.status === "Confirmed" && <Button size="sm" onClick={onJoin}><Video className="h-3.5 w-3.5 mr-1" /> Join</Button>}
+          {canRoom && (
+            <Button size="sm" asChild>
+              <Link to={`/appointments/${a.id}/room`}><DoorOpen className="h-3.5 w-3.5 mr-1" /> Join room</Link>
+            </Button>
+          )}
+          {canCalendar && <AddToCalendarButton appointmentId={a.id} />}
           {a.prescriptionFileUrl && (
             <Button size="sm" variant="outline" asChild>
               <a href={a.prescriptionFileUrl} target="_blank" rel="noreferrer"><Pill className="h-3.5 w-3.5 mr-1" /> Rx</a>

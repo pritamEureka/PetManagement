@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export interface Column<T> {
   key: string;
@@ -18,8 +19,9 @@ interface Props<T> {
 }
 
 export function DataTable<T>({ data, columns, rowKey, empty, loading, onRowClick }: Props<T>) {
+  const { t } = useI18n();
   if (loading) {
-    return <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-muted/50 rounded animate-pulse" />)}</div>;
+    return <div className="space-y-2" aria-busy="true" role="status" aria-label={t("common.loading")}>{[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-muted/50 rounded animate-pulse" />)}</div>;
   }
   if (data.length === 0) return <>{empty}</>;
 
@@ -27,9 +29,9 @@ export function DataTable<T>({ data, columns, rowKey, empty, loading, onRowClick
     <div className="overflow-x-auto rounded-md border">
       <table className="w-full text-sm">
         <thead className="bg-muted/40">
-          <tr className="text-left">
+          <tr className="text-start">
             {columns.map((c) => (
-              <th key={c.key} className={cn("px-3 py-2 font-medium text-muted-foreground", c.className)}>{c.header}</th>
+              <th key={c.key} scope="col" className={cn("px-3 py-2 font-medium text-muted-foreground", c.className)}>{c.header}</th>
             ))}
           </tr>
         </thead>

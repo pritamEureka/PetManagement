@@ -15,6 +15,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { SkipToContent } from "@/components/common/a11y";
 import {
   Home,
   PawPrint,
@@ -37,12 +39,57 @@ import {
   ClipboardPlus,
   Siren,
   Scissors,
+  Sparkles,
+  Users as UsersIcon,
+  CalendarClock,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useCartStore } from "@/store/cartStore";
+import { useI18n } from "@/lib/i18n";
+import { formatNumber } from "@/lib/format";
+
+// Translation keys per nav destination. NavItem.label stays as the English
+// fallback; the key is resolved at render so `to`/`perm` logic is untouched.
+const NAV_LABEL_KEYS: Record<string, string> = {
+  "/home": "nav.dashboard",
+  "/feed": "nav.feed",
+  "/feed/mine": "nav.myPosts",
+  "/feed/saved": "nav.saved",
+  "/pets": "nav.pets",
+  "/lost-found": "nav.lostFound",
+  "/services": "nav.petServices",
+  "/communities": "nav.communities",
+  "/assistant": "nav.assistant",
+  "/my-subscriptions": "nav.mySubscriptions",
+  "/price-watches": "nav.priceWatches",
+  "/waitlists": "nav.myWaitlists",
+  "/settings/notifications": "nav.notificationSettings",
+  "/settings/security": "nav.security",
+  "/adoption": "nav.adoption",
+  "/adoption/mine": "nav.myAdoptionListings",
+  "/adoption/saved": "nav.savedPets",
+  "/messages": "nav.messages",
+  "/notifications": "nav.notifications",
+  "/vets": "nav.vets",
+  "/appointments": "nav.myAppointments",
+  "/store": "nav.store",
+  "/orders": "nav.orders",
+  "/dashboard/vet": "nav.clinic",
+  "/dashboard/vet/availability": "nav.availability",
+  "/dashboard/vet/profile": "nav.vetProfile",
+  "/dashboard/store": "nav.myStore",
+  "/admin": "nav.adminPanel",
+  "/delivery": "nav.deliveries",
+};
+
+function navLabel(to: string, fallback: string, t: (k: string) => string): string {
+  const key = NAV_LABEL_KEYS[to];
+  return key ? t(key) : fallback;
+}
 
 interface NavItem {
   to: string;
@@ -62,6 +109,13 @@ const USER_NAV: NavItem[] = [
   { to: "/pets", label: "My Pets", icon: PawPrint, perm: "pets.view" },
   { to: "/lost-found", label: "Lost & found", icon: Siren, perm: "lost_found.view" },
   { to: "/services", label: "Pet services", icon: Scissors, perm: "services.view" },
+  { to: "/communities", label: "Communities", icon: UsersIcon },
+  { to: "/assistant", label: "Care assistant", icon: Sparkles },
+  { to: "/my-subscriptions", label: "My subscriptions", icon: CalendarClock },
+  { to: "/price-watches", label: "Price watches", icon: Bell },
+  { to: "/waitlists", label: "My waitlists", icon: CalendarClock, perm: "vets.view" },
+  { to: "/settings/notifications", label: "Notification settings", icon: SettingsIcon },
+  { to: "/settings/security", label: "Security", icon: ShieldCheck },
   {
     to: "/adoption",
     label: "Adoption",
@@ -178,9 +232,11 @@ function SidebarNavItem({
   onNavigate?: () => void;
   badges: { unreadMessages: number; unreadNotifications: number };
 }) {
+  const { t } = useI18n();
   const badgeCount = badgeKey ? badges[badgeKey] : 0;
   const showBadge = badgeCount > 0;
-  const badgeLabel = badgeCount > 99 ? "99+" : String(badgeCount);
+  const badgeLabel = badgeCount > 99 ? "99+" : formatNumber(badgeCount);
+  const text = navLabel(to, label, t);
   return (
     <NavLink
       to={to}
@@ -188,7 +244,12 @@ function SidebarNavItem({
       onClick={onNavigate}
       title={
         collapsed
-          ? `${label}${showBadge ? ` (${badgeCount} unread)` : ""}`
+          ? `${text}${showBadge ? ` (${t("notif.unreadCount", { count: formatNumber(badgeCount) })})` : ""}`
+          : undefined
+      }
+      aria-label={
+        collapsed || showBadge
+          ? `${text}${showBadge ? ` (${t("notif.unreadCount", { count: formatNumber(badgeCount) })})` : ""}`
           : undefined
       }
       className={({ isActive }) =>
@@ -202,9 +263,9 @@ function SidebarNavItem({
       }
     >
       <span className="relative shrink-0">
-        <Icon className="h-4 w-4" />
+        <Icon aria-hidden="true" className="h-4 w-4" />
         {collapsed && showBadge && (
-          <span className="absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center leading-none">
+          <span className="absolute -top-1 -end-1 min-w-[1rem] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center leading-none">
             {badgeLabel}
           </span>
         )}
@@ -215,10 +276,10 @@ function SidebarNavItem({
           collapsed ? "w-0 opacity-0" : "w-auto opacity-100",
         )}
       >
-        {label}
+        {text}
       </span>
       {!collapsed && showBadge && (
-        <Badge className="ml-auto h-5 px-1.5 text-[10px] leading-none">
+        <Badge aria-hidden="true" className="ms-auto h-5 px-1.5 text-[10px] leading-none">
           {badgeLabel}
         </Badge>
       )}
@@ -275,6 +336,7 @@ function SidebarContent({
   search?: string;
 }) {
   const { can, canAny } = usePermissions();
+  const { t } = useI18n();
   const unreadMessages = useUnreadMessages();
   const unreadNotifications = useNotifications();
   const badges = { unreadMessages, unreadNotifications };
@@ -288,7 +350,7 @@ function SidebarContent({
   const filterBySearch = (items: NavItem[]) => {
     if (!search) return items;
     const q = search.toLowerCase();
-    return items.filter((i) => i.label.toLowerCase().includes(q));
+    return items.filter((i) => navLabel(i.to, i.label, t).toLowerCase().includes(q));
   };
 
   const userVisible = filterBySearch(visible(USER_NAV));
@@ -297,7 +359,8 @@ function SidebarContent({
   const deliveryVisible = filterBySearch(visible(DELIVERY_NAV));
 
   return (
-    <div
+    <nav
+      aria-label={t("layout.mainNav")}
       className={cn(
         "flex-1 space-y-4 overflow-y-auto transition-all duration-300",
         collapsed ? "px-2" : "px-3",
@@ -311,35 +374,35 @@ function SidebarContent({
       />
       <SidebarNavGroup
         items={proVisible}
-        heading="Pro"
+        heading={t("nav.groupPro")}
         collapsed={collapsed}
         onNavigate={onNavigate}
         badges={badges}
       />
       <SidebarNavGroup
         items={deliveryVisible}
-        heading="Logistics"
+        heading={t("nav.groupLogistics")}
         collapsed={collapsed}
         onNavigate={onNavigate}
         badges={badges}
       />
       <SidebarNavGroup
         items={adminVisible}
-        heading="Admin"
+        heading={t("nav.groupAdmin")}
         collapsed={collapsed}
         onNavigate={onNavigate}
         badges={badges}
       />
-    </div>
+    </nav>
   );
 }
 
 function NotificationBellBadge() {
   const count = useNotifications();
   if (count === 0) return null;
-  const label = count > 99 ? "99+" : String(count);
+  const label = count > 99 ? "99+" : formatNumber(count);
   return (
-    <span className="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold flex items-center justify-center leading-none">
+    <span aria-hidden="true" className="absolute -top-1 -end-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold flex items-center justify-center leading-none">
       {label}
     </span>
   );
@@ -351,6 +414,7 @@ function FloatingCartBar() {
   const { pathname } = useLocation();
   const lines = useCartStore((s) => s.lines);
   const count = lines.reduce((n, l) => n + l.quantity, 0);
+  const { t } = useI18n();
 
   const isStorePage = CART_BAR_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   if (count === 0 || !isStorePage) return null;
@@ -361,8 +425,8 @@ function FloatingCartBar() {
           to="/cart"
           className="flex items-center justify-center gap-2 w-full rounded-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 shadow-lg transition-colors"
         >
-          <ShoppingBag className="h-5 w-5" />
-          View Your Cart ({count})
+          <ShoppingBag aria-hidden="true" className="h-5 w-5" />
+          {t("layout.viewCart", { count: formatNumber(count) })}
         </Link>
       </div>
     </div>
@@ -371,6 +435,7 @@ function FloatingCartBar() {
 
 export function AppLayout() {
   const { user, logout } = useAuthStore();
+  const { t } = useI18n();
   const { roles } = usePermissions();
   const nav = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -387,8 +452,9 @@ export function AppLayout() {
     <div className="h-screen flex overflow-hidden">
       {/* Desktop sidebar */}
       <aside
+        aria-label={t("layout.sidebar")}
         className={cn(
-          "hidden md:flex flex-col border-r bg-card/40 transition-all duration-300 ease-in-out overflow-hidden h-screen",
+          "hidden md:flex flex-col border-e bg-card/40 transition-all duration-300 ease-in-out overflow-hidden h-screen",
           collapsed ? "w-[4.5rem]" : "w-64",
         )}
       >
@@ -428,10 +494,12 @@ export function AppLayout() {
           )}
         >
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Search aria-hidden="true" className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              className="pl-8 h-9 text-sm"
-              placeholder="Search menu..."
+              className="ps-8 h-9 text-sm"
+              type="search"
+              aria-label={t("layout.searchMenu")}
+              placeholder={t("layout.searchMenu")}
               value={sidebarSearch}
               onChange={(e) => setSidebarSearch(e.target.value)}
             />
@@ -450,7 +518,8 @@ export function AppLayout() {
         >
           <Link
             to="/profile"
-            title="My profile"
+            title={t("layout.myProfile")}
+            aria-label={t("layout.myProfile")}
             className={cn(
               "flex items-center min-w-0 rounded-md hover:bg-muted/60 transition-colors",
               collapsed ? "p-1" : "gap-3 p-1 flex-1",
@@ -506,9 +575,10 @@ export function AppLayout() {
               variant="ghost"
               size="icon"
               onClick={onLogout}
-              title="Log out"
+              title={t("auth.logout")}
+              aria-label={t("auth.logout")}
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut aria-hidden="true" className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -517,7 +587,7 @@ export function AppLayout() {
       {/* Main content area */}
       <div className="flex-1 flex flex-col h-screen min-w-0">
         {/* Top navbar */}
-        <header className="sticky top-0 z-30 h-14 shrink-0 flex items-center gap-2 px-4 md:px-6 border-b bg-background/95 backdrop-blur">
+        <header role="banner" className="sticky top-0 z-30 h-14 shrink-0 flex items-center gap-2 px-4 md:px-6 border-b bg-background/95 backdrop-blur">
           {/* Mobile hamburger */}
           <Sheet
             open={mobileOpen}
@@ -527,8 +597,8 @@ export function AppLayout() {
             }}
           >
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label={t("layout.openMenu")}>
+                <Menu aria-hidden="true" className="h-5 w-5" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-0">
@@ -546,10 +616,12 @@ export function AppLayout() {
               {/* Mobile search */}
               <div className="px-3 pt-3 pb-1 shrink-0">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Search aria-hidden="true" className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    className="pl-8 h-9 text-sm"
-                    placeholder="Search menu..."
+                    className="ps-8 h-9 text-sm"
+                    type="search"
+                    aria-label={t("layout.searchMenu")}
+                    placeholder={t("layout.searchMenu")}
                     value={mobileSidebarSearch}
                     onChange={(e) => setMobileSidebarSearch(e.target.value)}
                   />
@@ -587,9 +659,10 @@ export function AppLayout() {
                   variant="ghost"
                   size="icon"
                   onClick={onLogout}
-                  title="Log out"
+                  title={t("auth.logout")}
+                  aria-label={t("auth.logout")}
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut aria-hidden="true" className="h-4 w-4" />
                 </Button>
               </div>
             </SheetContent>
@@ -601,12 +674,14 @@ export function AppLayout() {
             size="icon"
             className="hidden md:inline-flex"
             onClick={() => setCollapsed((c) => !c)}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? t("layout.expandSidebar") : t("layout.collapseSidebar")}
+            aria-label={collapsed ? t("layout.expandSidebar") : t("layout.collapseSidebar")}
+            aria-expanded={!collapsed}
           >
             {collapsed ? (
-              <PanelLeft className="h-4 w-4" />
+              <PanelLeft aria-hidden="true" className="h-4 w-4" />
             ) : (
-              <PanelLeftClose className="h-4 w-4" />
+              <PanelLeftClose aria-hidden="true" className="h-4 w-4" />
             )}
           </Button>
 
@@ -618,19 +693,20 @@ export function AppLayout() {
             variant="ghost"
             size="icon"
             asChild
-            title="Notifications"
+            title={t("nav.notifications")}
             className="relative"
           >
-            <Link to="/notifications">
-              <Bell className="h-5 w-5" />
+            <Link to="/notifications" aria-label={t("nav.notifications")}>
+              <Bell aria-hidden="true" className="h-5 w-5" />
               <NotificationBellBadge />
             </Link>
           </Button>
 
+          <LanguageSwitcher />
           <ThemeToggle />
 
           {/* User avatar (mobile) */}
-          <Link to="/profile" className="md:hidden">
+          <Link to="/profile" className="md:hidden" aria-label={t("layout.myProfile")}>
             <Avatar className="h-8 w-8">
               <AvatarImage src={user?.avatarUrl ?? undefined} />
               <AvatarFallback>{user?.displayName?.[0] ?? "?"}</AvatarFallback>
@@ -639,7 +715,8 @@ export function AppLayout() {
         </header>
 
         {/* Page content (independently scrollable) */}
-        <main className="flex-1 overflow-y-auto">
+        <SkipToContent />
+        <main className="flex-1 overflow-y-auto" id="main-content" tabIndex={-1}>
           <div className="container py-4 md:py-6 px-4 md:px-6">
             <ErrorBoundary>
               <Outlet />

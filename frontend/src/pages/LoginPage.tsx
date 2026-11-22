@@ -13,6 +13,8 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AuthPawTrail } from "@/components/auth/AuthPawTrail";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 import { toast } from "@/components/ui/sonner";
+import { passkeyApi } from "@/api/securityPlus";
+import { getPasskey, passkeysSupported } from "@/lib/webauthn";
 
 // Server-emitted status messages we render inline instead of as a transient toast.
 type ApprovalStatus = { kind: "pending" | "rejected"; message: string };
@@ -48,6 +50,27 @@ export function LoginPage() {
     } catch (err: any) {
       if (handleLoginError(err)) return;
       toast.error(err?.response?.data?.error?.message ?? "Login failed");
+    }
+  }
+
+  // Passkey sign-in: the email field picks which credentials to offer; the server issues the same tokens as a password login.
+  async function signInWithPasskey() {
+    const email = getValues("email")?.trim();
+    if (!email) { toast.error("Enter your email first."); return; }
+    try {
+      const options = await passkeyApi.loginOptions(email);
+      const cred = await getPasskey(options);
+      const res = await passkeyApi.loginVerify(cred);
+      useAuthStore.setState({
+        accessToken: res.accessToken, refreshToken: res.refreshToken, expiresAt: res.expiresAt,
+        user: res.user, needsTwoFactor: false, suspensionMessage: null,
+      });
+      const to = (loc.state as { from?: { pathname: string } })?.from?.pathname ?? "/home";
+      nav(to, { replace: true });
+    } catch (err: any) {
+      if (err?.name === "NotAllowedError") return; // dismissed the browser prompt
+      if (handleLoginError(err)) return;
+      toast.error(err?.response?.data?.error?.message ?? "Passkey sign-in failed");
     }
   }
 
@@ -98,6 +121,14 @@ export function LoginPage() {
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Signing in..." : "Sign in"}
               </Button>
+              {passkeysSupported() && (
+                <Button type="button" variant="outline" className="w-full" onClick={signInWithPasskey}>
+                  Sign in with a passkey
+                </Button>
+              )}
+              <p className="text-sm text-muted-foreground text-center">
+                <Link className="underline" to="/forgot-password">Forgot your password?</Link>
+              </p>
               <p className="text-sm text-muted-foreground text-center">
                 No account? <Link className="underline" to="/register">Create one</Link>
               </p>

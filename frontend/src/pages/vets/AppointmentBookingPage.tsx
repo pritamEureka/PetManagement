@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Stethoscope, Video, Building2 } from "lucide-react";
+import { ArrowLeft, Stethoscope, Video, Building2, Repeat } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import { vetsApi, appointmentsApi, type TimeSlot } from "@/api/vets";
 import { petsApi } from "@/api/pets";
 import { toast } from "@/components/ui/sonner";
 import { SlotPicker } from "@/components/vet/SlotPicker";
+import { RecurringBookingDialog } from "@/components/vet/RecurringBookingDialog";
 
 type ConsultType = "Online" | "Offline";
 
@@ -36,6 +37,7 @@ export function AppointmentBookingPage() {
   const [symptoms, setSymptoms] = useState("");
   const [slot, setSlot]   = useState<TimeSlot | null>(null);
   const [busy, setBusy]   = useState(false);
+  const [repeatOpen, setRepeatOpen] = useState(false);
 
   async function book() {
     if (!slot) { toast.error("Pick a time slot."); return; }
@@ -130,10 +132,25 @@ export function AppointmentBookingPage() {
 
           <div className="flex flex-col sm:flex-row justify-end gap-2">
             <Button variant="outline" onClick={() => nav(-1)}>Cancel</Button>
+            {slot && (
+              <Button variant="secondary" onClick={() => setRepeatOpen(true)} disabled={busy}>
+                <Repeat className="h-4 w-4 mr-1" /> Repeat this visit
+              </Button>
+            )}
             <Button onClick={book} disabled={!slot || busy}>{busy ? "Booking..." : "Confirm booking"}</Button>
           </div>
         </CardContent>
       </Card>
+
+      <RecurringBookingDialog
+        open={repeatOpen}
+        onOpenChange={setRepeatOpen}
+        doctorId={doctorId}
+        timeSlotId={slot?.id ?? null}
+        petId={petId === NO_PET ? null : petId}
+        type={type}
+        symptoms={symptoms || null}
+      />
     </div>
   );
 }

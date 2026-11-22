@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { ordersV2Api } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
+import { TrackingTimeline } from "@/components/commerce/TrackingTimeline";
+import { ReorderButton } from "@/components/store/ReorderButton";
 
 // Buyer-facing stepper labels mapped from internal OrderStatus + ShipmentStatus.
 // The internal enum keeps its original names (Created/Confirmed/Packed) for
@@ -128,6 +130,9 @@ export function OrderDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="flex justify-end"><ReorderButton orderId={order.id} /></div>
+      <TrackingTimeline orderId={order.id} />
 
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Receipt className="h-4 w-4" /> Items</CardTitle></CardHeader>

@@ -56,7 +56,7 @@ public class AdoptionGeoSearchTests : IClassFixture<PostgresFixture>
     }
 
     private AdoptionListingService Service() =>
-        new(_fx.Db, new Anonymous(), new NoopKafka(), new NoopAudit(), new NoCache(), petSharing: null!);
+        new(_fx.Db, new Anonymous(), new NoopKafka(), new NoopAudit(), new NoCache(), petSharing: null!, stepUp: null!);
 
     private async Task<string> SeedAsync()
     {

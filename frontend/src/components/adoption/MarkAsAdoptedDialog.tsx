@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/sonner";
 import { adoptionApi } from "@/api/adoption";
+import { withStepUp } from "@/lib/withStepUp";
 
 interface Props {
   open: boolean;
@@ -27,8 +28,8 @@ export function MarkAsAdoptedDialog({ open, onOpenChange, listingId, onDone }: P
     if (adopterId.trim() && !validId) { toast.error("The adopter ID doesn't look right — it's a UUID."); return; }
     setBusy(true);
     try {
-      await adoptionApi.markAdopted(listingId, adopterId.trim() || undefined,
-        { transferPetProfile: validId && transfer, includeHealthHistory: withHistory });
+      await withStepUp(() => adoptionApi.markAdopted(listingId, adopterId.trim() || undefined,
+        { transferPetProfile: validId && transfer, includeHealthHistory: withHistory }));
       toast.success("Marked as adopted 🎉");
       onDone();
       onOpenChange(false);

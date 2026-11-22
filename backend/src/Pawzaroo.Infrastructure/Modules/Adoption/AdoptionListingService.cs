@@ -21,12 +21,14 @@ public class AdoptionListingService : IAdoptionListingService
     private readonly IAuditLogger _audit;
     private readonly IRedisCacheService _cache;
     private readonly Application.Modules.Pets.Services.IPetSharingService _petSharing;
+    private readonly Application.Modules.SecurityPlus.IStepUpAuthService _stepUp;
 
     private const string FirstPageCacheKey = "adoption:first-page";
 
     public AdoptionListingService(ApplicationDbContext db, ICurrentUserService current,
         IKafkaProducer kafka, IAuditLogger audit, IRedisCacheService cache,
-        Application.Modules.Pets.Services.IPetSharingService petSharing)
+        Application.Modules.Pets.Services.IPetSharingService petSharing,
+        Application.Modules.SecurityPlus.IStepUpAuthService stepUp)
     {
         _db = db;
         _current = current;
@@ -34,6 +36,7 @@ public class AdoptionListingService : IAdoptionListingService
         _audit = audit;
         _cache = cache;
         _petSharing = petSharing;
+        _stepUp = stepUp;
     }
 
     private bool IsAdmin =>
@@ -381,6 +384,10 @@ public class AdoptionListingService : IAdoptionListingService
         if (listing.OwnerId != uid && !IsAdmin) throw new ForbiddenException();
         if (listing.Status is AdoptionListingStatus.Adopted or AdoptionListingStatus.Closed)
             throw new ConflictException("Listing already finalized.");
+
+        // Handing a pet profile (and optionally its health history) to another user needs recent re-authentication.
+        if (transferPetProfile && listing.PetId is not null && adoptedByUserId is not null && listing.OwnerId == uid)
+            await _stepUp.RequireRecentAsync(ct);
 
         listing.Status = AdoptionListingStatus.Adopted;
         listing.AdoptedAt = DateTime.UtcNow;

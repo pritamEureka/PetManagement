@@ -11,13 +11,14 @@ import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AuthPawTrail } from "@/components/auth/AuthPawTrail";
 import { registerSchema, selfRegisterRoles, type RegisterInput, type SelfRegisterRole } from "@/lib/schemas";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
+import { FormField } from "@/components/common/a11y";
 
 // Per-role icon. Kept here instead of in schemas.ts because that file is
 // data-only and shouldn't import React component types.
@@ -35,6 +36,7 @@ const ROLE_ICON: Record<SelfRegisterRole, LucideIcon> = {
 type Step = "details" | "role" | "done";
 
 export function RegisterPage() {
+  const { t } = useI18n();
   const register = useAuthStore((s) => s.register);
   const [step, setStep] = useState<Step>("details");
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
@@ -68,32 +70,32 @@ export function RegisterPage() {
       setSubmittedEmail(result.email);
       setStep("done");
     } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message ?? "Registration failed");
+      toast.error(err?.response?.data?.error?.message ?? t("register.failed"));
     } finally {
       setSubmitting(false);
     }
   }
 
   const heading = step === "done"
-    ? "Request received"
+    ? t("register.doneTitle")
     : step === "role"
-      ? "Tell us who you are"
-      : "Create your account";
+      ? t("register.roleTitle")
+      : t("register.title");
 
   const subheading = step === "done"
-    ? "Every new account is reviewed by an administrator before you can sign in."
+    ? t("register.doneSub")
     : step === "role"
-      ? "Pick the role that best describes how you'll use Pawzaroo. An administrator will confirm it during approval."
-      : "Every new account is approved by an administrator before sign-in.";
+      ? t("register.roleSub")
+      : t("register.detailsSub");
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden p-4 bg-gradient-to-b from-primary/5 to-background">
       <AuthPawTrail />
-      <div className="absolute top-4 right-4 z-10"><ThemeToggle /></div>
+      <div className="absolute top-4 end-4 z-10"><ThemeToggle /></div>
       <Card className={cn("relative z-10 w-full", step === "role" ? "max-w-2xl" : "max-w-md")} data-auth-card="true">
         <CardHeader className="space-y-1">
           <Link to="/" className="flex items-center gap-2 text-primary font-bold">
-            <PawPrint className="h-5 w-5" /> Pawzaroo
+            <PawPrint aria-hidden="true" className="h-5 w-5" /> Pawzaroo
           </Link>
           <CardTitle>{heading}</CardTitle>
           <p className="text-sm text-muted-foreground">{subheading}</p>
@@ -128,35 +130,29 @@ function DetailsForm({
   errors: ReturnType<typeof useForm<RegisterInput>>["formState"]["errors"];
   onContinue: () => Promise<void>;
 }) {
+  const { t } = useI18n();
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); void onContinue(); }}
       className="space-y-3"
     >
-      <div>
-        <Label htmlFor="name">Display name</Label>
-        <Input id="name" {...register("displayName")} />
-        {errors.displayName && <p className="text-xs text-destructive mt-1">{errors.displayName.message}</p>}
-      </div>
-      <div>
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" autoComplete="email" {...register("email")} />
-        {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
-      </div>
-      <div>
-        <Label htmlFor="password">Password</Label>
-        <PasswordInput id="password" autoComplete="new-password" {...register("password")} />
-        {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
-      </div>
-      <div>
-        <Label htmlFor="phone">Phone (optional)</Label>
-        <Input id="phone" {...register("phoneNumber")} />
-      </div>
+      <FormField id="name" label={t("register.displayName")} error={errors.displayName?.message}>
+        {(c) => <Input {...c} {...register("displayName")} />}
+      </FormField>
+      <FormField id="email" label={t("auth.email")} error={errors.email?.message}>
+        {(c) => <Input {...c} type="email" autoComplete="email" {...register("email")} />}
+      </FormField>
+      <FormField id="password" label={t("auth.password")} error={errors.password?.message}>
+        {(c) => <PasswordInput {...c} autoComplete="new-password" {...register("password")} />}
+      </FormField>
+      <FormField id="phone" label={t("register.phoneOptional")}>
+        {(c) => <Input {...c} type="tel" autoComplete="tel" {...register("phoneNumber")} />}
+      </FormField>
       <Button type="submit" className="w-full">
-        Continue <ArrowRight className="h-4 w-4 ml-1" />
+        {t("onboarding.continue")} <ArrowRight aria-hidden="true" className="h-4 w-4 ms-1 rtl:rotate-180" />
       </Button>
       <p className="text-sm text-muted-foreground text-center">
-        Already have an account? <Link className="underline" to="/login">Sign in</Link>
+        {t("register.haveAccount")} <Link className="underline" to="/login">{t("landing.signIn")}</Link>
       </p>
     </form>
   );
@@ -170,6 +166,7 @@ function RolePicker({
   onBack: () => void;
   onPick: (role: SelfRegisterRole) => Promise<void>;
 }) {
+  const { t } = useI18n();
   // Track which card is mid-submit so we can disable just that one and show a
   // localised spinner state instead of dimming the whole grid.
   const [activeRole, setActiveRole] = useState<SelfRegisterRole | null>(null);
@@ -185,7 +182,7 @@ function RolePicker({
     <div className="space-y-4">
       {email && (
         <p className="text-xs text-muted-foreground">
-          You're signing up as <span className="font-medium text-foreground">{email}</span>.
+          {t("register.signingUpAs")} <span className="font-medium text-foreground">{email}</span>.
         </p>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -199,7 +196,7 @@ function RolePicker({
               disabled={submitting}
               onClick={() => choose(opt.value as SelfRegisterRole)}
               className={cn(
-                "group text-left rounded-lg border p-3 transition-all",
+                "group text-start rounded-lg border p-3 transition-all",
                 "hover:border-primary hover:bg-muted hover:shadow-sm",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 "disabled:opacity-60 disabled:cursor-not-allowed",
@@ -208,38 +205,39 @@ function RolePicker({
             >
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
-                  <Icon className="h-5 w-5" />
+                  <Icon aria-hidden="true" className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 space-y-0.5">
-                  <p className="text-sm font-semibold">{opt.label}</p>
-                  <p className="text-xs text-muted-foreground leading-snug">{opt.hint}</p>
+                  <p className="text-sm font-semibold">{t(`register.role.${opt.value}.label`)}</p>
+                  <p className="text-xs text-muted-foreground leading-snug">{t(`register.role.${opt.value}.hint`)}</p>
                 </div>
               </div>
               {busy && (
-                <p className="text-[10px] text-primary mt-2 font-medium">Submitting…</p>
+                <p role="status" className="text-[10px] text-primary mt-2 font-medium">{t("register.submitting")}</p>
               )}
             </button>
           );
         })}
       </div>
       <Button variant="ghost" size="sm" onClick={onBack} disabled={submitting} className="w-full">
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        <ArrowLeft aria-hidden="true" className="h-4 w-4 me-1 rtl:rotate-180" /> {t("common.back")}
       </Button>
     </div>
   );
 }
 
 function PendingScreen({ email }: { email: string }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-5">
-      <Step icon={MailCheck} title="1. Request submitted"
-        body={<>Your registration for <span className="font-medium">{email}</span> has been recorded.</>} />
-      <Step icon={Hourglass} title="2. Awaiting admin review"
-        body="An administrator will review your request shortly. There's nothing you need to do right now." />
-      <Step icon={ShieldCheck} title="3. Approval email"
-        body="Once approved, we'll send a confirmation to your email and you can sign in." />
+      <Step icon={MailCheck} title={t("register.step1")}
+        body={<>{t("register.step1Pre")} <span className="font-medium">{email}</span> {t("register.step1Post")}</>} />
+      <Step icon={Hourglass} title={t("register.step2")}
+        body={t("register.step2Body")} />
+      <Step icon={ShieldCheck} title={t("register.step3")}
+        body={t("register.step3Body")} />
       <div className="pt-2">
-        <Button asChild className="w-full"><Link to="/login">Back to sign in</Link></Button>
+        <Button asChild className="w-full"><Link to="/login">{t("register.backToSignIn")}</Link></Button>
       </div>
     </div>
   );
@@ -249,7 +247,7 @@ function Step({ icon: Icon, title, body }: { icon: LucideIcon; title: string; bo
   return (
     <div className="flex gap-3">
       <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <Icon className="h-4 w-4" />
+        <Icon aria-hidden="true" className="h-4 w-4" />
       </div>
       <div className="space-y-0.5">
         <p className="text-sm font-medium">{title}</p>

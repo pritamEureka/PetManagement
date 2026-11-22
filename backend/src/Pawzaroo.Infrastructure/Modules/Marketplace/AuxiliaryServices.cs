@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Common.Permissions;
+using Pawzaroo.Application.Modules.CommercePlus;
 using Pawzaroo.Application.Modules.Marketplace.Dtos;
 using Pawzaroo.Application.Modules.Marketplace.Events;
 using Pawzaroo.Application.Modules.Marketplace.Services;
@@ -321,9 +322,12 @@ public class ReturnService : IReturnService
     private readonly IKafkaProducer _kafka;
     private readonly IAuditLogger _audit;
 
-    public ReturnService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka, IAuditLogger audit)
+    private readonly ILedgerRecorder _ledger;
+
+    public ReturnService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka, IAuditLogger audit,
+        ILedgerRecorder ledger)
     {
-        _db = db; _current = current; _kafka = kafka; _audit = audit;
+        _db = db; _current = current; _kafka = kafka; _audit = audit; _ledger = ledger;
     }
 
     public async Task<ReturnRequestDto> CreateAsync(CreateReturnRequestInput input, CancellationToken ct = default)
@@ -360,6 +364,10 @@ public class ReturnService : IReturnService
         r.UpdatedAt = DateTime.UtcNow;
         r.UpdatedBy = _current.UserId;
         await _db.SaveChangesAsync(ct);
+
+        // Approved return = money back to the buyer: reverse the store's earning/commission (idempotent per item).
+        if (status == ApprovalStatus.Approved)
+            await _ledger.RecordItemRefundAsync(r.OrderItemId, amount, ct);
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new ReturnDecided(r.Id, r.OrderItemId, status.ToString(), amount, DateTime.UtcNow), r.Id.ToString(), ct);

@@ -23,6 +23,21 @@ import { SavedPostsPage } from "@/pages/feed/SavedPostsPage";
 import { MyPostsPage } from "@/pages/feed/MyPostsPage";
 import { PrivacyPage, TermsPage } from "@/pages/LegalPages";
 import { NotificationsPage } from "@/pages/NotificationsPage";
+import { MySubscriptionsPage } from "@/pages/store/MySubscriptionsPage";
+import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
+import { PriceWatchesPage } from "@/pages/store/PriceWatchesPage";
+import { AssistantReviewsPage } from "@/pages/vets/AssistantReviewsPage";
+import { AssistantPage } from "@/pages/AssistantPage";
+import { SecuritySettingsPage } from "@/pages/SecuritySettingsPage";
+import { NotificationSettingsPage } from "@/pages/NotificationSettingsPage";
+import { CommunitiesPage } from "@/pages/communities/CommunitiesPage";
+import { CommunityDetailPage } from "@/pages/communities/CommunityDetailPage";
+import { EventsDiscoverPage } from "@/pages/communities/EventsDiscoverPage";
+import { MyWaitlistsPage } from "@/pages/vets/MyWaitlistsPage";
+import { TelemedicineRoomPage } from "@/pages/vets/TelemedicineRoomPage";
+import { SettlementsAdminPage } from "@/pages/admin/SettlementsAdminPage";
+import { OperationsIntelligencePage } from "@/pages/admin/OperationsIntelligencePage";
 
 // Pets
 import { PetsPage } from "@/pages/pets/PetsPage";
@@ -164,6 +179,8 @@ export default function App() {
 
           {/* Auth */}
           <Route path="/login"    element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forbidden" element={<UnauthorizedPage />} />
           <Route path="/account/suspended" element={<SuspendedPage />} />
@@ -183,6 +200,19 @@ export default function App() {
               <Route path="/feed/:id" element={<PostDetailPage />} />
               <Route path="/u/:userId" element={<UserProfilePage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/my-subscriptions" element={<MySubscriptionsPage />} />
+              <Route path="/price-watches" element={<PriceWatchesPage />} />
+              <Route element={<ProtectedRoute permission="vets.edit" />}>
+                <Route path="/vets/assistant-reviews" element={<AssistantReviewsPage />} />
+              </Route>
+              <Route path="/assistant" element={<AssistantPage />} />
+              <Route path="/settings/security" element={<SecuritySettingsPage />} />
+              <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
+              <Route path="/communities" element={<CommunitiesPage />} />
+              <Route path="/communities/events" element={<EventsDiscoverPage />} />
+              <Route path="/communities/:idOrSlug" element={<CommunityDetailPage />} />
+              <Route path="/waitlists" element={<MyWaitlistsPage />} />
+              <Route path="/appointments/:id/room" element={<TelemedicineRoomPage />} />
 
               <Route element={<ProtectedRoute permission="pets.view" />}>
                 <Route path="/pets" element={<PetsPage />} />
@@ -337,6 +367,9 @@ export default function App() {
               <Route element={<ProtectedRoute permission="notifications.view" />}>
                 <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
               </Route>
+              <Route element={<ProtectedRoute permission="users.view" />}>
+                <Route path="/admin/intelligence" element={<OperationsIntelligencePage />} />
+              </Route>
               <Route element={<ProtectedRoute permission="audit.view" />}>
                 <Route path="/admin/audit" element={<AdminAuditLogPage />} />
               </Route>
@@ -346,6 +379,7 @@ export default function App() {
               </Route>
               <Route element={<ProtectedRoute permission="settings.view" />}>
                 <Route path="/admin/settings" element={<AdminSystemSettingsPage />} />
+                <Route path="/admin/settlements" element={<SettlementsAdminPage />} />
               </Route>
             </Route>
           </Route>

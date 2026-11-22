@@ -1,10 +1,10 @@
 # Pawzaroo — Feature Roadmap (Pet Management)
 
-This document lists new features that can be added to Pawzaroo, based on an analysis of the current codebase (as of 2026-11-02). Each item notes **what exists today**, **what is missing**, and **where it would plug in**.
+This document lists new features that can be added to Pawzaroo, based on an analysis of the current codebase (as of 2026-11-22). Each item notes **what exists today**, **what is missing**, and **where it would plug in**.
 
 Priority legend: **P0** = gap / risk in existing functionality, **P1** = high value & low effort (model already exists), **P2** = new capability, **P3** = nice to have.
 
-## Implementation status (2026-11-02)
+## Implementation status (2026-11-22)
 
 | Item | Status | Where |
 |---|---|---|
@@ -21,7 +21,7 @@ Priority legend: **P0** = gap / risk in existing functionality, **P1** = high va
 | 4.2 QR ID tag | ✅ Done | Public `/p/:code`, sighting relay, printable tag |
 | 4.3 Co-caretakers | ✅ Done | **Care team** tab (viewer / caretaker / co-owner, optional expiry) |
 | 4.4 Daily care log | ✅ Done | **Daily care** tab — routines, checklist, streak |
-| 4.5 Telemedicine | ✅ Done | Meeting links already existed; treating vets now see the pet's record |
+| 4.5 Telemedicine | ⚠️ Partial | Chat, prescriptions, and treating-vet pet access exist; provider meeting room links are not implemented |
 | 4.6 Export & share | ✅ Done | Printable HTML/PDF report, expiring revocable share links |
 | 4.7 Adoption hand-over | ✅ Done | Mark-adopted dialog transfers the pet profile (consent for health history) |
 | 4.8 Recommendations | ✅ Done (rule-based) | Life stage, care tips, species vaccine schedule, matching products |
@@ -175,3 +175,90 @@ Priority legend: **P0** = gap / risk in existing functionality, **P1** = high va
 2. **Sprint 2:** 3.1 Vaccination reminders → 3.2 Vet visit sync → 3.3 Weight tracking
 3. **Sprint 3:** 3.4 Pet services marketplace → 3.5 Medication schedule
 4. **Sprint 4+:** 4.1 Lost & Found → 4.2 QR ID tag → 4.3 Co-caretakers → remaining P2/P3 items
+
+---
+
+## 8. P1/P2 — Cross-module features identified from the full codebase
+
+These proposals extend beyond the existing pet roadmap and reuse the project's domain events, worker, Redis, Kafka, RBAC, SignalR, payments, and S3 capabilities.
+
+### 8.1 Telemedicine consultation room
+- **Exists:** `ConsultationType.Online`, appointment booking, prescription uploads, chat, and treating-vet pet access.
+- **Missing:** appointment meeting rooms, lobby/check-in, secure call state, waiting rooms, provider consent, and call artifacts.
+- **Add:** generate a time-bound Jitsi, Daily, or Twilio room link for online appointments; add join/leave events, pre-consult chat, vet waiting room, and post-call SOAP-style notes.
+- **Where:** `Veterinary/Appointment`, `Vet/AppointmentService`, `AppointmentsController`, `ChatHub`, `PrescriptionUploadPage`, and a new worker cleanup job.
+
+### 8.2 Appointment waitlists and recurring bookings
+- **Exists:** doctor availability, pre-generated time slots, appointment statuses, cancellation, and reminders.
+- **Missing:** waitlist positions, automatic slot reassignment, repeat-visit schedules, and calendar synchronization.
+- **Add:** let users join a vet/provider waitlist, notify the first eligible users when a slot opens, support recurring/series appointments, and export `.ics` links or Google/Outlook calendar tokens.
+- **Where:** `DoctorTimeSlot`, `Appointment`, `DoctorAvailabilityService`, `AppointmentReminderJob`, and vet/appointment frontend pages.
+
+### 8.3 Live delivery tracking and courier webhooks
+- **Exists:** `DeliveryAssignment`, courier provider fields, tracking numbers, shipment status, and delivery role management.
+- **Missing:** live courier updates, location checkpoints, proof of delivery, buyer notifications, and signed webhook ingestion.
+- **Add:** normalized tracking checkpoints and delivery proofs, provider callback endpoints with signature verification, event-driven status updates, and a timeline on order detail pages.
+- **Where:** `DeliveryAssignment`, `DeliveryService`, `DeliveriesController`, courier integrations, `OrderEventProjectorJob`, and `OrderDetailPage`.
+
+### 8.4 Multi-seller settlement and payout ledger
+- **Exists:** per-store commission on order items, refunds, return requests, and store dashboards.
+- **Missing:** vendor ledger entries, payout batches, hold periods, reversals, statement exports, and settlement reconciliation.
+- **Add:** create immutable store earning/commission/refund ledger entries, generate payout batches, support gateway reconciliation, and expose downloadable settlement reports.
+- **Where:** new `StorePayout`, `SettlementBatch`, and `LedgerEntry` entities; `OrderService`; admin commission/settings pages; `StoreDashboardPage`; Kafka marketplace topics.
+
+### 8.5 Product variants and repeat purchase subscriptions
+- **Exists:** product, inventory, cart, coupon, wishlist, and order domains.
+- **Missing:** size/color/SKU variants, low-stock reservations, replenishment schedules, and reorder/subscription workflows.
+- **Add:** add variant attributes and variant-level stock, reservations/expiry, subscribe-and-save, scheduled renewables, missed-payment retry, and one-click reorder.
+- **Where:** `Product`, `CartItem`, `InventoryAdjustment`, `OrderService`, `CouponService`, marketplace/store frontend pages, and a recurring-order worker.
+
+### 8.6 Pet community groups and local events
+- **Exists:** user follows, posts, comments, reactions, saved posts, moderation reports, adoption centers, lost-found, and adoption events.
+- **Missing:** breed/species communities, public/private groups, group moderation, RSVP events, and event discovery.
+- **Add:** create community memberships and event entities, let owners host meetups/vaccination camps/adoption drives, add RSVP capacity and waitlists, and surface events in location-aware feeds.
+- **Where:** `Social/Post`, `AdoptionListing`, `LostFoundReport`, new community/event entities, `FeedService`, moderation/admin pages, and the worker feed projection.
+
+### 8.7 Advanced marketplace discovery
+- **Exists:** PostgreSQL full-text search for products/posts, category/brand/store filters, Geo search support, Redis caches, and pet recommendations.
+- **Missing:** faceted search, spelling suggestions, saved searches, in-stock filters, personalized ranking, and price-drop alerts.
+- **Add:** add searchable facets and filter counts, search suggestions, saved search alerts, recently viewed items, and explainable ranking based on category, distance, rating, inventory, and pet profile.
+- **Where:** `ProductService`, `FeedService`, `AdoptionCursor`, Redis cache helpers, and a dedicated search-index worker topic.
+
+### 8.8 Clinic and business operations intelligence
+- **Exists:** admin analytics, appointment status data, order and delivery state, pet care and expense records, audit logs, and Kafka outbox events.
+- **Missing:** cohort, forecasting, capacity, and anomaly views rather than simple current totals.
+- **Add:** forecast appointment demand and inventory, show no-show and cancellation rates, vaccine coverage and lost-pet recovery trends, store conversion and return trends, and export scheduled reports.
+- **Where:** `AnalyticsPage`, `AdminDashboardController`, reporting services, audit/outbox consumers, and warehouse-style projection tables or views.
+
+### 8.9 PWA and browser push notifications
+- **Exists:** in-app notifications, SignalR notification hub, reminder jobs, and Redis-backed device infrastructure.
+- **Missing:** installable PWA, offline shell/cache, push subscriptions, and notification preferences.
+- **Add:** add Vite PWA manifests/service workers, web-push subscriptions, quiet-hour preferences, per-category notification settings, and offline read/retry for selected read-only pages.
+- **Where:** frontend `main.tsx`, `NotificationHub`, `PetCareReminderJob`, `AppointmentReminderJob`, `NotificationDispatcherJob`, and new device/subscription entities.
+
+### 8.10 Passkeys, session management, and delegated account access
+- **Exists:** JWT refresh tokens, OTP/2FA, user devices, suspension, RBAC, and audit logging.
+- **Missing:** passkey/WebAuthn login, live session revocation, trusted-device controls, consent history, and account recovery workflow.
+- **Add:** support passkeys and backup recovery codes, expose active sessions and "log out everywhere", require step-up auth for ownership/health transfers and refunds, and keep an immutable consent history.
+- **Where:** `Identity/UserSecurity`, `UserDevice`, `RefreshToken`, security API pages, `SuspensionGuardMiddleware`, and audit/action-log services.
+
+### 8.11 Internationalization and accessibility
+- **Exists:** Bengali-market clues, shadcn/Tailwind UI, privacy/terms, and some responsive pages.
+- **Missing:** centralized i18n catalogs, locale/date/currency formatting, RTL support, and automated accessibility checks.
+- **Add:** add Bengali/English translation resources, locale-aware number/date/currency formatting, RTL-safe layouts, accessible form/error semantics, and automated axe and keyboard-navigation tests.
+- **Where:** frontend `src/lib`, shared UI components, API validation/error messages, and end-to-end test tooling.
+
+### 8.12 AI care and marketplace assistant
+- **Exists:** breed-aware recommendations, care schedules, pet records, product/catalog data, and veterinary appointments.
+- **Missing:** conversational context, retrieval-grounded answers, photo analysis, escalation, and human review/audit.
+- **Add:** provide a pet-care assistant with evidence/disclaimer boundaries, grounded catalog/vet recommendations, optional image triage, and an immediate escalation path for emergency symptoms.
+- **Where:** new application assistant service, pet/vet/product read adapters, moderation/audit topics, a worker RAG index, and a dedicated frontend assistant panel.
+
+---
+
+## 9. Updated delivery order
+
+1. **P0/P1 quality:** 8.10 passkeys/session controls; 8.1 telemedicine; live delivery tracking 8.3
+2. **Commerce:** 8.4 settlements → 8.5 variants/subscriptions → 8.7 discovery
+3. **Community:** 8.6 groups/events → 8.9 PWA/push
+4. **Platform:** 8.11 i18n/accessibility → 8.8 analytics → 8.12 AI assistant

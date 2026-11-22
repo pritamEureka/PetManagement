@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Search, Stethoscope, Star, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,9 @@ const ANY = "any";
 export function VetsPage() {
   const [city, setCity] = useState("");
   const [animal, setAnimal] = useState<string>(ANY);
-  const [type, setType] = useState<string>(ANY);
+  const [searchParams] = useSearchParams();
+  // `?online=true` (e.g. from the care-assistant triage link) preselects online consultations.
+  const [type, setType] = useState<string>(searchParams.get("online") === "true" ? "Online" : ANY);
 
   const { data, isLoading } = useQuery({
     queryKey: ["vets", { city, animal, type }],

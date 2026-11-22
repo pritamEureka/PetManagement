@@ -5,6 +5,7 @@ using Pawzaroo.Api.Authorization;
 using Pawzaroo.Application.Common.Permissions;
 using Pawzaroo.Application.Modules.Marketplace.Dtos;
 using Pawzaroo.Application.Modules.Marketplace.Services;
+using Pawzaroo.Application.Modules.SecurityPlus;
 using Pawzaroo.Domain.Common;
 
 namespace Pawzaroo.Api.Controllers.V1;
@@ -18,10 +19,13 @@ public class OrdersController : ControllerBase
     private readonly IOrderService _orders;
     private readonly IReturnService _returns;
 
-    public OrdersController(IOrderService orders, IReturnService returns)
+    private readonly IStepUpAuthService _stepUp;
+
+    public OrdersController(IOrderService orders, IReturnService returns, IStepUpAuthService stepUp)
     {
         _orders = orders;
         _returns = returns;
+        _stepUp = stepUp;
     }
 
     [HttpPost("checkout")]
@@ -103,6 +107,7 @@ public class OrdersController : ControllerBase
     [Permission(Permissions.Orders.Refund)]
     public async Task<IActionResult> Refund(Guid id, [FromBody] RefundBody? body, CancellationToken ct)
     {
+        await _stepUp.RequireRecentAsync(ct);
         await _orders.RefundAsync(id, body?.Amount, ct);
         return NoContent();
     }
@@ -123,6 +128,7 @@ public class OrdersController : ControllerBase
     [Permission(Permissions.Orders.Refund)]
     public async Task<IActionResult> ApproveReturn(Guid id, [FromBody] RefundBody? body, CancellationToken ct)
     {
+        await _stepUp.RequireRecentAsync(ct);
         await _returns.ApproveAsync(id, body?.Amount, ct);
         return NoContent();
     }

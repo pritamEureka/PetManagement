@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { productSchema, type ProductFormInput } from "@/lib/schemas";
 import { productsV2Api } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
+import { VariantManager } from "@/components/store/VariantManager";
 
 export function ProductEditPage() {
   const { id } = useParams();
@@ -132,6 +133,8 @@ export function ProductEditPage() {
           </form>
         </CardContent>
       </Card>
+
+      {!isNew && id && <VariantManager productId={id} />}
     </div>
   );
 }

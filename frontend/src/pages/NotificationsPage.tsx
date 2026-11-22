@@ -12,6 +12,9 @@ import { notificationsApi, type Notification, type NotificationPayload } from "@
 import { UNREAD_NOTIFICATIONS_QUERY_KEY } from "@/hooks/useNotifications";
 import { useNotificationHub } from "@/hooks/useNotificationHub";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
+import { formatDate, formatNumber, formatRelativeTime } from "@/lib/format";
+import { useAnnounce } from "@/components/common/a11y";
 
 function parsePayload(payload: string | null): NotificationPayload | null {
   if (!payload) return null;
@@ -20,28 +23,26 @@ function parsePayload(payload: string | null): NotificationPayload | null {
 }
 
 function getNotificationIcon(payload: NotificationPayload | null) {
-  if (!payload) return <Bell className="h-5 w-5 text-muted-foreground" />;
+  if (!payload) return <Bell aria-hidden="true" className="h-5 w-5 text-muted-foreground" />;
   switch (payload.type) {
-    case "post_reaction": return <Heart className="h-5 w-5 text-rose-500" />;
-    case "post_comment": return <MessageSquare className="h-5 w-5 text-blue-500" />;
-    default: return <Bell className="h-5 w-5 text-muted-foreground" />;
+    case "post_reaction": return <Heart aria-hidden="true" className="h-5 w-5 text-rose-500" />;
+    case "post_comment": return <MessageSquare aria-hidden="true" className="h-5 w-5 text-blue-500" />;
+    default: return <Bell aria-hidden="true" className="h-5 w-5 text-muted-foreground" />;
   }
 }
 
-function timeAgo(dateStr: string) {
-  const now = Date.now();
-  const d = new Date(dateStr).getTime();
-  const diff = Math.floor((now - d) / 1000);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+function timeAgo(dateStr: string, justNow: string) {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return justNow;
+  if (diff < 604800) return formatRelativeTime(dateStr);
+  return formatDate(dateStr);
 }
 
 export function NotificationsPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
+  const { t } = useI18n();
+  const announce = useAnnounce();
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
   const { data: notifications, isLoading } = useQuery({
@@ -71,6 +72,7 @@ export function NotificationsPage() {
   const markAllReadMutation = useMutation({
     mutationFn: () => notificationsApi.markAllAsRead(),
     onSuccess: () => {
+      announce(t("notif.allMarkedRead"));
       qc.invalidateQueries({ queryKey: ["notifications", "list"] });
       qc.invalidateQueries({ queryKey: UNREAD_NOTIFICATIONS_QUERY_KEY });
     }
@@ -96,9 +98,9 @@ export function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Notifications</h1>
+          <h1 className="text-2xl font-bold">{t("nav.notifications")}</h1>
           {unreadCount > 0 && (
-            <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
+            <p className="text-sm text-muted-foreground">{t("notif.unreadCount", { count: formatNumber(unreadCount) })}</p>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -110,47 +112,49 @@ export function NotificationsPage() {
               disabled={markAllReadMutation.isPending}
             >
               {markAllReadMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                <Loader2 aria-hidden="true" className="h-4 w-4 me-1 animate-spin" />
               ) : (
-                <CheckCheck className="h-4 w-4 mr-1" />
+                <CheckCheck aria-hidden="true" className="h-4 w-4 me-1" />
               )}
-              Mark all read
+              {t("notif.markAllRead")}
             </Button>
           )}
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2" role="group" aria-label={t("notif.filter")}>
         <Button
+          aria-pressed={filter === "all"}
           variant={filter === "all" ? "default" : "outline"}
           size="sm"
           onClick={() => setFilter("all")}
         >
-          All
+          {t("notif.all")}
         </Button>
         <Button
+          aria-pressed={filter === "unread"}
           variant={filter === "unread" ? "default" : "outline"}
           size="sm"
           onClick={() => setFilter("unread")}
         >
-          Unread
+          {t("notif.unread")}
         </Button>
       </div>
 
       {/* Notification list */}
       {isLoading ? (
-        <div className="space-y-2">
+        <div className="space-y-2" aria-busy="true" role="status" aria-label={t("common.loading")}>
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-20" />
           ))}
         </div>
       ) : !notifications || notifications.length === 0 ? (
         <EmptyState
-          title={filter === "unread" ? "No unread notifications" : "No notifications yet"}
+          title={filter === "unread" ? t("notif.emptyUnread") : t("notif.empty")}
           description={filter === "unread"
-            ? "You're all caught up!"
-            : "When someone likes or comments on your posts, you'll see notifications here."
+            ? t("notif.caughtUp")
+            : t("notif.emptyDesc")
           }
         />
       ) : (
@@ -163,7 +167,7 @@ export function NotificationsPage() {
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
                   className={cn(
-                    "w-full flex items-start gap-3 p-3 sm:p-4 text-left transition-colors hover:bg-muted",
+                    "w-full flex items-start gap-3 p-3 sm:p-4 text-start transition-colors hover:bg-muted",
                     !notification.isRead && "bg-primary/5"
                   )}
                 >
@@ -189,7 +193,7 @@ export function NotificationsPage() {
                       {notification.body}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {timeAgo(notification.createdAt)}
+                      {timeAgo(notification.createdAt, t("notif.justNow"))}
                     </p>
                   </div>
 
@@ -203,9 +207,10 @@ export function NotificationsPage() {
                         e.stopPropagation();
                         markReadMutation.mutate(notification.id);
                       }}
-                      title="Mark as read"
+                      title={t("notif.markRead")}
+                      aria-label={t("notif.markRead")}
                     >
-                      <Check className="h-4 w-4" />
+                      <Check aria-hidden="true" className="h-4 w-4" />
                     </Button>
                   )}
                 </button>

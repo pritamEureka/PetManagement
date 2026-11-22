@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { productsV2Api, type ProductSummary } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { StoreLocationCard } from "@/components/store/StoreLocationCard";
 
 export function ProductManagementPage() {
   const qc = useQueryClient();
@@ -43,6 +44,8 @@ export function ProductManagementPage() {
         <h1 className="text-2xl font-bold">Products</h1>
         <Button asChild><Link to="/dashboard/store/products/new"><Plus className="h-4 w-4 mr-1" /> Add product</Link></Button>
       </div>
+
+      <StoreLocationCard />
 
       <div className="relative max-w-md">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />

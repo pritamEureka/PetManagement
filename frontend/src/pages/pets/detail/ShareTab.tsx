@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/sonner";
 import { petsApi, canEditPet, publicPetUrl, sharedHealthUrl, type PetDetail } from "@/api/pets";
 import { Section, Field, Muted, fmtDate } from "./shared";
+import { withStepUp } from "@/lib/withStepUp";
 
 async function copy(text: string) {
   try { await navigator.clipboard.writeText(text); toast.success("Link copied."); }
@@ -39,7 +40,10 @@ export function ShareTab({ pet }: { pet: PetDetail }) {
 
   async function createLink(e: React.FormEvent) {
     e.preventDefault();
-    const l = await petsApi.sharing.createLink(pet.id, { validDays: Number(link.validDays), label: link.label.trim() || undefined });
+    let l;
+    try {
+      l = await withStepUp(() => petsApi.sharing.createLink(pet.id, { validDays: Number(link.validDays), label: link.label.trim() || undefined }));
+    } catch { return; /* cancelled or already toasted */ }
     await copy(sharedHealthUrl(l.token));
     setLink({ validDays: "7", label: "" });
     refresh();

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Infrastructure.Audit;
 using Pawzaroo.Infrastructure.Caching;
+using Pawzaroo.Infrastructure.Features;
 using Pawzaroo.Infrastructure.Identity;
 using Pawzaroo.Infrastructure.Messaging;
 using Pawzaroo.Infrastructure.Payments;
@@ -146,6 +147,14 @@ public static class DependencyInjection
             services.AddScoped<IEmailService, Modules.Identity.SmtpEmailService>();
         else
             services.AddScoped<IEmailService, Modules.Identity.ConsoleEmailService>();
+
+        // Section-8 roadmap feature bundles.
+        services.AddSecurityPlusFeatures();
+        services.AddVetPlusFeatures();
+        services.AddCommercePlusFeatures();
+        services.AddShopPlusFeatures();
+        services.AddCommunityPlusFeatures();
+        services.AddIntelligenceFeatures();
 
         return services;
     }

@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { vetsApi } from "@/api/vets";
 import { EmptyState } from "@/components/common/EmptyState";
+import { WaitlistButton } from "@/components/vet/WaitlistButton";
 
 export function VetDetailPage() {
   const { id = "" } = useParams();
@@ -19,6 +20,18 @@ export function VetDetailPage() {
   const { data: reviews } = useQuery({
     queryKey: ["vet-reviews", id], queryFn: () => vetsApi.reviews(id), enabled: !!id
   });
+
+  // Look 14 days ahead; if nothing is bookable, offer the waitlist.
+  const { data: upcomingSlots } = useQuery({
+    queryKey: ["vet-slots-14d", id],
+    queryFn: () => {
+      const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const from = new Date(); const to = new Date(); to.setDate(to.getDate() + 13);
+      return vetsApi.slots(id, ymd(from), ymd(to));
+    },
+    enabled: !!id
+  });
+  const fullyBooked = !!upcomingSlots && !upcomingSlots.some((s) => s.status === "Available");
 
   if (isLoading) return <div className="max-w-3xl mx-auto space-y-3"><Skeleton className="h-40" /><Skeleton className="h-24" /></div>;
   if (!doctor) {
@@ -56,7 +69,10 @@ export function VetDetailPage() {
               <span className="font-semibold text-foreground">${doctor.consultationFee.toFixed(2)}</span>
             </div>
           </div>
-          <Button asChild><Link to={`/vets/${id}/book`}><Calendar className="h-4 w-4 mr-2" /> Book</Link></Button>
+          <div className="flex flex-col gap-2">
+            <Button asChild><Link to={`/vets/${id}/book`}><Calendar className="h-4 w-4 mr-2" /> Book</Link></Button>
+            {fullyBooked && <WaitlistButton doctorId={id} doctorName={`Dr. ${doctor.name}`} />}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {doctor.about && <p className="text-sm whitespace-pre-wrap">{doctor.about}</p>}

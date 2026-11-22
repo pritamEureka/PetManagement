@@ -4,6 +4,7 @@ using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Modules.Pets.Dtos;
 using Pawzaroo.Application.Modules.Pets.Events;
 using Pawzaroo.Application.Modules.Pets.Services;
+using Pawzaroo.Application.Modules.SecurityPlus;
 using Pawzaroo.Domain.Notifications;
 using Pawzaroo.Domain.Pets;
 using Pawzaroo.Infrastructure.Persistence;
@@ -22,15 +23,17 @@ public class PetSharingService : IPetSharingService
     private readonly IPetAccessService _access;
     private readonly IKafkaProducer _kafka;
     private readonly IAuditLogger _audit;
+    private readonly IStepUpAuthService _stepUp;
 
     public PetSharingService(ApplicationDbContext db, ICurrentUserService current, IPetAccessService access,
-        IKafkaProducer kafka, IAuditLogger audit)
+        IKafkaProducer kafka, IAuditLogger audit, IStepUpAuthService stepUp)
     {
         _db = db;
         _current = current;
         _access = access;
         _kafka = kafka;
         _audit = audit;
+        _stepUp = stepUp;
     }
 
     // ---------- Share links ----------
@@ -47,6 +50,8 @@ public class PetSharingService : IPetSharingService
     public async Task<ShareLinkDto> CreateShareLinkAsync(Guid petId, CreateShareLinkInput input, CancellationToken ct = default)
     {
         await _access.EnsureCanEditAsync(petId, ct);
+        // Handing health data to third parties needs a recent re-authentication.
+        await _stepUp.RequireRecentAsync(ct);
         var link = new PetHealthShareLink
         {
             PetId = petId,
@@ -186,6 +191,9 @@ public class PetSharingService : IPetSharingService
     public async Task TransferOwnershipAsync(Guid petId, Guid toUserId, Guid? adoptionListingId, bool includeHealthHistory,
         CancellationToken ct = default)
     {
+        // Step-up for ownership transfer is enforced by the caller before it persists its own state
+        // (AdoptionListingService.MarkAdoptedAsync saves the listing as Adopted first, so a 403 here
+        // would leave it half-finished).
         var pet = await _db.Pets.SingleOrDefaultAsync(p => p.Id == petId, ct) ?? throw new NotFoundException("Pet", petId);
         if (pet.OwnerId == toUserId) return;
         if (!await _db.Users.AnyAsync(u => u.Id == toUserId, ct)) throw new NotFoundException("User", toUserId);

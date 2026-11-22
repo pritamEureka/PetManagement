@@ -16,6 +16,8 @@ import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/components/ui/sonner";
 import { EmptyState } from "@/components/common/EmptyState";
+import { VariantPicker } from "@/components/store/VariantPicker";
+import { SubscribeBox } from "@/components/store/SubscribeBox";
 
 export function ProductDetailPage() {
   const { id = "" } = useParams();
@@ -34,6 +36,7 @@ export function ProductDetailPage() {
   const add = useCartStore((s) => s.add);
   const currentUserId = useAuthStore((s) => s.user?.id);
   const [qty, setQty] = useState(1);
+  const [variantId, setVariantId] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
@@ -234,6 +237,9 @@ export function ProductDetailPage() {
             </Button>
             <Button size="lg" variant="outline" asChild><Link to="/cart">View cart</Link></Button>
           </div>
+
+          <VariantPicker productId={product.id} quantity={qty} onSelect={(v) => setVariantId(v?.id ?? null)} />
+          <SubscribeBox productId={product.id} variantId={variantId} quantity={qty} unitPrice={price} />
 
           <div className="grid grid-cols-2 gap-2 pt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /> Fast shipping</div>

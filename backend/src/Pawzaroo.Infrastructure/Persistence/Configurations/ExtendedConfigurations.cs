@@ -141,7 +141,8 @@ public class CartItemRelationConfiguration : IEntityTypeConfiguration<CartItem>
     {
         e.ToTable("cart_items");
         e.HasIndex(x => x.CartId);
-        e.HasIndex(x => new { x.UserId, x.ProductId }).IsUnique();
+        // Non-unique: a cart may hold several variant lines of one product (CartItemVariant links the variant).
+        e.HasIndex(x => new { x.UserId, x.ProductId });
         e.Property(x => x.UnitPriceSnapshot).HasPrecision(12, 2);
         e.HasOne(x => x.Cart).WithMany(c => c.Items).HasForeignKey(x => x.CartId).OnDelete(DeleteBehavior.Cascade);
         e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);

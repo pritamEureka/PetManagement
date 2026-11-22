@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: React.ReactNode;
-  /** Field label shown above the input. Defaults to "Reason". */
+  /** Field label shown above the input. Defaults to the translated "Reason". */
   label?: string;
   placeholder?: string;
   /** Pre-fill the input. */
@@ -39,12 +40,13 @@ interface Props {
  */
 export function PromptDialog({
   open, onOpenChange, title, description,
-  label = "Reason", placeholder, initialValue = "",
+  label, placeholder, initialValue = "",
   multiline = false, required = true,
-  confirmLabel = "Submit", cancelLabel = "Cancel",
+  confirmLabel, cancelLabel,
   destructive = false, inputType = "text", min, max,
   onSubmit
 }: Props) {
+  const { t } = useI18n();
   const [value, setValue] = useState(initialValue);
   const [busy, setBusy] = useState(false);
 
@@ -73,7 +75,7 @@ export function PromptDialog({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="prompt-input">{label}</Label>
+          <Label htmlFor="prompt-input">{label ?? t("dialog.reason")}</Label>
           {multiline ? (
             <Textarea
               id="prompt-input"
@@ -99,14 +101,14 @@ export function PromptDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            {cancelLabel}
+            {cancelLabel ?? t("common.cancel")}
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
             onClick={handle}
             disabled={!canSubmit}
           >
-            {busy ? "Working..." : confirmLabel}
+            {busy ? t("common.working") : (confirmLabel ?? t("common.submit"))}
           </Button>
         </DialogFooter>
       </DialogContent>

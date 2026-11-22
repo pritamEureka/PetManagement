@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { storesApi } from "@/api/marketplace";
+import { StoreLedgerPanel } from "@/components/commerce/StoreLedgerPanel";
 
 export function StoreDashboardPage() {
   const { data: store } = useQuery({ queryKey: ["my-store"], queryFn: () => storesApi.mine() });
@@ -93,6 +94,8 @@ export function StoreDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <StoreLedgerPanel />
     </div>
   );
 }

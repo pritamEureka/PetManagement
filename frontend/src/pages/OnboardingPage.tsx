@@ -9,19 +9,21 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { petsApi } from "@/api/pets";
+import { useI18n } from "@/lib/i18n";
 import { animalTypes } from "@/lib/schemas";
 
 type Intent = "owner" | "vet" | "store" | "shelter";
 
-const INTENTS: { id: Intent; icon: typeof PawPrint; title: string; body: string }[] = [
-  { id: "owner",   icon: PawPrint,       title: "I'm a pet parent",      body: "Track records, find vets, adopt." },
-  { id: "vet",     icon: Stethoscope,    title: "I'm a veterinarian",    body: "Manage clinic & appointments." },
-  { id: "store",   icon: ShoppingBag,    title: "I sell pet products",   body: "Open a marketplace store." },
-  { id: "shelter", icon: HeartHandshake, title: "I run a shelter / center", body: "List pets for adoption." }
+const INTENTS: { id: Intent; icon: typeof PawPrint }[] = [
+  { id: "owner",   icon: PawPrint },
+  { id: "vet",     icon: Stethoscope },
+  { id: "store",   icon: ShoppingBag },
+  { id: "shelter", icon: HeartHandshake }
 ];
 
 export function OnboardingPage() {
   const nav = useNavigate();
+  const { t } = useI18n();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [intent, setIntent] = useState<Intent>("owner");
   const [pet, setPet] = useState({ name: "", animalType: "Dog", breed: "" });
@@ -38,11 +40,11 @@ export function OnboardingPage() {
           gender: "Unknown",
           isAvailableForAdoption: false
         });
-        toast.success(`Welcome ${pet.name}! 🐾`);
+        toast.success(`${t("onboarding.welcomePet", { name: pet.name })} 🐾`);
       }
       nav("/home", { replace: true });
     } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message ?? "Couldn't save pet.");
+      toast.error(err?.response?.data?.error?.message ?? t("onboarding.saveError"));
     } finally { setBusy(false); }
   }
 
@@ -52,7 +54,7 @@ export function OnboardingPage() {
         <div className="flex items-center gap-2 justify-center text-muted-foreground text-sm">
           {[1, 2, 3].map((n) => (
             <Badge key={n} variant={step === n ? "default" : step > n ? "muted" : "outline"}>
-              Step {n}
+              {t("onboarding.step", { n })}
             </Badge>
           ))}
         </div>
@@ -61,24 +63,26 @@ export function OnboardingPage() {
           <Card>
             <CardContent className="pt-6 space-y-6">
               <div className="text-center space-y-1">
-                <h1 className="text-2xl font-bold">Welcome to Pawzaroo!</h1>
-                <p className="text-sm text-muted-foreground">Tell us how you'd like to use the platform.</p>
+                <h1 className="text-2xl font-bold">{t("onboarding.welcome")}</h1>
+                <p className="text-sm text-muted-foreground">{t("onboarding.welcomeSub")}</p>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
-                {INTENTS.map(({ id, icon: Icon, title, body }) => (
+                {INTENTS.map(({ id, icon: Icon }) => (
                   <button
                     key={id}
+                    type="button"
+                    aria-pressed={intent === id}
                     onClick={() => setIntent(id)}
-                    className={`text-left rounded-lg border p-4 transition-colors ${intent === id ? "border-primary bg-primary/5 ring-1 ring-primary hover:bg-primary/10" : "hover:bg-muted"}`}
+                    className={`text-start rounded-lg border p-4 transition-colors ${intent === id ? "border-primary bg-primary/5 ring-1 ring-primary hover:bg-primary/10" : "hover:bg-muted"}`}
                   >
-                    <Icon className="h-5 w-5 text-primary mb-2" />
-                    <p className="font-semibold">{title}</p>
-                    <p className="text-xs text-muted-foreground">{body}</p>
+                    <Icon aria-hidden="true" className="h-5 w-5 text-primary mb-2" />
+                    <p className="font-semibold">{t(`onboarding.intent.${id}.title`)}</p>
+                    <p className="text-xs text-muted-foreground">{t(`onboarding.intent.${id}.body`)}</p>
                   </button>
                 ))}
               </div>
               <div className="flex justify-end gap-2">
-                <Button onClick={() => setStep(2)}>Continue</Button>
+                <Button onClick={() => setStep(2)}>{t("onboarding.continue")}</Button>
               </div>
             </CardContent>
           </Card>
@@ -89,46 +93,46 @@ export function OnboardingPage() {
             <CardContent className="pt-6 space-y-4">
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-bold">
-                  {intent === "owner" ? "Add your first pet" : "Almost there"}
+                  {intent === "owner" ? t("onboarding.addFirstPet") : t("onboarding.almostThere")}
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   {intent === "owner"
-                    ? "You can add more later. Skip if you'd rather explore first."
-                    : "Application reviews take 24–72h. We'll email you when you're approved."}
+                    ? t("onboarding.addMoreLater")
+                    : t("onboarding.reviewTime")}
                 </p>
               </div>
               {intent === "owner" ? (
                 <div className="space-y-3">
                   <div>
-                    <Label htmlFor="pname">Pet name</Label>
+                    <Label htmlFor="pname">{t("onboarding.petName")}</Label>
                     <Input id="pname" value={pet.name} onChange={(e) => setPet({ ...pet, name: e.target.value })} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="ptype">Type</Label>
+                      <Label htmlFor="ptype">{t("onboarding.type")}</Label>
                       <Select value={pet.animalType} onValueChange={(v) => setPet({ ...pet, animalType: v })}>
                         <SelectTrigger id="ptype"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {animalTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                          {animalTypes.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="pbreed">Breed</Label>
+                      <Label htmlFor="pbreed">{t("onboarding.breed")}</Label>
                       <Input id="pbreed" value={pet.breed} onChange={(e) => setPet({ ...pet, breed: e.target.value })} />
                     </div>
                   </div>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  We'll redirect you to your dashboard where you can submit your application.
+                  {t("onboarding.redirectNote")}
                 </p>
               )}
               <div className="flex justify-between">
-                <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
+                <Button variant="ghost" onClick={() => setStep(1)}>{t("common.back")}</Button>
                 <div className="flex gap-2">
-                  {intent === "owner" && <Button variant="outline" onClick={() => setStep(3)}>Skip</Button>}
-                  <Button onClick={() => setStep(3)} disabled={intent === "owner" && !pet.name.trim()}>Continue</Button>
+                  {intent === "owner" && <Button variant="outline" onClick={() => setStep(3)}>{t("onboarding.skip")}</Button>}
+                  <Button onClick={() => setStep(3)} disabled={intent === "owner" && !pet.name.trim()}>{t("onboarding.continue")}</Button>
                 </div>
               </div>
             </CardContent>
@@ -138,13 +142,13 @@ export function OnboardingPage() {
         {step === 3 && (
           <Card>
             <CardContent className="pt-6 space-y-6 text-center">
-              <Sparkles className="h-12 w-12 mx-auto text-primary" />
-              <h1 className="text-2xl font-bold">You're all set!</h1>
+              <Sparkles aria-hidden="true" className="h-12 w-12 mx-auto text-primary" />
+              <h1 className="text-2xl font-bold">{t("onboarding.allSet")}</h1>
               <p className="text-sm text-muted-foreground">
-                Jump in and start exploring. You can change everything from settings later.
+                {t("onboarding.allSetSub")}
               </p>
               <Button size="lg" onClick={() => finish(intent !== "owner" || !pet.name.trim())} disabled={busy}>
-                {busy ? "Setting things up..." : "Go to my dashboard"}
+                {busy ? t("onboarding.settingUp") : t("onboarding.goDashboard")}
               </Button>
             </CardContent>
           </Card>

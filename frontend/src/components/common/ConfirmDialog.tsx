@@ -4,6 +4,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
@@ -24,9 +25,10 @@ interface Props {
  */
 export function ConfirmDialog({
   open, onOpenChange, title, description,
-  confirmLabel = "Confirm", cancelLabel = "Cancel",
+  confirmLabel, cancelLabel,
   destructive = false, onConfirm
 }: Props) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   async function handle() {
@@ -44,21 +46,22 @@ export function ConfirmDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle className={destructive ? "flex items-center gap-2 text-destructive" : ""}>
-            {destructive && <AlertTriangle className="h-5 w-5" />}
+            {destructive && <AlertTriangle aria-hidden="true" className="h-5 w-5" />}
             {title}
           </DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            {cancelLabel}
+            {cancelLabel ?? t("common.cancel")}
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
             onClick={handle}
             disabled={busy}
+            aria-busy={busy || undefined}
           >
-            {busy ? "Working..." : confirmLabel}
+            {busy ? t("common.working") : (confirmLabel ?? t("common.confirm"))}
           </Button>
         </DialogFooter>
       </DialogContent>

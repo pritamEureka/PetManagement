@@ -3,6 +3,7 @@ using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Modules.Vet.Dtos;
 using Pawzaroo.Application.Modules.Vet.Events;
 using Pawzaroo.Application.Modules.Vet.Services;
+using Pawzaroo.Application.Modules.VetPlus;
 using Pawzaroo.Domain.Common;
 using Pawzaroo.Domain.Notifications;
 using Pawzaroo.Domain.Veterinary;
@@ -18,10 +19,12 @@ public class AppointmentService : IAppointmentService
     private readonly IKafkaProducer _kafka;
     private readonly ISlotLockService _slotLock;
     private readonly IUnitOfWork _uow;
+    private readonly IWaitlistNotifier? _waitlist;
 
     public AppointmentService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
-        ISlotLockService slotLock, IUnitOfWork uow)
+        ISlotLockService slotLock, IUnitOfWork uow, IWaitlistNotifier? waitlist = null)
     {
+        _waitlist = waitlist;
         _db = db;
         _current = current;
         _kafka = kafka;
@@ -170,9 +173,10 @@ public class AppointmentService : IAppointmentService
 
         await using var releaser = await _slotLock.AcquireAsync(appt.DoctorId, input.NewTimeSlotId, TimeSpan.FromSeconds(5), ct);
 
+        DoctorTimeSlot? freedOldSlot = null;
         await _uow.ExecuteInTransactionAsync(async (token) =>
         {
-            var newSlot = await _db.DoctorTimeSlots
+            var newSlot =await _db.DoctorTimeSlots
                 .SingleOrDefaultAsync(s => s.Id == input.NewTimeSlotId && s.DoctorId == appt.DoctorId, token)
                 ?? throw new NotFoundException("Slot", input.NewTimeSlotId);
             if (newSlot.Status != SlotStatus.Available) throw new ConflictException("Slot is no longer available.");
@@ -181,7 +185,7 @@ public class AppointmentService : IAppointmentService
             if (appt.TimeSlotId is { } oldId)
             {
                 var oldSlot = await _db.DoctorTimeSlots.SingleOrDefaultAsync(s => s.Id == oldId, token);
-                if (oldSlot is not null) { oldSlot.Status = SlotStatus.Available; oldSlot.AppointmentId = null; }
+                if (oldSlot is not null) { oldSlot.Status = SlotStatus.Available; oldSlot.AppointmentId = null; freedOldSlot = oldSlot; }
             }
 
             newSlot.Status = SlotStatus.Booked;
@@ -203,6 +207,13 @@ public class AppointmentService : IAppointmentService
             Url = "/appointments"
         });
         await _db.SaveChangesAsync(ct);
+
+        // Waitlist hook: the old slot is free again (best effort).
+        if (freedOldSlot is not null && _waitlist is not null)
+        {
+            try { await _waitlist.OnSlotFreedAsync(appt.DoctorId, freedOldSlot.StartUtc, freedOldSlot.EndUtc, freedOldSlot.ConsultationType, appt.PatientUserId, ct); }
+            catch { /* never fail a reschedule because of waitlist notification */ }
+        }
     }
 
     public Task CancelByUserAsync(Guid id, CancelInput input, CancellationToken ct = default) => CancelInternalAsync(id, input, byDoctor: false, ct);
@@ -231,10 +242,11 @@ public class AppointmentService : IAppointmentService
 
         appt.Status = byDoctor ? AppointmentStatus.CancelledByDoctor : AppointmentStatus.CancelledByUser;
         appt.CancellationReason = input.Reason;
+        DoctorTimeSlot? freedSlot = null;
         if (appt.TimeSlotId is { } slotId)
         {
             var slot = await _db.DoctorTimeSlots.SingleOrDefaultAsync(s => s.Id == slotId, ct);
-            if (slot is not null) { slot.Status = SlotStatus.Available; slot.AppointmentId = null; }
+            if (slot is not null) { slot.Status = SlotStatus.Available; slot.AppointmentId = null; freedSlot = slot; }
         }
 
         _db.Notifications.Add(new InAppNotification
@@ -251,6 +263,13 @@ public class AppointmentService : IAppointmentService
         await _kafka.PublishAsync(VetTopics.Appointments,
             new AppointmentCancelled(appt.Id, uid, byDoctor, input.Reason, DateTime.UtcNow),
             appt.Id.ToString(), ct);
+
+        // Waitlist hook: tell the first eligible waitlisted users the slot is open (best effort).
+        if (freedSlot is not null && _waitlist is not null)
+        {
+            try { await _waitlist.OnSlotFreedAsync(appt.DoctorId, freedSlot.StartUtc, freedSlot.EndUtc, freedSlot.ConsultationType, appt.PatientUserId, ct); }
+            catch { /* never fail a cancellation because of waitlist notification */ }
+        }
     }
 
     public async Task ConfirmAsync(Guid id, CancellationToken ct = default)

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Truck, MapPin, Phone, MessageSquare, Package, CheckCircle2, AlertCircle } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, statusBadgeVariant } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { deliveriesApi, type DeliveryAssignment, type DeliveryAssignmentStatus } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
+import { CourierUpdatePanel } from "@/components/commerce/CourierUpdatePanel";
 
 // Possible next transitions per current status. Couriers can only move the
 // assignment forward; admin can use the admin pages for harder fixes.
@@ -88,6 +90,7 @@ function DeliveryCard({ a, onAct, disabled }: {
   disabled: boolean;
 }) {
   const next = NEXT[a.status];
+  const [showUpdates, setShowUpdates] = useState(false);
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between space-y-0">
@@ -132,6 +135,13 @@ function DeliveryCard({ a, onAct, disabled }: {
             <span className="font-medium">Notes:</span> {a.notes}
           </div>
         )}
+
+        <div className="space-y-2">
+          <Button size="sm" variant="ghost" onClick={() => setShowUpdates((v) => !v)}>
+            <MapPin className="h-4 w-4 mr-1" /> {showUpdates ? "Hide tracking updates" : "Tracking updates and proof"}
+          </Button>
+          {showUpdates && <CourierUpdatePanel orderId={a.orderId} />}
+        </div>
 
         {next.length > 0 && (
           <>

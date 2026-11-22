@@ -7,7 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +18,8 @@ import { toast } from "@/components/ui/sonner";
 import { api } from "@/api/client";
 import { usersApi, type MyProfile } from "@/api/users";
 import { useAuthStore } from "@/store/authStore";
+import { useI18n } from "@/lib/i18n";
+import { FormField, useAnnounce } from "@/components/common/a11y";
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 const AVATAR_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -45,6 +46,8 @@ function topLevelMessage(err: unknown): string | null {
 }
 
 export function ProfilePage() {
+  const { t } = useI18n();
+  const announce = useAnnounce();
   const qc = useQueryClient();
   const patchUser = useAuthStore((s) => s.patchUser);
   const cachedUser = useAuthStore((s) => s.user);
@@ -82,13 +85,14 @@ export function ProfilePage() {
         avatarUrl: updated.avatarUrl ?? null,
       });
       setProfileErrors({});
-      toast.success("Profile updated.");
+      toast.success(t("profile.updated"));
+      announce(t("profile.updated"));
     },
     onError: (err) => {
       const fieldErrs = extractFieldErrors(err);
       setProfileErrors(fieldErrs);
       const top = topLevelMessage(err);
-      toast.error(top ?? "Couldn't save your profile.");
+      toast.error(top ?? t("profile.saveError"));
     },
   });
 
@@ -104,7 +108,7 @@ export function ProfilePage() {
     if ((bio || null) !== (profile.bio ?? null)) body.bio = bio;
     if ((location || null) !== (profile.location ?? null)) body.location = location;
     if (Object.keys(body).length === 0) {
-      toast.info("No changes to save.");
+      toast.info(t("profile.noChanges"));
       return;
     }
     saveProfile.mutate(body);
@@ -124,24 +128,25 @@ export function ProfilePage() {
       setNewPassword("");
       setConfirmPassword("");
       setPwErrors({});
-      toast.success("Password changed. Other sessions have been signed out.");
+      toast.success(t("profile.passwordChanged"));
+      announce(t("profile.passwordChanged"));
     },
     onError: (err) => {
       const fieldErrs = extractFieldErrors(err);
       setPwErrors(fieldErrs);
       const top = topLevelMessage(err);
-      toast.error(top ?? "Couldn't change your password.");
+      toast.error(top ?? t("profile.passwordError"));
     },
   });
 
   function onChangePassword(e: React.FormEvent) {
     e.preventDefault();
     const errs: FieldErrors = {};
-    if (!currentPassword) errs.currentPassword = "Current password is required.";
-    if (!newPassword || newPassword.length < 8) errs.newPassword = "At least 8 characters.";
+    if (!currentPassword) errs.currentPassword = t("profile.err.currentRequired");
+    if (!newPassword || newPassword.length < 8) errs.newPassword = t("profile.err.min8");
     else if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword))
-      errs.newPassword = "Must include upper, lower and a digit.";
-    if (newPassword !== confirmPassword) errs.confirmPassword = "Passwords don't match.";
+      errs.newPassword = t("profile.err.complexity");
+    if (newPassword !== confirmPassword) errs.confirmPassword = t("profile.err.mismatch");
     if (Object.keys(errs).length > 0) { setPwErrors(errs); return; }
     changePassword.mutate({ cur: currentPassword, next: newPassword });
   }
@@ -154,9 +159,9 @@ export function ProfilePage() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > AVATAR_MAX_BYTES) { toast.error("Image must be under 5 MB."); return; }
+    if (file.size > AVATAR_MAX_BYTES) { toast.error(t("profile.err.imageSize")); return; }
     if (file.type && !AVATAR_MIME.includes(file.type)) {
-      toast.error("Use a JPEG, PNG, WebP or GIF image.");
+      toast.error(t("profile.err.imageType"));
       return;
     }
 
@@ -169,9 +174,9 @@ export function ProfilePage() {
       const updated = await usersApi.updateMe({ avatarUrl: presign.publicUrl });
       qc.setQueryData(["users", "me"], updated);
       patchUser({ avatarUrl: updated.avatarUrl ?? null });
-      toast.success("Profile picture updated.");
+      toast.success(t("profile.pictureUpdated"));
     } catch {
-      toast.error("Couldn't upload your picture. Try again.");
+      toast.error(t("profile.err.upload"));
     } finally {
       setUploadingAvatar(false);
     }
@@ -182,9 +187,9 @@ export function ProfilePage() {
       const updated = await usersApi.updateMe({ avatarUrl: "" });
       qc.setQueryData(["users", "me"], updated);
       patchUser({ avatarUrl: null });
-      toast.success("Profile picture removed.");
+      toast.success(t("profile.pictureRemoved"));
     } catch {
-      toast.error("Couldn't remove your picture.");
+      toast.error(t("profile.err.remove"));
     }
   }
 
@@ -195,9 +200,9 @@ export function ProfilePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <PageHeader
-        title="My profile"
+        title={t("profile.title")}
         icon={UserIcon}
-        description="Update your personal details, profile picture, and sign-in password."
+        description={t("profile.subtitle")}
       />
 
       <Card>
@@ -211,13 +216,13 @@ export function ProfilePage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="absolute -bottom-1 -right-1 rounded-full bg-primary text-primary-foreground p-1.5 shadow hover:bg-primary/90 disabled:opacity-50"
-              aria-label="Change profile picture"
-              title="Change profile picture"
+              className="absolute -bottom-1 -end-1 rounded-full bg-primary text-primary-foreground p-1.5 shadow hover:bg-primary/90 disabled:opacity-50"
+              aria-label={t("profile.changePicture")}
+              title={t("profile.changePicture")}
             >
               {uploadingAvatar
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Camera className="h-3.5 w-3.5" />}
+                ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                : <Camera aria-hidden="true" className="h-3.5 w-3.5" />}
             </button>
             <input
               ref={fileInputRef}
@@ -227,7 +232,7 @@ export function ProfilePage() {
               onChange={onPickAvatar}
             />
           </div>
-          <div className="flex-1 min-w-0 text-center sm:text-left">
+          <div className="flex-1 min-w-0 text-center sm:text-start">
             <h2 className="text-lg font-bold truncate">{headerName}</h2>
             <p className="text-xs text-muted-foreground truncate">{profile?.email ?? cachedUser?.email}</p>
             {profile?.roles?.length ? (
@@ -235,7 +240,7 @@ export function ProfilePage() {
             ) : null}
             {profile?.avatarUrl && (
               <Button variant="link" size="sm" className="px-0 h-auto mt-2 text-destructive" onClick={removeAvatar}>
-                Remove picture
+                {t("profile.removePicture")}
               </Button>
             )}
           </div>
@@ -244,101 +249,94 @@ export function ProfilePage() {
 
       <Tabs defaultValue="info">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="info">Personal info</TabsTrigger>
-          <TabsTrigger value="password">Password</TabsTrigger>
+          <TabsTrigger value="info">{t("profile.tabInfo")}</TabsTrigger>
+          <TabsTrigger value="password">{t("auth.password")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Personal information</CardTitle>
+              <CardTitle className="text-base">{t("profile.personalInfo")}</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-3">
+                <div className="space-y-3" aria-busy="true" role="status" aria-label={t("common.loading")}>
                   {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
                 </div>
               ) : (
                 <form onSubmit={onSaveProfile} className="space-y-4">
-                  <div>
-                    <Label htmlFor="displayName">Display name</Label>
-                    <Input
-                      id="displayName"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      maxLength={128}
-                      autoComplete="name"
-                    />
-                    {profileErrors.displayName && (
-                      <p className="text-xs text-destructive mt-1">{profileErrors.displayName}</p>
+                  <FormField id="displayName" label={t("register.displayName")} error={profileErrors.displayName}>
+                    {(c) => (
+                      <Input
+                        {...c}
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        maxLength={128}
+                        autoComplete="name"
+                      />
                     )}
-                  </div>
+                  </FormField>
 
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      maxLength={256}
-                      autoComplete="email"
-                    />
-                    {profileErrors.email && (
-                      <p className="text-xs text-destructive mt-1">{profileErrors.email}</p>
+                  <FormField id="email" label={t("auth.email")} error={profileErrors.email} hint={t("profile.emailHint")}>
+                    {(c) => (
+                      <Input
+                        {...c}
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        maxLength={256}
+                        autoComplete="email"
+                      />
                     )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Changing your email will require re-verification.
-                    </p>
-                  </div>
+                  </FormField>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="phoneNumber">Phone</Label>
-                      <Input
-                        id="phoneNumber"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        maxLength={32}
-                        autoComplete="tel"
-                        placeholder="Optional"
-                      />
-                      {profileErrors.phoneNumber && (
-                        <p className="text-xs text-destructive mt-1">{profileErrors.phoneNumber}</p>
+                    <FormField id="phoneNumber" label={t("profile.phone")} error={profileErrors.phoneNumber}>
+                      {(c) => (
+                        <Input
+                          {...c}
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          maxLength={32}
+                          autoComplete="tel"
+                          placeholder={t("profile.optional")}
+                        />
                       )}
-                    </div>
-                    <div>
-                      <Label htmlFor="location">Location</Label>
-                      <Input
-                        id="location"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        maxLength={128}
-                        placeholder="City, country"
-                      />
-                    </div>
+                    </FormField>
+                    <FormField id="location" label={t("profile.location")}>
+                      {(c) => (
+                        <Input
+                          {...c}
+                          value={location}
+                          onChange={(e) => setLocation(e.target.value)}
+                          maxLength={128}
+                          placeholder={t("profile.locationPlaceholder")}
+                        />
+                      )}
+                    </FormField>
                   </div>
 
-                  <div>
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      rows={3}
-                      maxLength={500}
-                      placeholder="Tell people a little about you (optional)"
-                    />
-                  </div>
+                  <FormField id="bio" label={t("profile.bio")}>
+                    {(c) => (
+                      <Textarea
+                        {...c}
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        rows={3}
+                        maxLength={500}
+                        placeholder={t("profile.bioPlaceholder")}
+                      />
+                    )}
+                  </FormField>
 
                   <Separator />
 
                   <div className="flex justify-end">
                     <Button type="submit" disabled={saveProfile.isPending}>
                       {saveProfile.isPending
-                        ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        : <Save className="h-4 w-4 mr-2" />}
-                      Save changes
+                        ? <Loader2 aria-hidden="true" className="h-4 w-4 me-2 animate-spin" />
+                        : <Save aria-hidden="true" className="h-4 w-4 me-2" />}
+                      {t("profile.saveChanges")}
                     </Button>
                   </div>
                 </form>
@@ -351,61 +349,52 @@ export function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <KeyRound className="h-4 w-4 text-primary" /> Change password
+                <KeyRound aria-hidden="true" className="h-4 w-4 text-primary" /> {t("profile.changePassword")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={onChangePassword} className="space-y-4">
-                <div>
-                  <Label htmlFor="cur">Current password</Label>
-                  <PasswordInput
-                    id="cur"
-                    autoComplete="current-password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                  />
-                  {pwErrors.currentPassword && (
-                    <p className="text-xs text-destructive mt-1">{pwErrors.currentPassword}</p>
+                <FormField id="cur" label={t("profile.currentPassword")} error={pwErrors.currentPassword}>
+                  {(c) => (
+                    <PasswordInput
+                      {...c}
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
                   )}
-                </div>
+                </FormField>
 
-                <div>
-                  <Label htmlFor="next">New password</Label>
-                  <PasswordInput
-                    id="next"
-                    autoComplete="new-password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
-                  {pwErrors.newPassword && (
-                    <p className="text-xs text-destructive mt-1">{pwErrors.newPassword}</p>
+                <FormField id="next" label={t("profile.newPassword")} error={pwErrors.newPassword} hint={t("profile.passwordHint")}>
+                  {(c) => (
+                    <PasswordInput
+                      {...c}
+                      autoComplete="new-password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
                   )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Min 8 characters, with an upper, a lower and a digit.
-                  </p>
-                </div>
+                </FormField>
 
-                <div>
-                  <Label htmlFor="confirm">Confirm new password</Label>
-                  <PasswordInput
-                    id="confirm"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                  {pwErrors.confirmPassword && (
-                    <p className="text-xs text-destructive mt-1">{pwErrors.confirmPassword}</p>
+                <FormField id="confirm" label={t("profile.confirmPassword")} error={pwErrors.confirmPassword}>
+                  {(c) => (
+                    <PasswordInput
+                      {...c}
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
                   )}
-                </div>
+                </FormField>
 
                 <Separator />
 
                 <div className="flex justify-end">
                   <Button type="submit" disabled={changePassword.isPending}>
                     {changePassword.isPending
-                      ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      : <KeyRound className="h-4 w-4 mr-2" />}
-                    Update password
+                      ? <Loader2 aria-hidden="true" className="h-4 w-4 me-2 animate-spin" />
+                      : <KeyRound aria-hidden="true" className="h-4 w-4 me-2" />}
+                    {t("profile.updatePassword")}
                   </Button>
                 </div>
               </form>

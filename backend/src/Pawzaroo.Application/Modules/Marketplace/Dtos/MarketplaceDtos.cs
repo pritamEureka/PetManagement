@@ -93,7 +93,8 @@ public record InventoryAdjustmentDto(
 public record CartItemDto(
     Guid Id, Guid ProductId, string ProductName, string? ImageUrl,
     Guid StoreId, string StoreName,
-    int Quantity, decimal UnitPrice, decimal Total, int StockAvailable);
+    int Quantity, decimal UnitPrice, decimal Total, int StockAvailable,
+    Guid? VariantId = null, string? VariantLabel = null);
 
 public record CartDto(
     Guid Id, string Currency,
@@ -101,7 +102,7 @@ public record CartDto(
     decimal Subtotal, int TotalItems,
     decimal ShippingFee = 0m, decimal Tax = 0m, decimal Total = 0m);
 
-public record AddToCartInput(Guid ProductId, int Quantity);
+public record AddToCartInput(Guid ProductId, int Quantity, Guid? VariantId = null);
 public record UpdateCartItemInput(int Quantity);
 
 // ----- Order ------------------------------------------------------------------

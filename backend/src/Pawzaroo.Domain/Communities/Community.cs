@@ -6,6 +6,9 @@ public enum CommunityRole { Member = 0, Moderator = 1, Owner = 2 }
 
 public enum CommunityMemberStatus { Active = 0, Pending = 1, Banned = 2 }
 
+/// <summary>Plain community, a local (city/neighbourhood) club, or a breed club. Stored as string; default Community.</summary>
+public enum CommunityKind { Community = 0, LocalClub = 1, BreedClub = 2 }
+
 public enum CommunityEventType { Meetup = 0, VaccinationCamp = 1, AdoptionDrive = 2, Other = 3 }
 
 public enum RsvpStatus { Going = 0, Waitlisted = 1, Cancelled = 2 }
@@ -21,6 +24,7 @@ public class Community : AuditableEntity
     public string? Description { get; set; }
     public string? City { get; set; }
     public Guid OwnerId { get; set; }
+    public CommunityKind Kind { get; set; } = CommunityKind.Community;
 }
 
 public class CommunityMember : AuditableEntity

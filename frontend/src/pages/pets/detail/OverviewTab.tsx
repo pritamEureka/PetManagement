@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Lightbulb, Star, Trash2 } from "lucide-react";
+import { AlertTriangle, HeartPulse, Lightbulb, Star, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileUploadButton } from "@/components/common/FileUploadButton";
 import { toast } from "@/components/ui/sonner";
 import { petsApi, canEditPet, type LineageNode, type PetDetail } from "@/api/pets";
 import { Section, Muted, fmtDate, fmtMoney } from "./shared";
+import { InsightsCard } from "./InsightsCard";
+import { ExposureReportDialog } from "./ExposureReportDialog";
+import { EmergencyCardDialog } from "./EmergencyCardDialog";
 
 export function OverviewTab({ pet }: { pet: PetDetail }) {
   const qc = useQueryClient();
@@ -16,9 +20,19 @@ export function OverviewTab({ pet }: { pet: PetDetail }) {
   const refresh = () => { qc.invalidateQueries({ queryKey: ["pets", pet.id] }); qc.invalidateQueries({ queryKey: ["pets", "mine"] }); };
 
   const hasAncestors = !!(lineage?.root.sire || lineage?.root.dam);
+  const [exposureOpen, setExposureOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="destructive" size="sm" onClick={() => setExposureOpen(true)}><AlertTriangle className="h-4 w-4 mr-1" /> Report poison / exposure</Button>
+        <Button variant="outline" size="sm" onClick={() => setCardOpen(true)}><HeartPulse className="h-4 w-4 mr-1" /> Emergency health card</Button>
+      </div>
+      <InsightsCard petId={pet.id} />
+      <ExposureReportDialog petId={pet.id} petName={pet.name} open={exposureOpen} onOpenChange={setExposureOpen} />
+      <EmergencyCardDialog petId={pet.id} open={cardOpen} onOpenChange={setCardOpen} canShare={editor} />
+
       <Section title="Profile notes">
         <div className="grid sm:grid-cols-2 gap-4 text-sm">
           <div><p className="font-medium">Allergies</p><p className="text-muted-foreground">{pet.allergies || "None recorded"}</p></div>

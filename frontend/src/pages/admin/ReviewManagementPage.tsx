@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ProductPicker } from "@/components/pickers";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
@@ -12,12 +12,15 @@ import { FilterBar } from "@/components/admin/FilterBar";
 import { ModerationActionModal } from "@/components/security/ModerationActionModal";
 import { api } from "@/api/client";
 import type { ProductReview } from "@/api/marketplace";
+import { formatDate } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Admin review queue. Filters by product id (paste from URL or detail page).
  * Each row opens the standard moderation modal for Hide / Restore / Mark.
  */
 export function AdminReviewManagementPage() {
+  const { t } = useI18n();
   const [productId, setProductId] = useState("");
   const [target, setTarget] = useState<ProductReview | null>(null);
 
@@ -51,28 +54,28 @@ export function AdminReviewManagementPage() {
     { key: "comment", header: "Comment",
       render: (r) => <span className="text-sm text-muted-foreground line-clamp-2 max-w-md">{r.comment || "—"}</span> },
     { key: "created", header: "Posted",
-      render: (r) => <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span> },
-    { key: "actions", header: "", className: "w-32 text-right",
+      render: (r) => <span className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</span> },
+    { key: "actions", header: "", className: "w-32 text-end",
       render: (r) => (
-        <Button size="sm" variant="outline" onClick={() => setTarget(r)}>Moderate</Button>
+        <Button size="sm" variant="outline" onClick={() => setTarget(r)}>{t("adm.reviews.moderate")}</Button>
       ) }
   ];
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Review moderation" icon={Star}
-        description="Look up a product's reviews and apply moderation actions." />
+      <PageHeader title={t("adm.reviews.title")} icon={Star}
+        description={t("adm.reviews.desc")} />
 
       <Card>
         <CardContent className="pt-6 space-y-4">
           <FilterBar onReset={() => { setProductId(""); }}>
-            <Input
-              className="w-96"
-              placeholder="Product ID (UUID)"
+            <ProductPicker
+              className="w-full sm:w-96"
+              aria-label="Product"
               value={productId}
-              onChange={(e) => setProductId(e.target.value.trim())}
+              onChange={(id) => setProductId(id)}
             />
-            <Button onClick={() => refetch()} disabled={!productId}>Load reviews</Button>
+            <Button onClick={() => refetch()} disabled={!productId}>{t("adm.reviews.load")}</Button>
             {data && <Badge variant="secondary">{data.length} reviews</Badge>}
           </FilterBar>
 

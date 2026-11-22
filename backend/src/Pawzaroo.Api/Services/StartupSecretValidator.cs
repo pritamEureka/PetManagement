@@ -27,6 +27,20 @@ internal static class StartupSecretValidator
         if (!string.IsNullOrEmpty(signingKey) && signingKey.Length < 32)
             errors.Add("Jwt:SigningKey must be at least 32 characters (256 bits).");
 
+        // Rotation: previous keys are accepted for validation, so they must be just as strong as the current one.
+        var previousKeys = Pawzaroo.Infrastructure.Identity.JwtKeyRing.ReadPreviousKeys(config);
+        for (var i = 0; i < previousKeys.Count; i++)
+        {
+            if (previousKeys[i].Length < 32)
+                errors.Add($"Jwt:PreviousSigningKeys entry #{i + 1} must be at least 32 characters (256 bits).");
+            if (!string.IsNullOrEmpty(signingKey) && previousKeys[i] == signingKey)
+                errors.Add($"Jwt:PreviousSigningKeys entry #{i + 1} equals Jwt:SigningKey; remove it.");
+            if (!env.IsDevelopment())
+                foreach (var sentinel in WeakSentinels)
+                    if (previousKeys[i].Contains(sentinel, StringComparison.OrdinalIgnoreCase))
+                        errors.Add($"Jwt:PreviousSigningKeys entry #{i + 1} contains a known weak/placeholder value '{sentinel}'.");
+        }
+
         if (!env.IsDevelopment())
         {
             foreach (var key in new[]

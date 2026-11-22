@@ -28,6 +28,23 @@ import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { PriceWatchesPage } from "@/pages/store/PriceWatchesPage";
 import { AssistantReviewsPage } from "@/pages/vets/AssistantReviewsPage";
+import { PaymentReconciliationPage } from "@/pages/admin/PaymentReconciliationPage";
+import { DeadLettersPage } from "@/pages/admin/DeadLettersPage";
+import { SecuritySignalsPage } from "@/pages/admin/SecuritySignalsPage";
+import { DeliveryZonesPage } from "@/pages/admin/DeliveryZonesPage";
+import { ReturnPickupsPage } from "@/pages/delivery/ReturnPickupsPage";
+import { EmergencyVetsPage } from "@/pages/vets/EmergencyVetsPage";
+import { EncounterPage } from "@/pages/vets/EncounterPage";
+import { MyAdoptionPipelinePage } from "@/pages/adoption/MyAdoptionPipelinePage";
+import { AdoptionFollowUpsPage } from "@/pages/adoption/AdoptionFollowUpsPage";
+import { AdopterProfilePage } from "@/pages/adoption/AdopterProfilePage";
+import { EmergencyPage } from "@/pages/EmergencyPage";
+import { CarePlanTemplatesPage } from "@/pages/vets/CarePlanTemplatesPage";
+import { LoyaltyPage } from "@/pages/store/LoyaltyPage";
+import { StoreComparePage } from "@/pages/store/StoreComparePage";
+import { PromotionsPage } from "@/pages/store/PromotionsPage";
+import { FosterPlacementsPage } from "@/pages/adoption/FosterPlacementsPage";
+import { StoreGrowthPage } from "@/pages/store/StoreGrowthPage";
 import { AssistantPage } from "@/pages/AssistantPage";
 import { SecuritySettingsPage } from "@/pages/SecuritySettingsPage";
 import { NotificationSettingsPage } from "@/pages/NotificationSettingsPage";
@@ -202,10 +219,14 @@ export default function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/my-subscriptions" element={<MySubscriptionsPage />} />
               <Route path="/price-watches" element={<PriceWatchesPage />} />
+              <Route path="/store/loyalty" element={<LoyaltyPage />} />
+              <Route path="/store/compare" element={<StoreComparePage />} />
               <Route element={<ProtectedRoute permission="vets.edit" />}>
+                <Route path="/vets/care-plans" element={<CarePlanTemplatesPage />} />
                 <Route path="/vets/assistant-reviews" element={<AssistantReviewsPage />} />
               </Route>
               <Route path="/assistant" element={<AssistantPage />} />
+              <Route path="/emergency" element={<EmergencyPage />} />
               <Route path="/settings/security" element={<SecuritySettingsPage />} />
               <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
               <Route path="/communities" element={<CommunitiesPage />} />
@@ -213,6 +234,7 @@ export default function App() {
               <Route path="/communities/:idOrSlug" element={<CommunityDetailPage />} />
               <Route path="/waitlists" element={<MyWaitlistsPage />} />
               <Route path="/appointments/:id/room" element={<TelemedicineRoomPage />} />
+              <Route path="/appointments/:id/encounter" element={<EncounterPage />} />
 
               <Route element={<ProtectedRoute permission="pets.view" />}>
                 <Route path="/pets" element={<PetsPage />} />
@@ -241,6 +263,11 @@ export default function App() {
                 <Route path="/adoption" element={<AdoptionListPage />} />
                 <Route path="/adoption/mine" element={<MyAdoptionListingsPage />} />
                 <Route path="/adoption/saved" element={<SavedAdoptionsPage />} />
+                <Route path="/adoption/pipeline" element={<MyAdoptionPipelinePage />} />
+                <Route path="/adoption/foster" element={<FosterPlacementsPage />} />
+                <Route path="/adoption/follow-ups" element={<AdoptionFollowUpsPage />} />
+                <Route path="/adoption/my-applications" element={<AdoptionFollowUpsPage />} />
+                <Route path="/adoption/profile" element={<AdopterProfilePage />} />
                 <Route path="/adoption/wanted/new" element={<AdoptionRequestFormPage />} />
                 <Route path="/adoption/:id" element={<AdoptionDetailPage />} />
               </Route>
@@ -251,6 +278,7 @@ export default function App() {
 
               <Route element={<ProtectedRoute permission="vets.view" />}>
                 <Route path="/vets" element={<VetsPage />} />
+                <Route path="/vets/emergency" element={<EmergencyVetsPage />} />
                 <Route path="/vets/:id" element={<VetDetailPage />} />
                 <Route path="/vets/:doctorId/book" element={<AppointmentBookingPage />} />
               </Route>
@@ -283,6 +311,7 @@ export default function App() {
 
               {/* Seller surfaces */}
               <Route element={<ProtectedRoute permission="products.create" />}>
+                <Route path="/dashboard/store/growth" element={<StoreGrowthPage />} />
                 <Route path="/dashboard/store/products" element={<ProductManagementPage />} />
                 <Route path="/dashboard/store/products/new" element={<ProductEditPage />} />
                 <Route path="/dashboard/store/products/:id" element={<ProductEditPage />} />
@@ -345,6 +374,7 @@ export default function App() {
 
               {/* Commerce */}
               <Route element={<ProtectedRoute permission="settings.edit" />}>
+                <Route path="/admin/promotions" element={<PromotionsPage />} />
                 <Route path="/admin/categories" element={<AdminCategoryManagementPage />} />
               </Route>
               <Route element={<ProtectedRoute permission="orders.view" />}>
@@ -371,6 +401,8 @@ export default function App() {
                 <Route path="/admin/intelligence" element={<OperationsIntelligencePage />} />
               </Route>
               <Route element={<ProtectedRoute permission="audit.view" />}>
+                <Route path="/admin/dead-letters" element={<DeadLettersPage />} />
+                <Route path="/admin/security-signals" element={<SecuritySignalsPage />} />
                 <Route path="/admin/audit" element={<AdminAuditLogPage />} />
               </Route>
               <Route element={<ProtectedRoute permission="reports.view" />}>
@@ -380,6 +412,8 @@ export default function App() {
               <Route element={<ProtectedRoute permission="settings.view" />}>
                 <Route path="/admin/settings" element={<AdminSystemSettingsPage />} />
                 <Route path="/admin/settlements" element={<SettlementsAdminPage />} />
+                <Route path="/admin/delivery-zones" element={<DeliveryZonesPage />} />
+                <Route path="/admin/payment-reconciliation" element={<PaymentReconciliationPage />} />
               </Route>
             </Route>
           </Route>
@@ -389,6 +423,7 @@ export default function App() {
             <Route element={<DeliveryLayout />}>
               <Route path="/delivery" element={<MyDeliveriesPage />} />
               <Route path="/delivery/history" element={<DeliveryHistoryPage />} />
+              <Route path="/delivery/returns" element={<ReturnPickupsPage />} />
             </Route>
           </Route>
 

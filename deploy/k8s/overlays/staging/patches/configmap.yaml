@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pawzaroo-config
+  namespace: pawzaroo
+data:
+  # Every topic and consumer group is prefixed on the wire (Kafka:TopicPrefix).
+  Kafka__TopicPrefix: "staging-"

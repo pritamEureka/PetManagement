@@ -1,0 +1,78 @@
+name: E2E
+
+# Playwright flows against a Docker Compose stack. Manual + nightly (not on every PR: slow, needs seeded data).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # Repository secrets pointing at seeded demo accounts (see frontend/e2e/README.md). Tests skip if unset.
+      E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_BASE_URL: http://localhost:3000
+      E2E_NO_WEBSERVER: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot stack (compose)
+        run: docker compose -f deploy/docker-compose.yml up -d --build
+
+      - name: Wait for API and web
+        run: |
+          for i in $(seq 1 90); do
+            curl -fsS http://localhost:8080/health >/dev/null && curl -fsS http://localhost:3000/ >/dev/null && exit 0
+            sleep 5
+          done
+          docker compose -f deploy/docker-compose.yml logs --tail=200
+          exit 1
+
+      - name: Seed demo data
+        run: |
+          # deploy/seed-demo.sql expects the schema + base users created by the API on first boot.
+          docker compose -f deploy/docker-compose.yml exec -T postgres \
+            psql -U "${POSTGRES_USER:-pawzaroo}" -d "${POSTGRES_DB:-pawzaroo}" < deploy/seed-demo.sql || echo "demo seed skipped/failed (continuing)"
+
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Install Playwright
+        working-directory: frontend/e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E
+        working-directory: frontend/e2e
+        run: npm test
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/e2e/playwright-report
+            frontend/e2e/test-results
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose -f deploy/docker-compose.yml logs --tail=300
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml down -v

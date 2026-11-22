@@ -12,6 +12,8 @@ import { FilterBar } from "@/components/admin/FilterBar";
 import { ModerationActionModal } from "@/components/security/ModerationActionModal";
 import { api } from "@/api/client";
 import { toast } from "@/components/ui/sonner";
+import { formatDate } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 interface AdminPostRow {
   id: string;
@@ -36,6 +38,7 @@ type Mode = "all" | "reported" | "hidden";
  * deployed yet, the table will simply show "No posts" — fail-open.
  */
 export function AdminFeedModerationPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [mode, setMode] = useState<Mode>("reported");
   const [target, setTarget] = useState<AdminPostRow | null>(null);
@@ -83,7 +86,7 @@ export function AdminFeedModerationPage() {
         </div>
       )
     },
-    { key: "reports", header: "Reports", className: "text-right w-20",
+    { key: "reports", header: "Reports", className: "text-end w-20",
       render: (p) => p.reportsCount > 0
         ? <Badge variant="destructive">{p.reportsCount}</Badge>
         : <span className="text-muted-foreground">0</span> },
@@ -92,13 +95,13 @@ export function AdminFeedModerationPage() {
     { key: "status", header: "Status", className: "hidden sm:table-cell",
       render: (p) => p.isDeleted ? <Badge variant={statusBadgeVariant("Hidden")}>Hidden</Badge> : <Badge variant={statusBadgeVariant("Live")}>Live</Badge> },
     { key: "created", header: "Created", className: "hidden md:table-cell",
-      render: (p) => <span className="text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()}</span> },
-    { key: "actions", header: "", className: "w-24 sm:w-44 text-right",
+      render: (p) => <span className="text-xs text-muted-foreground">{formatDate(p.createdAt)}</span> },
+    { key: "actions", header: "", className: "w-24 sm:w-44 text-end",
       render: (p) => (
         <div className="flex justify-end gap-1">
           <Button size="sm" variant="ghost"
             onClick={() => toggleHidden.mutate({ id: p.id, hide: !p.isDeleted })}>
-            {p.isDeleted ? <Eye className="h-3 w-3 mr-1" /> : <EyeOff className="h-3 w-3 mr-1" />}
+            {p.isDeleted ? <Eye className="h-3 w-3 me-1" /> : <EyeOff className="h-3 w-3 me-1" />}
             {p.isDeleted ? "Restore" : "Hide"}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setTarget(p)}>Action</Button>
@@ -108,8 +111,8 @@ export function AdminFeedModerationPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Feed moderation" icon={Flag}
-        description="Review reported posts and apply moderation actions." />
+      <PageHeader title={t("adm.feedMod.title")} icon={Flag}
+        description={t("adm.feedMod.desc")} />
       <Card>
         <CardContent className="pt-6 space-y-4">
           <FilterBar onReset={() => setMode("reported")}>

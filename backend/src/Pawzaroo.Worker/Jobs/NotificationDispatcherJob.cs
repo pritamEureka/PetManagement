@@ -97,6 +97,8 @@ public class NotificationDispatcherJob : KafkaConsumerBase
             Logger.LogWarning(ex, "[notify] push dispatch failed for {NotificationId}", ev.NotificationId);
         }
 
+        Pawzaroo.Infrastructure.Observability.PawzarooTelemetry.NotificationDispatched.Add(1);
+        Pawzaroo.Infrastructure.Observability.PawzarooTelemetry.NotificationLatencyMs.Record(Math.Max(0, (DateTime.UtcNow - ev.OccurredAt).TotalMilliseconds));
         Logger.LogInformation("[notify] persisted {NotificationId} for {UserId} ({Title})",
             ev.NotificationId, ev.UserId, ev.Title);
     }

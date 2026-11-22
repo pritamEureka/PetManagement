@@ -209,7 +209,8 @@ public static class DemoDataSeeder
             ConfirmedAt = now.AddDays(-1)
         };
         db.Appointments.AddRange(completedAppointment, upcomingAppointment);
-        slotBooked.Appointment = upcomingAppointment;
+        // NOTE: do NOT also set slotBooked.Appointment here: Appointment.TimeSlot <-> DoctorTimeSlot.Appointment is a
+        // circular FK pair and EF cannot order the INSERTs in one SaveChanges. The slot is linked back after the first save.
 
         db.MedicalRecords.Add(new MedicalRecord
         {
@@ -587,6 +588,10 @@ public static class DemoDataSeeder
             UserId = maya.Id
         });
 
+        await db.SaveChangesAsync(ct);
+
+        // Second pass: close the Appointment <-> DoctorTimeSlot loop now that both rows exist.
+        slotBooked.AppointmentId = upcomingAppointment.Id;
         await db.SaveChangesAsync(ct);
     }
 

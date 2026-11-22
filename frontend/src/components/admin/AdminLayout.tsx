@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { SkipToContent } from "@/components/common/a11y";
+import { MobileTabBar, type TabItem } from "@/components/layout/MobileTabBar";
 
 // Translation keys per admin destination; NavItem.label stays the English fallback.
 const ADMIN_NAV_KEYS: Record<string, string> = {
@@ -46,6 +47,14 @@ const ADMIN_NAV_KEYS: Record<string, string> = {
   "/admin/intelligence": "admin.nav.intelligence",
   "/admin/notifications": "nav.notifications",
   "/admin/settings": "nav.settings",
+  "/admin/payment-reconciliation": "admin.nav.paymentReconciliation",
+  "/admin/delivery-zones": "admin.nav.deliveryZones",
+  "/admin/promotions": "admin.nav.promotions",
+  "/admin/dead-letters": "admin.nav.deadLetters",
+  "/admin/security-signals": "admin.nav.securitySignals",
+  "/admin/emergency": "admin.nav.emergency",
+  "/admin/loyalty": "admin.nav.loyalty",
+  "/admin/adoption-pipeline": "admin.nav.adoptionPipeline",
 };
 const adminLabel = (to: string, fallback: string, t: (k: string) => string) =>
   ADMIN_NAV_KEYS[to] ? t(ADMIN_NAV_KEYS[to]) : fallback;
@@ -122,13 +131,18 @@ const NAV: { heading: string; items: NavItem[] }[] = [
       { to: "/admin/appointments", label: "Appointments",   icon: Calendar,    perm: "appointments.view" },
       { to: "/admin/commissions",  label: "Commission",     icon: Percent,     perm: "settings.view" },
       { to: "/admin/settlements",  label: "Settlements",    icon: Banknote,    perm: "settings.view" },
-      { to: "/admin/intelligence", label: "Operations Intel", icon: Activity,  perm: "users.view" }
+      { to: "/admin/intelligence", label: "Operations Intel", icon: Activity,  perm: "users.view" },
+      { to: "/admin/payment-reconciliation", label: "Payment reconciliation", icon: Banknote, perm: "settings.view" },
+      { to: "/admin/delivery-zones", label: "Delivery zones & SLAs", icon: Truck, perm: "settings.view" },
+      { to: "/admin/promotions", label: "Promotions", icon: Ticket, perm: "settings.edit" }
     ]
   },
   {
     heading: "System",
     items: [
       { to: "/admin/notifications", label: "Notifications", icon: Bell,      perm: "notifications.view" },
+      { to: "/admin/dead-letters",    label: "Dead letters",    icon: History,   perm: "audit.view" },
+      { to: "/admin/security-signals", label: "Security signals", icon: ShieldCheck, perm: "audit.view" },
       { to: "/admin/settings",      label: "Settings",      icon: Settings,  perm: "settings.view" }
     ]
   }
@@ -190,6 +204,23 @@ function AdminSidebarNav({ collapsed, onNavigate, search }: { collapsed: boolean
   );
 }
 
+const ADMIN_TABS: NavItem[] = [
+  { to: "/admin", label: "Overview", icon: LayoutGrid, perm: "users.view" },
+  { to: "/admin/users", label: "Users", icon: Users, perm: "users.view" },
+  { to: "/admin/approvals", label: "All approvals", icon: ShieldCheck, anyOf: APPROVAL_PERMISSIONS },
+  { to: "/admin/orders", label: "Orders", icon: Package, perm: "orders.view" },
+];
+
+/** Bottom tab bar shown below the lg breakpoint (where the sidebar is hidden). */
+function AdminMobileTabBar({ onMore, moreOpen }: { onMore: () => void; moreOpen: boolean }) {
+  const { can, canAny } = usePermissions();
+  const { t } = useI18n();
+  const tabs: TabItem[] = ADMIN_TABS
+    .filter((i) => (i.perm ? can(i.perm) : true) && (i.anyOf ? canAny(i.anyOf) : true))
+    .map((i) => ({ to: i.to, label: adminLabel(i.to, i.label, t), icon: i.icon, end: i.to === "/admin" }));
+  return <MobileTabBar tabs={tabs} onMore={onMore} moreOpen={moreOpen} hideFrom="lg" ariaLabel={t("layout.mobileNav")} />;
+}
+
 export function AdminLayout() {
   const { user, logout } = useAuthStore();
   const { t } = useI18n();
@@ -208,7 +239,7 @@ export function AdminLayout() {
   const crumbs = loc.pathname.split("/").filter(Boolean);
 
   return (
-    <div className="h-screen flex overflow-hidden bg-muted/30">
+    <div className="h-screen h-dvh flex overflow-hidden bg-muted/30">
       {/* Desktop sidebar */}
       <aside aria-label={t("layout.sidebar")} className={cn(
         "hidden lg:flex flex-col border-e bg-card transition-all duration-300 ease-in-out overflow-hidden h-screen",
@@ -279,7 +310,7 @@ export function AdminLayout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-screen min-w-0">
+      <div className="flex-1 flex flex-col h-screen h-dvh min-w-0">
         <header className="sticky top-0 z-10 h-14 shrink-0 flex items-center gap-2 sm:gap-4 px-4 lg:px-6 border-b bg-background/95 backdrop-blur">
           {/* Mobile hamburger */}
           <Sheet open={mobileOpen} onOpenChange={(open) => { setMobileOpen(open); if (!open) setMobileSidebarSearch(""); }}>
@@ -373,8 +404,10 @@ export function AdminLayout() {
           </ErrorBoundary>
         </main>
 
+        <AdminMobileTabBar onMore={() => setMobileOpen(true)} moreOpen={mobileOpen} />
+
         {roles.length > 0 && (
-          <footer className="px-4 lg:px-6 py-3 border-t text-xs text-muted-foreground bg-background shrink-0">
+          <footer className="hidden lg:block px-4 lg:px-6 py-3 border-t text-xs text-muted-foreground bg-background shrink-0">
             {t("admin.signedInAs", { roles: roles.join(", ") })}
           </footer>
         )}

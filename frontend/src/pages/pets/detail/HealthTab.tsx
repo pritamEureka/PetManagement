@@ -14,6 +14,9 @@ import {
   type PetDetail, type Vaccination, type MedicalRecord, type GroomingRecord, type VaccineScheduleItem
 } from "@/api/pets";
 import { Section, Field, Muted, dateInput, orNull, fmtDate } from "./shared";
+import { ShieldCheck } from "lucide-react";
+import { healthPlusApi, type HealthRecordType } from "@/api/carePlans";
+import { AmendRecordDialog } from "./AmendRecordDialog";
 
 type Editing =
   | { kind: "vaccination"; record?: Vaccination; preset?: string }
@@ -32,6 +35,10 @@ export function HealthTab({ pet }: { pet: PetDetail }) {
   const editor = canEditPet(pet.myAccess);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [deleting, setDeleting] = useState<Deleting | null>(null);
+  const { data: seals = [] } = useQuery({ queryKey: ["pets", pet.id, "seals"], queryFn: () => healthPlusApi.seals(pet.id) });
+  const sealedSet = new Set(seals.map((s) => `${s.recordType}:${s.recordId}`));
+  const isSealed = (t: HealthRecordType, id: string) => sealedSet.has(`${t}:${id}`);
+  const [amending, setAmending] = useState<{ type: HealthRecordType; id: string } | null>(null);
 
   const { data: schedule = [] } = useQuery({
     queryKey: ["pets", pet.id, "vaccine-schedule"],
@@ -86,7 +93,9 @@ export function HealthTab({ pet }: { pet: PetDetail }) {
                   <RowActions
                     fileUrl={v.certificateUrl}
                     canEdit={clinical}
-                    onEdit={() => setEditing({ kind: "vaccination", record: v })}
+                    sealed={isSealed("Vaccination", v.id)}
+                    canDelete={clinical && !isSealed("Vaccination", v.id)}
+                    onEdit={() => isSealed("Vaccination", v.id) ? setAmending({ type: "Vaccination", id: v.id }) : setEditing({ kind: "vaccination", record: v })}
                     onDelete={() => setDeleting({ kind: "vaccination", id: v.id, label: v.vaccineName })}
                   />
                 </div>
@@ -149,8 +158,9 @@ export function HealthTab({ pet }: { pet: PetDetail }) {
                 <RowActions
                   fileUrl={m.attachmentUrl}
                   canEdit={clinical}
-                  canDelete={clinical && !m.appointmentId}
-                  onEdit={() => setEditing({ kind: "medical", record: m })}
+                  canDelete={clinical && !m.appointmentId && !isSealed("Medical", m.id)}
+                  sealed={isSealed("Medical", m.id)}
+                  onEdit={() => isSealed("Medical", m.id) ? setAmending({ type: "Medical", id: m.id }) : setEditing({ kind: "medical", record: m })}
                   onDelete={() => setDeleting({ kind: "medical", id: m.id, label: m.diagnosis ?? "this visit" })}
                 />
               </div>
@@ -185,6 +195,7 @@ export function HealthTab({ pet }: { pet: PetDetail }) {
         )}
       </Section>
 
+      {amending && <AmendRecordDialog pet={pet} type={amending.type} recordId={amending.id} onClose={() => setAmending(null)} onAmended={() => qc.invalidateQueries({ queryKey: ["pets", pet.id] })} />}
       {editing?.kind === "vaccination" && (
         <VaccinationDialog petId={pet.id} record={editing.record} preset={editing.preset} onClose={() => setEditing(null)} onSaved={refresh} />
       )}
@@ -208,17 +219,18 @@ export function HealthTab({ pet }: { pet: PetDetail }) {
   );
 }
 
-function RowActions({ fileUrl, canEdit, canDelete = canEdit, onEdit, onDelete }: {
-  fileUrl?: string | null; canEdit: boolean; canDelete?: boolean; onEdit: () => void; onDelete: () => void;
+function RowActions({ fileUrl, canEdit, canDelete = canEdit, sealed = false, onEdit, onDelete }: {
+  fileUrl?: string | null; canEdit: boolean; canDelete?: boolean; sealed?: boolean; onEdit: () => void; onDelete: () => void;
 }) {
   return (
     <div className="flex items-center gap-1 shrink-0">
+      {sealed && <Badge variant="success" title="Vet-sealed: changes are saved as amendments"><ShieldCheck className="h-3 w-3 mr-0.5 inline" />Sealed</Badge>}
       {fileUrl && (
         <Button size="icon" variant="ghost" asChild aria-label="Open document">
           <a href={fileUrl} target="_blank" rel="noreferrer"><FileText className="h-4 w-4" /></a>
         </Button>
       )}
-      {canEdit && <Button size="icon" variant="ghost" onClick={onEdit} aria-label="Edit"><Pencil className="h-4 w-4" /></Button>}
+      {canEdit && <Button size="icon" variant="ghost" onClick={onEdit} aria-label={sealed ? "Amend (sealed record)" : "Edit"} title={sealed ? "Amend (sealed record)" : "Edit"}><Pencil className="h-4 w-4" /></Button>}
       {canDelete && <Button size="icon" variant="ghost" onClick={onDelete} aria-label="Delete"><Trash2 className="h-4 w-4" /></Button>}
     </div>
   );

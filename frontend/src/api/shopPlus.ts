@@ -90,6 +90,8 @@ export interface RankedProduct { product: ProductSummary; score: number; breakdo
 export interface FacetSearchResult {
   items: RankedProduct[]; total: number; page: number; pageSize: number;
   facets: Facets; didYouMean?: string | null; effectiveQuery?: string | null;
+  /** Paid placements, always separate from organic `items` (max 2). */
+  sponsored?: { product: ProductSummary; placementId: string; label: string }[];
 }
 export interface Suggestion { text: string; kind: "term" | "correction" | "product" }
 export interface SavedSearch { id: string; name: string; query: FacetSearchRequest; alertEnabled: boolean; createdAt: string }

@@ -95,3 +95,31 @@ export const messagesApi = {
   unblock: (userId: string) => api.post(`/v1/messages/unblock/${userId}`),
   listBlocked: () => unwrap<string[]>(api.get("/v1/messages/blocked")),
 };
+
+// ---------- Messaging plus: search, pins, folders, disappearing, edit/recall, E2EE keys ----------
+export interface MessageSearchHit { messageId: string; conversationId: string; senderId: string; senderName: string; content?: string | null; createdAt: string }
+export interface PinnedMessage { messageId: string; conversationId: string; content?: string | null; senderId: string; senderName: string; pinnedBy: string; pinnedAt: string }
+export interface ConversationFolder { id: string; name: string; conversationIds: string[] }
+export interface ConversationSettings { conversationId: string; disappearAfterSeconds?: number | null; mutedUntil?: string | null; e2eeEnabled: boolean }
+export interface E2eeKeyInfo { id: string; userId: string; publicKeyJwk: string; createdAt: string }
+
+const MP = "/v1/messaging-plus";
+export const messagesPlusApi = {
+  search: (q: string, conversationId?: string, cursor?: string) =>
+    api.get<{ items: MessageSearchHit[]; nextCursor?: string | null }>(`${MP}/search`, { params: { q, conversationId, cursor } }).then((r) => r.data),
+  pins: (conversationId: string) => api.get<PinnedMessage[]>(`${MP}/conversations/${conversationId}/pins`).then((r) => r.data),
+  pin: (messageId: string) => api.post(`${MP}/messages/${messageId}/pin`),
+  unpin: (messageId: string) => api.delete(`${MP}/messages/${messageId}/pin`),
+  folders: () => api.get<ConversationFolder[]>(`${MP}/folders`).then((r) => r.data),
+  createFolder: (name: string) => api.post<ConversationFolder>(`${MP}/folders`, { name }).then((r) => r.data),
+  renameFolder: (id: string, name: string) => api.put<ConversationFolder>(`${MP}/folders/${id}`, { name }).then((r) => r.data),
+  deleteFolder: (id: string) => api.delete(`${MP}/folders/${id}`),
+  setFolderItem: (folderId: string, conversationId: string, inFolder: boolean) => api.put(`${MP}/folders/${folderId}/items`, { conversationId, inFolder }),
+  settings: (conversationId: string) => api.get<ConversationSettings>(`${MP}/conversations/${conversationId}/settings`).then((r) => r.data),
+  setDisappear: (conversationId: string, seconds: number | null) => api.put<ConversationSettings>(`${MP}/conversations/${conversationId}/disappear`, { seconds }).then((r) => r.data),
+  setE2ee: (conversationId: string, enabled: boolean) => api.put<ConversationSettings>(`${MP}/conversations/${conversationId}/e2ee`, { enabled }).then((r) => r.data),
+  edit: (messageId: string, content: string) => api.put(`${MP}/messages/${messageId}`, { content }),
+  recall: (messageId: string) => api.post(`${MP}/messages/${messageId}/recall`),
+  registerKey: (publicKeyJwk: string) => api.post<E2eeKeyInfo>(`${MP}/e2ee/keys`, { publicKeyJwk }).then((r) => r.data),
+  userKeys: (userId: string) => api.get<E2eeKeyInfo[]>(`${MP}/e2ee/users/${userId}/keys`).then((r) => r.data),
+};

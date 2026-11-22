@@ -47,6 +47,7 @@ public class AdoptionRequestService : IAdoptionRequestService
             Message = input.Message.Trim()
         };
         _db.AdoptionRequests.Add(req);
+        AdoptionStageRecorder.Record(_db, req.Id, AdoptionApplicationStage.Submitted, uid);
 
         _db.Notifications.Add(new InAppNotification
         {
@@ -99,6 +100,7 @@ public class AdoptionRequestService : IAdoptionRequestService
             ?? throw new NotFoundException("AdoptionRequest", requestId);
         if (r.RequesterId != uid) throw new ForbiddenException();
         r.Status = AdoptionRequestStatus.Withdrawn;
+        AdoptionStageRecorder.Record(_db, r.Id, AdoptionApplicationStage.Withdrawn, uid);
         await _db.SaveChangesAsync(ct);
         await _kafka.PublishAsync(AdoptionTopics.Events,
             new AdoptionRequestStatusChanged(r.Id, r.AdoptionListingId, r.Status.ToString(), DateTime.UtcNow),
@@ -114,6 +116,9 @@ public class AdoptionRequestService : IAdoptionRequestService
         if (r.AdoptionListing.OwnerId != uid) throw new ForbiddenException();
 
         r.Status = status;
+        if (AdoptionStageRecorder.MapLegacyStatus(status) is { } mappedStage)
+            AdoptionStageRecorder.Record(_db, r.Id, mappedStage, uid,
+                dueAt: mappedStage == AdoptionApplicationStage.Decision ? AdoptionSla.DecisionDue(DateTime.UtcNow, null) : null);
         _db.Notifications.Add(new InAppNotification
         {
             UserId = r.RequesterId,

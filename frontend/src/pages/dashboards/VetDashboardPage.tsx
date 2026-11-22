@@ -3,6 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { WaitingRoomWidget } from "@/components/vet/WaitingRoomWidget";
+import { EmergencyProfileCard } from "@/components/vet/EmergencyProfileCard";
+import { BookingPolicyCard } from "@/components/vet/BookingPolicyCard";
+import { QuestionnaireTemplateCard } from "@/components/vet/QuestionnaireTemplateCard";
+import { ClinicAnalyticsCard } from "./ClinicAnalyticsCard";
+import { IncomingReferralsPanel } from "@/components/vet/IncomingReferralsPanel";
 
 export function VetDashboardPage() {
   return (
@@ -20,6 +25,14 @@ export function VetDashboardPage() {
       </div>
 
       <WaitingRoomWidget />
+
+      <IncomingReferralsPanel />
+      <ClinicAnalyticsCard />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <EmergencyProfileCard />
+        <BookingPolicyCard />
+        <QuestionnaireTemplateCard />
+      </div>
 
       <Tabs defaultValue="today">
         <TabsList>

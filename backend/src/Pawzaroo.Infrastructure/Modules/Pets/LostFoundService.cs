@@ -8,6 +8,7 @@ using Pawzaroo.Application.Modules.Pets.Events;
 using Pawzaroo.Application.Modules.Pets.Services;
 using Pawzaroo.Domain.Notifications;
 using Pawzaroo.Domain.Pets;
+using Pawzaroo.Infrastructure.Modules.Adoption;
 using Pawzaroo.Infrastructure.Persistence;
 using Pawzaroo.Shared.Exceptions;
 using static Pawzaroo.Infrastructure.Modules.Pets.PetService;
@@ -24,10 +25,12 @@ public class LostFoundService : ILostFoundService
     private readonly IFeedService _feed;
     private readonly IKafkaProducer _kafka;
     private readonly IAuditLogger _audit;
+    private readonly int _exactLocationDays;
 
     public LostFoundService(ApplicationDbContext db, ICurrentUserService current, IFeedService feed,
-        IKafkaProducer kafka, IAuditLogger audit)
+        IKafkaProducer kafka, IAuditLogger audit, Microsoft.Extensions.Configuration.IConfiguration config)
     {
+        _exactLocationDays = LostFoundLocationExpiry.ConfiguredDays(config);
         _db = db;
         _current = current;
         _feed = feed;
@@ -77,9 +80,21 @@ public class LostFoundService : ILostFoundService
         var r = await _db.LostFoundReports.AsNoTracking()
             .Include(x => x.Reporter).Include(x => x.Pet)
             .SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new NotFoundException("Report", id);
-        return new LostFoundDetailDto(ToSummary(r), r.Latitude, r.Longitude, r.ContactPreference,
+        var isOwner = r.ReporterId == uid;
+        // Never expose exact coordinates to other viewers: fuzzed grid + deterministic jitter, and
+        // nothing at all once the exact-location retention window has passed.
+        var privileged = isOwner || IsModerator;
+        var expired = LostFoundLogic.IsExpired(r.CreatedAt, _exactLocationDays, DateTime.UtcNow);
+        (double? lat, double? lng) = privileged
+            ? (expired ? (null, null) : (r.Latitude, r.Longitude))
+            : LostFoundLogic.Fuzz(r.Id, r.Latitude, r.Longitude);
+        var extra = await _db.Set<LostFoundDetailExtra>().AsNoTracking().FirstOrDefaultAsync(x => x.ReportId == id, ct);
+        return new LostFoundDetailDto(ToSummary(r), lat, lng, r.ContactPreference,
             r.ContactPreference == Domain.Common.ContactPreference.Phone ? r.ContactPhone : null,
-            r.Pet?.MicrochipNumber, r.Pet?.TagNumber, r.ResolvedAt, r.FeedPostId, r.ReporterId == uid);
+            r.Pet?.MicrochipNumber, r.Pet?.TagNumber, r.ResolvedAt, r.FeedPostId, isOwner,
+            extra is null ? null : new LostFoundExtraDto(extra.Markings, extra.CollarDescription, extra.Sex, extra.AgeEstimate,
+                extra.TimeWindowStart, extra.TimeWindowEnd),
+            LocationApproximate: !privileged);
     }
 
     public async Task<LostFoundDetailDto> CreateAsync(CreateLostFoundInput i, CancellationToken ct = default)
@@ -118,6 +133,16 @@ public class LostFoundService : ILostFoundService
         }
 
         _db.LostFoundReports.Add(report);
+        if (i.Extra is { } x)
+        {
+            _db.Set<LostFoundDetailExtra>().Add(new LostFoundDetailExtra
+            {
+                ReportId = report.Id, Markings = Clean(x.Markings), CollarDescription = Clean(x.CollarDescription),
+                Sex = Clean(x.Sex), AgeEstimate = Clean(x.AgeEstimate), MicrochipNumber = Clean(x.MicrochipNumber),
+                TimeWindowStart = x.TimeWindowStart is { } ws ? Utc(ws) : null,
+                TimeWindowEnd = x.TimeWindowEnd is { } we ? Utc(we) : null
+            });
+        }
         await _db.SaveChangesAsync(ct);
 
         if (i.ShareToFeed)
@@ -156,6 +181,11 @@ public class LostFoundService : ILostFoundService
             .OrderByDescending(u => u.LastLoginAt)
             .Select(u => u.Id).Take(MaxNeighbourAlerts).ToListAsync(ct);
 
+        // Geofence subscribers: fence must cover the PUBLIC (fuzzed) point, never the exact one.
+        var fenced = await FenceSubscribersAsync(r, ct);
+        foreach (var f in fenced)
+            if (neighbours.Count < MaxNeighbourAlerts && !neighbours.Contains(f)) neighbours.Add(f);
+
         var title = r.Kind == LostFoundKind.Lost
             ? $"Lost {r.AnimalType.ToString().ToLowerInvariant()} near you{(petName is null ? "" : $": {petName}")}"
             : $"A {r.AnimalType.ToString().ToLowerInvariant()} was found near you";
@@ -175,6 +205,25 @@ public class LostFoundService : ILostFoundService
                 Url = $"/lost-found/{r.Id}"
             });
         }
+    }
+
+    private const double MaxFenceRadiusKm = 100;
+
+    private async Task<List<Guid>> FenceSubscribersAsync(LostFoundReport r, CancellationToken ct)
+    {
+        var (pLat, pLng) = LostFoundLogic.Fuzz(r.Id, r.Latitude, r.Longitude);
+        if (pLat is not { } la || pLng is not { } lo) return new();
+        var (dLat, dLng) = GeoSearch.BoundingBox(la, MaxFenceRadiusKm);
+        var minLat = la - dLat; var maxLat = la + dLat; var minLng = lo - dLng; var maxLng = lo + dLng;
+        var subs = await _db.Set<LostFoundAlertSubscription>().AsNoTracking()
+            .Where(s => s.Active && s.UserId != r.ReporterId
+                && (s.AnimalType == null || s.AnimalType == r.AnimalType)
+                && s.Latitude >= minLat && s.Latitude <= maxLat && s.Longitude >= minLng && s.Longitude <= maxLng)
+            .OrderByDescending(s => s.CreatedAt).Take(MaxNeighbourAlerts * 2)
+            .Select(s => new { s.UserId, s.Latitude, s.Longitude, s.RadiusKm })
+            .ToListAsync(ct);
+        return subs.Where(s => LostFoundLogic.FenceCovers(s.Latitude, s.Longitude, s.RadiusKm, pLat, pLng))
+            .Select(s => s.UserId).Distinct().Take(MaxNeighbourAlerts).ToList();
     }
 
     public async Task ResolveAsync(Guid id, ResolveLostFoundInput input, CancellationToken ct = default)
@@ -230,23 +279,26 @@ public class LostFoundService : ILostFoundService
             .OrderByDescending(x => x.CreatedAt).Take(200)
             .ToListAsync(ct);
 
-        static bool Similar(string? a, string? b) =>
-            !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b)
-            && (a.Contains(b, StringComparison.OrdinalIgnoreCase) || b.Contains(a, StringComparison.OrdinalIgnoreCase));
+        var ids = candidates.Select(c => c.Id).Append(r.Id).ToList();
+        var extras = await _db.Set<LostFoundDetailExtra>().AsNoTracking()
+            .Where(x => ids.Contains(x.ReportId)).ToDictionaryAsync(x => x.ReportId, ct);
 
+        // Exact coordinates are used server-side only; callers never see them (reasons are coarse bands).
+        // Coordinates are nulled by the expiry job, in which case scoring falls back to city/area.
+        MatchProfile Profile(LostFoundReport x)
+        {
+            extras.TryGetValue(x.Id, out var e);
+            return new MatchProfile(x.AnimalType, x.Breed, x.Color, e?.Markings, e?.MicrochipNumber ?? x.Pet?.MicrochipNumber,
+                x.City, x.Area, x.Latitude, x.Longitude, x.LastSeenAt, e?.TimeWindowStart, e?.TimeWindowEnd);
+        }
+
+        var self = Profile(r);
         var results = new List<LostFoundMatchDto>();
         foreach (var c in candidates)
         {
-            var score = 20;   // same species
-            var reasons = new List<string> { $"Same species ({c.AnimalType})" };
-            if (string.Equals(c.City, r.City, StringComparison.OrdinalIgnoreCase)) { score += 30; reasons.Add($"Same city ({c.City})"); }
-            if (Similar(c.Area, r.Area)) { score += 15; reasons.Add("Same area"); }
-            if (Similar(c.Color, r.Color)) { score += 20; reasons.Add($"Colour: {c.Color}"); }
-            if (Similar(c.Breed, r.Breed)) { score += 15; reasons.Add($"Breed: {c.Breed}"); }
-            if (Math.Abs((c.LastSeenAt - r.LastSeenAt).TotalDays) <= 3) { score += 10; reasons.Add("Seen within 3 days"); }
-            if (r.Latitude is { } la && r.Longitude is { } lo && c.Latitude is { } lb && c.Longitude is { } lob
-                && DistanceKm(la, lo, lb, lob) <= 5) { score += 20; reasons.Add("Within 5 km"); }
-            if (score >= 40) results.Add(new LostFoundMatchDto(ToSummary(c), Math.Min(score, 100), reasons));
+            var m = LostFoundLogic.Score(self, Profile(c));
+            if (m.Score >= LostFoundLogic.MinScore || m.MicrochipMatch)
+                results.Add(new LostFoundMatchDto(ToSummary(c), m.Score, m.Reasons));
         }
         return results.OrderByDescending(m => m.Score).Take(20).ToList();
     }

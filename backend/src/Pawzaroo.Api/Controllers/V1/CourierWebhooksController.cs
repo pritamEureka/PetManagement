@@ -37,6 +37,14 @@ public class CourierWebhooksController : ControllerBase
             Request.Headers[SignatureHeader].FirstOrDefault(),
             Request.Headers[TimestampHeader].FirstOrDefault(), ct);
 
+        // Telemetry (provider tag only for known providers to keep cardinality bounded).
+        var providerTag = result == WebhookResult.UnknownProvider ? "unknown" : provider;
+        Pawzaroo.Infrastructure.Observability.PawzarooTelemetry.WebhookReceived.Add(1, new KeyValuePair<string, object?>("provider", providerTag));
+        if (result is not (WebhookResult.Accepted or WebhookResult.Duplicate))
+            Pawzaroo.Infrastructure.Observability.PawzarooTelemetry.WebhookRejected.Add(1,
+                new KeyValuePair<string, object?>("provider", providerTag),
+                new KeyValuePair<string, object?>("reason", result.ToString()));
+
         return result switch
         {
             WebhookResult.Accepted => Ok(new { accepted = true }),

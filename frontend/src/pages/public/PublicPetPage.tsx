@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { useAuthStore } from "@/store/authStore";
 import { publicPetsApi } from "@/api/pets";
+import { petSocialApi } from "@/api/socialPlus";
+import { PetAlbumGallery } from "@/components/pets/PetAlbumGallery";
 import { Field } from "@/pages/pets/detail/shared";
 
 /**
@@ -21,6 +23,7 @@ export function PublicPetPage() {
   const { code = "" } = useParams();
   const signedIn = useAuthStore((s) => !!s.accessToken);
   const { data: pet, isLoading, isError } = useQuery({ queryKey: ["public-pet", code], queryFn: () => publicPetsApi.get(code), retry: false });
+  const social = useQuery({ queryKey: ["public-pet-social", code], queryFn: () => petSocialApi.byCode(code), retry: false, enabled: !!pet });
   const [f, setF] = useState({ message: "", contactInfo: "" });
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [sent, setSent] = useState(false);
@@ -107,6 +110,8 @@ export function PublicPetPage() {
           )}
         </CardContent>
       </Card>
+
+      {social.data && <PetAlbumGallery social={social.data} queryKey={["public-pet-social", code]} />}
 
       {pet.openLostReportId && signedIn && (
         <p className="text-center text-sm"><Link className="underline" to={`/lost-found/${pet.openLostReportId}`}>See the lost report</Link></p>

@@ -11,6 +11,7 @@ resources:
 patches:
   - path: patches/replicas.yaml
   - path: patches/ingress-host.yaml
+  - path: patches/configmap.yaml
 
 images:
   - name: ghcr.io/your-org/pawzaroo-api

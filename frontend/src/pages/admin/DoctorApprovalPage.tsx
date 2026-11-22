@@ -14,8 +14,10 @@ import { vetsApi, type DoctorSummary, type CredentialDocument } from "@/api/vets
 import { toast } from "@/components/ui/sonner";
 import { RejectReasonModal } from "@/components/adoption/RejectReasonModal";
 import { PromptDialog } from "@/components/common/PromptDialog";
+import { useI18n } from "@/lib/i18n";
 
 export function DoctorApprovalPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["admin-doctors"],
@@ -50,8 +52,8 @@ export function DoctorApprovalPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Vet approvals" icon={ShieldCheck}
-        description="Review applications, verify credentials, and manage status." />
+      <PageHeader title={t("adm.vetApprovals.title")} icon={ShieldCheck}
+        description={t("adm.vetApprovals.desc")} />
 
       {isLoading ? (
         <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
@@ -76,19 +78,19 @@ export function DoctorApprovalPage() {
                   {d.approvalStatus}
                 </Badge>
                 <Button size="sm" variant="outline" onClick={() => setCredsForId(credsForId === d.id ? null : d.id)}>
-                  <FileText className="h-3.5 w-3.5 mr-1" /> Credentials
+                  <FileText className="h-3.5 w-3.5 me-1" /> Credentials
                 </Button>
                 <Can permission="vets.approve">
-                  <Button size="sm" onClick={() => approve(d)}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
+                  <Button size="sm" onClick={() => approve(d)}><Check className="h-3.5 w-3.5 me-1" /> Approve</Button>
                 </Can>
                 <Can permission="vets.reject">
                   <Button size="sm" variant="destructive" onClick={() => setRejectTarget(d)}>
-                    <X className="h-3.5 w-3.5 mr-1" /> Reject
+                    <X className="h-3.5 w-3.5 me-1" /> Reject
                   </Button>
                 </Can>
                 <Can permission="vets.suspend">
                   <Button size="sm" variant="outline" onClick={() => setSuspendTarget(d)}>
-                    <Ban className="h-3.5 w-3.5 mr-1" /> Suspend
+                    <Ban className="h-3.5 w-3.5 me-1" /> Suspend
                   </Button>
                 </Can>
               </CardContent>

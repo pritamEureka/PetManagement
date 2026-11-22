@@ -42,6 +42,8 @@ export interface CreatePostBody {
   content?: string;
   animalType?: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
   mediaUrls?: string[];
   hashtags?: string[];
   petTagIds?: string[];
@@ -50,6 +52,8 @@ export interface UpdatePostBody {
   content?: string;
   animalType?: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
   hashtags?: string[];
 }
 

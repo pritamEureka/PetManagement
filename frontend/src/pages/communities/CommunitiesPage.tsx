@@ -13,18 +13,21 @@ import { CreateCommunityDialog } from "@/components/communities/CommunityDialogs
 import { EventCard } from "@/components/communities/EventCard";
 import { useI18n } from "@/lib/i18n";
 import { formatNumber } from "@/lib/format";
-import { communitiesApi, communityEventsApi } from "@/api/communities";
+import { communitiesApi, communityEventsApi, COMMUNITY_KINDS, type CommunityKind } from "@/api/communities";
+import { useCareT } from "@/lib/careT";
 
 export function CommunitiesPage() {
   const nav = useNavigate();
   const { t } = useI18n();
   const [q, setQ] = useState("");
   const [mine, setMine] = useState(false);
+  const [kind, setKind] = useState<CommunityKind | "">("");
+  const ct = useCareT();
   const [open, setOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["communities", "list", q, mine],
-    queryFn: () => communitiesApi.list({ q: q.trim() || undefined, mine, pageSize: 30 }),
+    queryKey: ["communities", "list", q, mine, kind],
+    queryFn: () => communitiesApi.list({ q: q.trim() || undefined, mine, kind: kind || undefined, pageSize: 30 }),
   });
   const feed = useQuery({
     queryKey: ["community-events", "feed"],
@@ -53,6 +56,13 @@ export function CommunitiesPage() {
         <Button variant={mine ? "default" : "outline"} aria-pressed={mine} onClick={() => setMine((m) => !m)}>{t("communities.mine")}</Button>
       </div>
 
+      <div className="flex gap-2 flex-wrap" role="group" aria-label={ct("communities.kindFilter", "Filter by type")}>
+        <Button size="sm" variant={kind === "" ? "default" : "outline"} aria-pressed={kind === ""} onClick={() => setKind("")}>{ct("communities.kind.all", "All types")}</Button>
+        {COMMUNITY_KINDS.map((k) => (
+          <Button key={k.value} size="sm" variant={kind === k.value ? "default" : "outline"} aria-pressed={kind === k.value} onClick={() => setKind(k.value)}>{ct(`cdlg.kind.${k.value}`, k.label)}</Button>
+        ))}
+      </div>
+
       {feed.data && feed.data.items.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-semibold">{t("communities.upcoming")}</h2>
@@ -72,6 +82,7 @@ export function CommunitiesPage() {
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold">{c.name}</h3>
+                    {c.kind && c.kind !== "Community" && <Badge variant="info">{ct(`cdlg.kind.${c.kind}`, c.kind === "LocalClub" ? "Local club" : "Breed club")}</Badge>}
                     {!c.isPublic && <Badge variant="muted"><Lock aria-hidden="true" className="h-3 w-3 me-1" />{t("communities.private")}</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">{[c.species, c.breed].filter(Boolean).join(" / ") || t("communities.allPets")}</p>

@@ -10,7 +10,8 @@ public record LostFoundQuery(LostFoundKind? Kind, AnimalType? AnimalType, string
 public record CreateLostFoundInput(
     LostFoundKind Kind, Guid? PetId, AnimalType? AnimalType, string? Breed, string? Color, string Description,
     string? PhotoUrl, DateTime LastSeenAt, string City, string? Area, double? Latitude, double? Longitude,
-    ContactPreference ContactPreference, string? ContactPhone, bool ShareToFeed = true);
+    ContactPreference ContactPreference, string? ContactPhone, bool ShareToFeed = true,
+    LostFoundExtraInput? Extra = null);
 
 public record ResolveLostFoundInput(bool Reunited, string? Note);
 
@@ -21,7 +22,8 @@ public record LostFoundSummaryDto(
 
 public record LostFoundDetailDto(
     LostFoundSummaryDto Report, double? Latitude, double? Longitude, ContactPreference ContactPreference,
-    string? ContactPhone, string? MicrochipNumber, string? TagNumber, DateTime? ResolvedAt, Guid? FeedPostId, bool IsMine);
+    string? ContactPhone, string? MicrochipNumber, string? TagNumber, DateTime? ResolvedAt, Guid? FeedPostId, bool IsMine,
+    LostFoundExtraDto? Extra = null, bool LocationApproximate = false);
 
 public record LostFoundMatchDto(LostFoundSummaryDto Report, int Score, IReadOnlyList<string> Reasons);
 

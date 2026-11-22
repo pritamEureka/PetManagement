@@ -15,10 +15,13 @@ import { FilterBar } from "@/components/admin/FilterBar";
 import { DetailsDrawer } from "@/components/admin/DetailsDrawer";
 import { ordersV2Api, deliveriesApi, type Order, type OrderStatus } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
+import { formatDateTime, formatNumber, formatPhone } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 const STATUSES: OrderStatus[] = ["Created", "Confirmed", "Packed", "Shipped", "Delivered", "Cancelled", "Returned", "Denied"];
 
 export function AdminOrderManagementPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [status, setStatus] = useState<OrderStatus | "all">("all");
   const [page, setPage] = useState(1);
@@ -81,8 +84,8 @@ export function AdminOrderManagementPage() {
     { key: "no", header: "Order #", render: (o) => <span className="font-mono text-xs">{o.orderNumber}</span> },
     { key: "buyer", header: "Buyer", className: "hidden sm:table-cell",
       render: (o) => <span className="text-xs">{o.customerName ?? <span className="text-muted-foreground">{o.userId.slice(0, 8)}…</span>}</span> },
-    { key: "items", header: "Items", render: (o) => o.items.length, className: "text-right w-16" },
-    { key: "total", header: "Total", className: "text-right w-20 sm:w-24",
+    { key: "items", header: "Items", render: (o) => o.items.length, className: "text-end w-16" },
+    { key: "total", header: "Total", className: "text-end w-20 sm:w-24",
       render: (o) => <span className="font-semibold">${o.total.toFixed(2)}</span> },
     { key: "status", header: "Status",
       render: (o) => <Badge variant={statusBadgeVariant(o.status)}>{o.status}</Badge> },
@@ -94,7 +97,7 @@ export function AdminOrderManagementPage() {
         : <span className="text-xs text-muted-foreground">—</span>
     },
     { key: "created", header: "Placed", className: "hidden lg:table-cell",
-      render: (o) => <span className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</span> }
+      render: (o) => <span className="text-xs text-muted-foreground">{formatDateTime(o.createdAt)}</span> }
   ];
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
@@ -108,7 +111,7 @@ export function AdminOrderManagementPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Orders" icon={Package} description={data ? `${data.total} total` : ""} />
+      <PageHeader title={t("nav.orders")} icon={Package} description={data ? t("adm.totalCount", { count: formatNumber(data.total) }) : ""} />
 
       <Card>
         <CardContent className="pt-6 space-y-4">
@@ -147,7 +150,7 @@ export function AdminOrderManagementPage() {
         open={!!selectedId}
         onOpenChange={(v) => !v && setSelectedId(null)}
         title={selected ? `Order ${selected.orderNumber}` : ""}
-        description={selected ? new Date(selected.createdAt).toLocaleString() : ""}
+        description={selected ? formatDateTime(selected.createdAt) : ""}
       >
         {selected && (
           <div className="space-y-4 text-sm">
@@ -161,20 +164,20 @@ export function AdminOrderManagementPage() {
             <div className="flex flex-wrap gap-2">
               <Button size="sm" disabled={!canApprove || approve.isPending}
                 onClick={() => approve.mutate(selected.id)}>
-                <Check className="h-4 w-4 mr-1" /> Approve
+                <Check className="h-4 w-4 me-1" /> Approve
               </Button>
               <Button size="sm" variant="destructive" disabled={!canDeny || deny.isPending}
                 onClick={() => deny.mutate(selected.id)}>
-                <Ban className="h-4 w-4 mr-1" /> Deny
+                <Ban className="h-4 w-4 me-1" /> Deny
               </Button>
               <Button size="sm" variant="outline"
                 disabled={selected.paymentStatus !== "Paid" || refund.isPending}
                 onClick={() => refund.mutate(selected.id)}>
-                <Undo2 className="h-4 w-4 mr-1" /> Refund
+                <Undo2 className="h-4 w-4 me-1" /> Refund
               </Button>
               <Button size="sm" variant="outline" asChild>
                 <a href={ordersV2Api.invoiceUrl(selected.id)} target="_blank" rel="noreferrer">
-                  <Printer className="h-4 w-4 mr-1" /> Print invoice
+                  <Printer className="h-4 w-4 me-1" /> Print invoice
                 </a>
               </Button>
             </div>
@@ -186,7 +189,7 @@ export function AdminOrderManagementPage() {
               <div className="space-y-0.5">
                 <p className="flex items-center gap-2"><UserIcon className="h-3.5 w-3.5 text-muted-foreground" /> {selected.customerName ?? "—"}</p>
                 {selected.customerEmail && <p className="flex items-center gap-2 text-muted-foreground"><Mail className="h-3.5 w-3.5" /> {selected.customerEmail}</p>}
-                {selected.customerPhone && <p className="flex items-center gap-2 text-muted-foreground"><Phone className="h-3.5 w-3.5" /> {selected.customerPhone}</p>}
+                {selected.customerPhone && <p className="flex items-center gap-2 text-muted-foreground"><Phone className="h-3.5 w-3.5" /> {formatPhone(selected.customerPhone)}</p>}
               </div>
             </div>
 
@@ -255,7 +258,7 @@ export function AdminOrderManagementPage() {
                       <p className="font-medium">{i.productName}</p>
                       <p className="text-xs text-muted-foreground">{i.storeName} · {i.quantity} × ${i.unitPrice.toFixed(2)}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <p className="font-semibold">${i.total.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">commission ${i.commissionAmount.toFixed(2)}</p>
                     </div>

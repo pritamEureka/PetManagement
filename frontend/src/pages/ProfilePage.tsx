@@ -20,6 +20,9 @@ import { usersApi, type MyProfile } from "@/api/users";
 import { useAuthStore } from "@/store/authStore";
 import { useI18n } from "@/lib/i18n";
 import { FormField, useAnnounce } from "@/components/common/a11y";
+import { useDraft } from "@/hooks/useDraft";
+import { confirmUpload } from "@/lib/uploadConfirm";
+import { DraftBanner } from "@/components/common/DraftBanner";
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 const AVATAR_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -75,9 +78,18 @@ export function ProfilePage() {
     setLocation(profile.location ?? "");
   }, [profile]);
 
+  // Autosave unsaved edits (only when they differ from the saved profile; never touches passwords).
+  const profileForm = { displayName, email, phoneNumber, bio, location };
+  const profileDirty = !!profile && (
+    displayName !== profile.displayName || email !== profile.email ||
+    phoneNumber !== (profile.phoneNumber ?? "") || bio !== (profile.bio ?? "") || location !== (profile.location ?? "")
+  );
+  const draft = useDraft("profile-edit", profileForm, { enabled: profileDirty });
+
   const saveProfile = useMutation({
     mutationFn: usersApi.updateMe,
     onSuccess: (updated: MyProfile) => {
+      draft.clear();
       qc.setQueryData(["users", "me"], updated);
       patchUser({
         displayName: updated.displayName,
@@ -169,9 +181,10 @@ export function ProfilePage() {
     try {
       const presign = await api
         .post("/media/presign", { fileName: file.name, contentType: file.type || "application/octet-stream" })
-        .then((r) => r.data as { url: string; publicUrl: string });
+        .then((r) => (r.data?.data ?? r.data) as { url: string; publicUrl: string; key: string });
       await axios.put(presign.url, file, { headers: { "Content-Type": file.type || "application/octet-stream" } });
-      const updated = await usersApi.updateMe({ avatarUrl: presign.publicUrl });
+      const confirmedUrl = await confirmUpload(presign.key, file.type || "application/octet-stream");
+      const updated = await usersApi.updateMe({ avatarUrl: confirmedUrl });
       qc.setQueryData(["users", "me"], updated);
       patchUser({ avatarUrl: updated.avatarUrl ?? null });
       toast.success(t("profile.pictureUpdated"));
@@ -265,6 +278,16 @@ export function ProfilePage() {
                 </div>
               ) : (
                 <form onSubmit={onSaveProfile} className="space-y-4">
+                  <DraftBanner<typeof profileForm>
+                    draft={draft}
+                    onRestore={(d) => {
+                      setDisplayName(d.displayName ?? "");
+                      setEmail(d.email ?? "");
+                      setPhoneNumber(d.phoneNumber ?? "");
+                      setBio(d.bio ?? "");
+                      setLocation(d.location ?? "");
+                    }}
+                  />
                   <FormField id="displayName" label={t("register.displayName")} error={profileErrors.displayName}>
                     {(c) => (
                       <Input

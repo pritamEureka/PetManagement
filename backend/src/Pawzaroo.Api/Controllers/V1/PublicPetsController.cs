@@ -20,8 +20,22 @@ namespace Pawzaroo.Api.Controllers.V1;
 public class PublicPetsController : ControllerBase
 {
     private readonly IPetSharingService _sharing;
+    private readonly Pawzaroo.Application.Modules.Feed.IPetSocialService _social;
 
-    public PublicPetsController(IPetSharingService sharing) => _sharing = sharing;
+    public PublicPetsController(IPetSharingService sharing, Pawzaroo.Application.Modules.Feed.IPetSocialService social)
+    {
+        _sharing = sharing;
+        _social = social;
+    }
+
+    /// <summary>Follower count + public albums for a QR-tag pet (anonymous OK; follower-only albums need sign-in).</summary>
+    [HttpGet("pets/{code}/social")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> PetSocial(string code, CancellationToken ct)
+    {
+        var p = await _social.GetProfileByCodeAsync(code, ct);
+        return p is null ? NotFound() : Ok(p);
+    }
 
     [HttpGet("pets/{code}")]
     [EnableRateLimiting("auth")]

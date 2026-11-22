@@ -57,6 +57,20 @@ public static class LedgerMath
     }
 
     /// <summary>
+    /// Cash actually paid per line: item totals net of the order discount (coupon + promotions + bundles, already in
+    /// Order.DiscountAmount) AND of their pro-rata share of customer credits (loyalty points + gift cards, which only reduce
+    /// the payable total). With zero credits this equals <see cref="NetOfDiscount"/>.
+    /// </summary>
+    public static decimal[] NetOfDiscountAndCredits(IReadOnlyList<decimal> lineTotals, decimal discount, decimal credits)
+    {
+        var net = NetOfDiscount(lineTotals, discount);
+        if (credits <= 0m) return net;
+        var alloc = AllocateProRata(net, credits);
+        for (var i = 0; i < net.Length; i++) net[i] = Round(net[i] - alloc[i]);
+        return net;
+    }
+
+    /// <summary>
     /// Refund ratio of an order: null amount = 1 (full); otherwise amount / orderTotal clamped to [0,1].
     /// </summary>
     public static decimal RefundRatio(decimal? amount, decimal orderTotal)

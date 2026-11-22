@@ -13,18 +13,21 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
     --primary: 24 95% 53%;
-    --primary-foreground: 0 0% 98%;
+    --primary-foreground: 240 10% 3.9%;
+    --primary-strong: 24 95% 33%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted-foreground: 240 5% 33%;
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 98%;
+    /* Destructive TEXT on the page/card background (separate from the button background token). */
+    --destructive-text: 0 72% 40%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 24 95% 53%;
+    --ring: 24 95% 40%;
     --radius: 0.5rem;
   }
   .dark {
@@ -37,7 +40,8 @@
     --popover: 240 10% 5%;
     --popover-foreground: 0 0% 98%;
     --primary: 24 95% 53%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 240 10% 3.9%;
+    --primary-strong: 24 95% 53%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
@@ -46,6 +50,7 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+    --destructive-text: 0 91% 72%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 24 95% 53%;
@@ -74,5 +79,65 @@
 
   .auth-paw-trail-item {
     animation: auth-paw-trail-fade 1s ease-out forwards;
+  }
+}
+
+/* ---- Accessibility polish ------------------------------------------------- */
+@layer base {
+  /* One consistent, always-visible keyboard focus ring. Mouse clicks don't show it. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  /* Components that draw their own ring (ring-2 utilities) keep the outline off to avoid a double ring. */
+  [class*="focus-visible:ring-"]:focus-visible {
+    outline: none;
+  }
+  /* Respect safe areas on notched devices for full-bleed layouts. */
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+@layer utilities {
+  /* Coarse pointers (touch): make small controls reach the 44px minimum target. */
+  @media (pointer: coarse) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Users who ask for less motion get (near-)instant transitions and no looping animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .auth-paw-trail-item {
+    animation: none !important;
+    opacity: 0;
+  }
+}
+
+/* Destructive TEXT in dark mode: the dark --destructive is a dark red meant for button
+   backgrounds (~1.7:1 as text). Remap text usages to the lighter --destructive-text token. */
+@layer utilities {
+  .dark .text-destructive,
+  .dark .hover\:text-destructive:hover,
+  .dark .focus\:text-destructive:focus,
+  .dark .group:hover .group-hover\:text-destructive {
+    color: hsl(var(--destructive-text));
   }
 }

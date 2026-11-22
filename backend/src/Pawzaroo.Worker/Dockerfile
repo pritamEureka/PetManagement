@@ -36,6 +36,8 @@ LABEL org.opencontainers.image.title="pawzaroo-worker" \
       org.opencontainers.image.revision="${GIT_SHA}"
 
 # .NET 9 base images already ship an `app` user/group.
+ENV GIT_SHA=${GIT_SHA} BUILD_VERSION=${VERSION}
+
 COPY --from=build --chown=app:app /app/publish ./
 
 USER app

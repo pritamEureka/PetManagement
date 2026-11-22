@@ -125,6 +125,45 @@ jobs:
           exit-code: '0'
           ignore-unfixed: true
 
+      # ---- supply chain: digest, SBOM, keyless signature, verification ----------
+      - name: Resolve image digest
+        id: digest
+        run: |
+          REF="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}"
+          DIGEST=$(docker buildx imagetools inspect "$REF:${{ needs.meta.outputs.image_tag }}" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "### ${{ matrix.image }}: \`$REF@$DIGEST\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate SBOM (CycloneDX)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}@${{ steps.digest.outputs.digest }}
+          format: cyclonedx
+          output: sbom-${{ matrix.image }}.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.image }}
+          path: sbom-${{ matrix.image }}.cdx.json
+
+      - uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Sign image (keyless, by digest)
+        run: cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}@${{ steps.digest.outputs.digest }}"
+
+      - name: Attest SBOM
+        run: |
+          cosign attest --yes --type cyclonedx --predicate sbom-${{ matrix.image }}.cdx.json \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}@${{ steps.digest.outputs.digest }}"
+
+      - name: Verify signature
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}@${{ steps.digest.outputs.digest }}"
+
   # ---------------------------------------------------------------------------
   # Deploy to dev — auto, no approval.
   # ---------------------------------------------------------------------------

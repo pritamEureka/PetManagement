@@ -11,6 +11,8 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { FilterBar } from "@/components/admin/FilterBar";
 import { DetailsDrawer } from "@/components/admin/DetailsDrawer";
 import { api } from "@/api/client";
+import { formatDateTime, formatNumber } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 interface AuditEntry {
   id: string;
@@ -27,6 +29,7 @@ interface AuditEntry {
 }
 
 export function AdminAuditLogPage() {
+  const { t } = useI18n();
   const [entityName, setEntityName] = useState("");
   const [action, setAction] = useState("");
   const [page, setPage] = useState(1);
@@ -49,7 +52,7 @@ export function AdminAuditLogPage() {
 
   const columns: Column<AuditEntry>[] = [
     { key: "at", header: "When",
-      render: (a) => <span className="text-xs text-muted-foreground">{new Date(a.at).toLocaleString()}</span> },
+      render: (a) => <span className="text-xs text-muted-foreground">{formatDateTime(a.at)}</span> },
     { key: "actor", header: "Actor",
       render: (a) => <span className="font-mono text-xs">{a.userId?.slice(0, 8) ?? "system"}</span> },
     { key: "action", header: "Action",
@@ -66,8 +69,8 @@ export function AdminAuditLogPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Audit log" icon={History}
-        description={data ? `${data.total} entries` : "Every privileged action."} />
+      <PageHeader title={t("admin.nav.audit")} icon={History}
+        description={data ? t("adm.audit.entries", { count: formatNumber(data.total) }) : t("adm.audit.desc")} />
 
       <Card>
         <CardContent className="pt-6 space-y-4">
@@ -103,7 +106,7 @@ export function AdminAuditLogPage() {
         open={!!selected}
         onOpenChange={(v) => !v && setSelected(null)}
         title={selected ? `${selected.action} · ${selected.entityName}` : ""}
-        description={selected ? new Date(selected.at).toLocaleString() : ""}
+        description={selected ? formatDateTime(selected.at) : ""}
       >
         {selected && (
           <div className="space-y-3 text-sm">

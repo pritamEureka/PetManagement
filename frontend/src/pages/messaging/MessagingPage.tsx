@@ -10,9 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { messagesApi, type ChatMessage, type ConversationSummary, type Attachment } from "@/api/messages";
+import { messagesApi, messagesPlusApi, type ChatMessage, type ConversationFolder, type ConversationSummary, type Attachment, type ConversationSettings, type PinnedMessage } from "@/api/messages";
+import { MessagingPlusBar } from "@/components/messaging/MessagingPlusBar";
+import { useE2ee } from "@/components/messaging/useE2ee";
 import { usersApi, type PublicUser } from "@/api/users";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/components/ui/sonner";
@@ -25,8 +27,14 @@ import { MessageBubble } from "@/components/messaging/MessageBubble";
 import { AttachmentUpload } from "@/components/messaging/AttachmentUpload";
 import { MessageReportDialog } from "@/components/messaging/MessageReportDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { FolderFilterBar, FolderManageDialog, FOLDERS_QUERY_KEY } from "@/components/messaging/ConversationFolders";
+import { useI18n } from "@/lib/i18n";
 
 const TYPING_DEBOUNCE = 800;
+const HEARTBEAT_MS = 25_000;
+const E2EE_PREFIX = "e2ee:v1:";
+/** Server masks encrypted previews as a lock glyph; older cached rows may still carry the raw envelope. */
+const isEncryptedPreview = (p?: string | null) => !!p && (p.startsWith(E2EE_PREFIX) || p === "\u{1F512}");
 
 export function MessagingPage() {
   const qc = useQueryClient();
@@ -48,6 +56,23 @@ export function MessagingPage() {
     queryKey: ["conversations", includeArchived, search],
     queryFn: () => messagesApi.conversations({ includeArchived, search: search || undefined })
   });
+  const { t } = useI18n();
+  const [manageFolders, setManageFolders] = useState(false);
+  const [folderFilter, setFolderFilter] = useState<string | null>(null);
+  const { data: folders = [] } = useQuery({ queryKey: FOLDERS_QUERY_KEY, queryFn: () => messagesPlusApi.folders() });
+  const folderIds = useMemo(() => {
+    const f = folders.find((x) => x.id === folderFilter);
+    return f ? new Set(f.conversationIds) : null;
+  }, [folders, folderFilter]);
+  const shownConvos = useMemo(() => (folderIds ? convos?.filter((c) => folderIds.has(c.id)) : convos), [convos, folderIds]);
+  async function toggleFolder(folderId: string, conversationId: string, inFolder: boolean) {
+    try {
+      await messagesPlusApi.setFolderItem(folderId, conversationId, inFolder);
+      qc.invalidateQueries({ queryKey: FOLDERS_QUERY_KEY });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? "Failed.");
+    }
+  }
   const activeId = searchParams.get("c");
   const active = useMemo(() => convos?.find((c) => c.id === activeId), [convos, activeId]);
 
@@ -64,6 +89,33 @@ export function MessagingPage() {
       .then((p) => setMessages(p.items))
       .finally(() => setLoadingHistory(false));
   }, [activeId]);
+
+  const [settings, setSettings] = useState<ConversationSettings | undefined>();
+  const [pins, setPins] = useState<PinnedMessage[]>([]);
+  const [plain, setPlain] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const otherUserId = active && !active.isGroup ? active.participants[0]?.userId : undefined;
+  const e2ee = useE2ee(!!settings?.e2eeEnabled, me?.id, otherUserId);
+
+  useEffect(() => {
+    setSettings(undefined); setPins([]); setPlain({});
+    if (!activeId) return;
+    messagesPlusApi.settings(activeId).then(setSettings).catch(() => {});
+    messagesPlusApi.pins(activeId).then(setPins).catch(() => {});
+  }, [activeId]);
+
+  // Decrypt E2EE envelopes for display (server only ever holds ciphertext).
+  useEffect(() => {
+    if (!settings?.e2eeEnabled) return;
+    let cancelled = false;
+    (async () => {
+      const next: Record<string, string> = {};
+      for (const m of messages) if (m.content?.startsWith("e2ee:v1:")) next[m.id] = await e2ee.decrypt(m.content);
+      if (!cancelled) setPlain(next);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, settings?.e2eeEnabled, e2ee.ready]);
 
   const [typingUsers, setTypingUsers] = useState<Record<string, true>>({});
   const [presence, setPresence] = useState<Record<string, boolean>>({});
@@ -98,11 +150,31 @@ export function MessagingPage() {
     } else if (e.kind === "presence") {
       const { userId, online } = e.payload;
       setPresence((prev) => ({ ...prev, [userId]: online }));
+    } else if (e.kind === "messageEdited") {
+      const { messageId, content, isEdited } = e.payload;
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, content, isEdited } : m));
+    } else if (e.kind === "messageRemoved") {
+      const { messageId } = e.payload;
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, isDeletedForAll: true, content: null } : m));
+      setPins((prev) => prev.filter((p) => p.messageId !== messageId));
+    } else if (e.kind === "pinned") {
+      if (e.payload.conversationId === activeId) messagesPlusApi.pins(activeId!).then(setPins).catch(() => {});
+    } else if (e.kind === "convSettings") {
+      if (e.payload.conversationId === activeId)
+        setSettings((s) => ({ conversationId: activeId!, mutedUntil: s?.mutedUntil, disappearAfterSeconds: e.payload.disappearAfterSeconds, e2eeEnabled: e.payload.e2eeEnabled }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, me?.id, qc]);
 
   const hub = useChatHub(onEvent);
+
+  // Keep presence alive while the messaging page is mounted.
+  useEffect(() => {
+    hub.heartbeat();
+    const id = window.setInterval(() => hub.heartbeat(), HEARTBEAT_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!activeId) return;
@@ -133,7 +205,23 @@ export function MessagingPage() {
 
   async function send() {
     if (!activeId || (!draft.trim() && attachments.length === 0)) return;
-    const text = draft.trim();
+    let text = draft.trim();
+    if (editingId) {
+      const id = editingId;
+      try {
+        const body = settings?.e2eeEnabled && text ? await e2ee.encrypt(text) : text;
+        await messagesPlusApi.edit(id, body);
+        setMessages((prev) => prev.map((m) => m.id === id ? { ...m, content: body, isEdited: true } : m));
+        setDraft(""); setEditingId(null);
+      } catch (err: any) {
+        toast.error(err?.response?.data?.error?.message ?? err?.message ?? "Edit failed.");
+      }
+      return;
+    }
+    if (settings?.e2eeEnabled && text) {
+      try { text = await e2ee.encrypt(text); }
+      catch (err: any) { toast.error(err?.message ?? "Encryption isn't ready."); return; }
+    }
     setDraft(""); setAttachments([]);
     try {
       const sent = await messagesApi.send(activeId, {
@@ -231,6 +319,10 @@ export function MessagingPage() {
           </div>
 
           {tab === "chats" && (
+            <FolderFilterBar folders={folders} selected={folderFilter} onSelect={setFolderFilter} onManage={() => setManageFolders(true)} />
+          )}
+
+          {tab === "chats" && (
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />
               Show archived
@@ -241,16 +333,16 @@ export function MessagingPage() {
           {tab === "chats" ? (
             loadingList ? (
               <div className="p-3 space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 rounded-md" />)}</div>
-            ) : !convos || convos.length === 0 ? (
+            ) : !shownConvos || shownConvos.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground space-y-3">
-                <p>No conversations yet.</p>
+                <p>{folderFilter ? t("adoptmsg.folders.noneInFolder") : "No conversations yet."}</p>
                 <Button variant="outline" size="sm" onClick={() => setTab("people")}>
                   Find people to message
                 </Button>
               </div>
             ) : (
               <ul className="divide-y">
-                {convos.map((c) => (
+                {shownConvos.map((c) => (
                   <ConversationRow key={c.id} c={c} active={c.id === activeId}
                     presence={presence}
                     onClick={() => { setThreadClosed(false); setSearchParams({ c: c.id }, { replace: true }); }}
@@ -302,7 +394,19 @@ export function MessagingPage() {
               onArchive={toggleArchive}
               onMute={toggleMute}
               onBlock={blockOther}
+              folders={folders}
+              onToggleFolder={(fid, inFolder) => toggleFolder(fid, active.id, inFolder)}
+              onManageFolders={() => setManageFolders(true)}
               onClose={() => { setThreadClosed(true); setSearchParams({}, { replace: true }); }}
+            />
+            <MessagingPlusBar
+              conversationId={active.id}
+              settings={settings}
+              pins={pins}
+              decrypt={e2ee.decrypt}
+              e2eeError={e2ee.error}
+              onSettingsChange={setSettings}
+              onUnpin={(id) => messagesPlusApi.unpin(id).then(() => setPins((p) => p.filter((x) => x.messageId !== id))).catch(() => {})}
             />
             <ScrollArea className="flex-1 p-4">
               {loadingHistory ? (
@@ -317,6 +421,10 @@ export function MessagingPage() {
                         key={m.id} msg={m} mine={mine} state={state}
                         onDelete={mine ? () => deleteMessage(m.id) : undefined}
                         onReport={!mine ? () => setReportingId(m.id) : undefined}
+                        displayText={m.content?.startsWith("e2ee:v1:") ? (plain[m.id] ?? "🔒 Encrypted message") : undefined}
+                        onEdit={mine && m.type === "Text" ? () => { setEditingId(m.id); setDraft(plain[m.id] ?? m.content ?? ""); } : undefined}
+                        onRecall={mine ? () => messagesPlusApi.recall(m.id).catch((err) => toast.error(err?.response?.data?.error?.message ?? "Recall failed.")) : undefined}
+                        onPin={() => messagesPlusApi.pin(m.id).catch((err) => toast.error(err?.response?.data?.error?.message ?? "Pin failed."))}
                       />
                     );
                   })}
@@ -342,6 +450,9 @@ export function MessagingPage() {
           </>
         )}
       </Card>
+
+      <FolderManageDialog open={manageFolders} onOpenChange={setManageFolders} folders={folders}
+                          onDeleted={(id) => setFolderFilter((cur) => (cur === id ? null : cur))} />
 
       {reportingId && (
         <MessageReportDialog
@@ -380,6 +491,7 @@ function ConversationRow({ c, active, presence, onClick, onViewProfile, onMessag
   onViewProfile: (userId: string) => void;
   onMessage: () => void;
 }) {
+  const { t } = useI18n();
   const other = c.participants[0];
   const online = other ? (presence[other.userId] ?? other.online) : false;
   return (
@@ -411,7 +523,7 @@ function ConversationRow({ c, active, presence, onClick, onViewProfile, onMessag
             {c.isMuted && <BellOff className="h-3 w-3 text-muted-foreground" />}
           </div>
           <p className="text-[11px] text-muted-foreground truncate">
-            {c.lastMessagePreview ?? "No messages yet"}
+            {isEncryptedPreview(c.lastMessagePreview) ? t("adoptmsg.encryptedPreview") : (c.lastMessagePreview ?? "No messages yet")}
           </p>
         </div>
 
@@ -444,10 +556,12 @@ function ConversationRow({ c, active, presence, onClick, onViewProfile, onMessag
   );
 }
 
-function ConversationHeader({ c, presence, onArchive, onMute, onBlock, onClose }: {
+function ConversationHeader({ c, presence, onArchive, onMute, onBlock, onClose, folders, onToggleFolder, onManageFolders }: {
   c: ConversationSummary; presence: Record<string, boolean>;
   onArchive: () => void; onMute: () => void; onBlock: () => void; onClose: () => void;
+  folders: ConversationFolder[]; onToggleFolder: (folderId: string, inFolder: boolean) => void; onManageFolders: () => void;
 }) {
+  const { t } = useI18n();
   const other = c.participants[0];
   const online = other ? (presence[other.userId] ?? other.online) : false;
   return (
@@ -474,6 +588,13 @@ function ConversationHeader({ c, presence, onArchive, onMute, onBlock, onClose }
           <DropdownMenuItem onClick={onMute}>
             {c.isMuted ? <><Bell className="h-3.5 w-3.5 mr-2" /> Unmute</> : <><BellOff className="h-3.5 w-3.5 mr-2" /> Mute</>}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>{t("adoptmsg.folders.moveTo")}</DropdownMenuLabel>
+          {folders.map((f) => (
+            <DropdownMenuCheckboxItem key={f.id} checked={f.conversationIds.includes(c.id)}
+              onCheckedChange={(v) => onToggleFolder(f.id, !!v)}>{f.name}</DropdownMenuCheckboxItem>
+          ))}
+          <DropdownMenuItem onClick={onManageFolders}>{t("adoptmsg.folders.manage")}</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem destructive onClick={onBlock}>
             <Ban className="h-3.5 w-3.5 mr-2" /> Block user

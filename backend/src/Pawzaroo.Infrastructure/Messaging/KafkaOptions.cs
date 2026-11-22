@@ -11,6 +11,13 @@ public class KafkaOptions
     public string BootstrapServers { get; set; } = "localhost:9092";
     public string ConsumerGroupId  { get; set; } = "pawzaroo-api";
 
+    /// <summary>
+    /// Prepended to every topic and consumer-group name on the wire (e.g. "dev-", "staging-") so several
+    /// environments can share one Kafka cluster. Empty (default) = no prefix. Applied only via
+    /// <see cref="KafkaTopicNaming"/>; code, config and DeadLetterRecord keep logical names.
+    /// </summary>
+    public string TopicPrefix      { get; set; } = "";
+
     /// <summary>Optional SASL/SSL auth — leave null for plaintext local dev.</summary>
     public string? SaslMechanism   { get; set; }
     public string? SaslUsername    { get; set; }

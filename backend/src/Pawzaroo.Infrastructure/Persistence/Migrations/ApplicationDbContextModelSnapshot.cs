@@ -180,6 +180,175 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("system_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdopterProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Activity")
+                        .HasColumnType("integer")
+                        .HasColumnName("activity");
+
+                    b.Property<string>("ChildrenAges")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("children_ages");
+
+                    b.Property<string>("ExistingPetsJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("existing_pets_json");
+
+                    b.Property<int>("Experience")
+                        .HasColumnType("integer")
+                        .HasColumnName("experience");
+
+                    b.Property<bool>("HasYard")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_yard");
+
+                    b.Property<int?>("HomeType")
+                        .HasColumnType("integer")
+                        .HasColumnName("home_type");
+
+                    b.Property<int>("HouseholdSize")
+                        .HasColumnType("integer")
+                        .HasColumnName("household_size");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<int>("TravelDistanceKm")
+                        .HasColumnType("integer")
+                        .HasColumnName("travel_distance_km");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_adopter_profiles");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_adopter_profiles_user_id");
+
+                    b.ToTable("adopter_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionFollowUp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdopterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("adopter_id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<int>("DayOffset")
+                        .HasColumnType("integer")
+                        .HasColumnName("day_offset");
+
+                    b.Property<DateTime>("DueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("listing_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reminder_sent_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<int?>("WelfareScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("welfare_score");
+
+                    b.HasKey("Id")
+                        .HasName("pk_adoption_follow_ups");
+
+                    b.HasIndex("AdopterId")
+                        .HasDatabaseName("ix_adoption_follow_ups_adopter_id");
+
+                    b.HasIndex("ListingId", "DayOffset")
+                        .IsUnique()
+                        .HasDatabaseName("ix_adoption_follow_ups_listing_id_day_offset");
+
+                    b.HasIndex("Status", "DueAt")
+                        .HasDatabaseName("ix_adoption_follow_ups_status_due_at");
+
+                    b.ToTable("adoption_follow_ups", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionHomeVisit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<DateTime>("ScheduledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_adoption_home_visits");
+
+                    b.HasIndex("RequestId")
+                        .HasDatabaseName("ix_adoption_home_visits_request_id");
+
+                    b.ToTable("adoption_home_visits", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionListing", b =>
                 {
                     b.Property<Guid>("Id")
@@ -403,6 +572,94 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("adoption_listing_photos", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionListingRiskFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("detail");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("listing_id");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer")
+                        .HasColumnName("severity");
+
+                    b.HasKey("Id")
+                        .HasName("pk_adoption_listing_risk_flags");
+
+                    b.HasIndex("ListingId")
+                        .HasDatabaseName("ix_adoption_listing_risk_flags_listing_id");
+
+                    b.ToTable("adoption_listing_risk_flags", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionReference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Contact")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("contact");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Relationship")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("relationship");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_adoption_references");
+
+                    b.HasIndex("RequestId")
+                        .HasDatabaseName("ix_adoption_references_request_id");
+
+                    b.ToTable("adoption_references", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -462,6 +719,58 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_adoption_requests_adoption_listing_id_status");
 
                     b.ToTable("adoption_requests", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionRequestStageEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("by_user_id");
+
+                    b.Property<DateTime?>("DueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at");
+
+                    b.Property<DateTime>("EnteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("entered_at");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTime?>("OverdueFlaggedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("overdue_flagged_at");
+
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reminder_sent_at");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer")
+                        .HasColumnName("stage");
+
+                    b.HasKey("Id")
+                        .HasName("pk_adoption_request_stage_events");
+
+                    b.HasIndex("RequestId", "EnteredAt")
+                        .HasDatabaseName("ix_adoption_request_stage_events_request_id_entered_at");
+
+                    b.HasIndex("Stage", "DueAt")
+                        .HasDatabaseName("ix_adoption_request_stage_events_stage_due_at");
+
+                    b.ToTable("adoption_request_stage_events", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionWantedPost", b =>
@@ -571,6 +880,54 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_adoption_wanted_posts_status_created_at");
 
                     b.ToTable("adoption_wanted_posts", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.FosterPlacement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<Guid>("FosterUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("foster_user_id");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("listing_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("integer")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid?>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_foster_placements");
+
+                    b.HasIndex("FosterUserId")
+                        .HasDatabaseName("ix_foster_placements_foster_user_id");
+
+                    b.HasIndex("ListingId")
+                        .HasDatabaseName("ix_foster_placements_listing_id");
+
+                    b.ToTable("foster_placements", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Adoption.SavedAdoptionListing", b =>
@@ -932,6 +1289,14 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_public");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Community")
+                        .HasColumnName("kind");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -1144,6 +1509,72 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("community_members", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Communities.CommunityPoll", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<DateTime?>("ClosesAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closes_at");
+
+                    b.Property<Guid>("CommunityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("community_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("MultiChoice")
+                        .HasColumnType("boolean")
+                        .HasColumnName("multi_choice");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("question");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_community_polls");
+
+                    b.HasIndex("CommunityId", "CreatedAt")
+                        .HasDatabaseName("ix_community_polls_community_id_created_at");
+
+                    b.ToTable("community_polls", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Communities.EventRsvp", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1204,6 +1635,162 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_event_rsvps_event_id_status_rsvp_at");
 
                     b.ToTable("event_rsvps", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Communities.PollOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("PollId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("poll_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_community_poll_options");
+
+                    b.HasIndex("PollId")
+                        .HasDatabaseName("ix_community_poll_options_poll_id");
+
+                    b.ToTable("community_poll_options", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Communities.PollVote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("OptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("option_id");
+
+                    b.Property<Guid>("PollId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("poll_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_community_poll_votes");
+
+                    b.HasIndex("OptionId")
+                        .HasDatabaseName("ix_community_poll_votes_option_id");
+
+                    b.HasIndex("PollId", "UserId")
+                        .HasDatabaseName("ix_community_poll_votes_poll_id_user_id");
+
+                    b.HasIndex("UserId", "OptionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_community_poll_votes_user_id_option_id");
+
+                    b.ToTable("community_poll_votes", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Communities.ReputationEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CommunityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("community_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("integer")
+                        .HasColumnName("points");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reputation_events");
+
+                    b.HasIndex("CommunityId")
+                        .HasDatabaseName("ix_reputation_events_community_id");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_reputation_events_user_id_created_at");
+
+                    b.HasIndex("UserId", "Kind", "SourceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_reputation_events_user_id_kind_source_id");
+
+                    b.ToTable("reputation_events", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Communities.UserReputation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CommunityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("community_id");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
+                    b.Property<int>("Total")
+                        .HasColumnType("integer")
+                        .HasColumnName("total");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_reputations");
+
+                    b.HasIndex("CommunityId", "Total")
+                        .HasDatabaseName("ix_user_reputations_community_id_total");
+
+                    b.HasIndex("UserId", "CommunityId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_reputations_user_id_community_id");
+
+                    b.ToTable("user_reputations", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Identity.BackupRecoveryCode", b =>
@@ -1551,6 +2138,57 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_role_permissions_permission_id");
 
                     b.ToTable("role_permissions", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Identity.SecuritySignal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DetailsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("details_json");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ip");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("severity");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("type");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_security_signals");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_security_signals_created_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_security_signals_user_id");
+
+                    b.HasIndex("Type", "CreatedAt")
+                        .HasDatabaseName("ix_security_signals_type_created_at");
+
+                    b.ToTable("security_signals", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Identity.StepUpVerification", b =>
@@ -2381,6 +3019,61 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("conversations", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Messaging.ConversationFolder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversation_folders");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_conversation_folders_user_id");
+
+                    b.ToTable("conversation_folders", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Messaging.ConversationFolderItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<Guid>("FolderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("folder_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversation_folder_items");
+
+                    b.HasIndex("FolderId", "ConversationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_conversation_folder_items_folder_id_conversation_id");
+
+                    b.ToTable("conversation_folder_items", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Messaging.ConversationParticipant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2431,6 +3124,171 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_conversation_participants_conversation_id_user_id");
 
                     b.ToTable("conversation_participants", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Messaging.ConversationPin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<DateTime>("PinnedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pinned_at");
+
+                    b.Property<Guid>("PinnedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pinned_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversation_pins");
+
+                    b.HasIndex("ConversationId", "MessageId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_conversation_pins_conversation_id_message_id");
+
+                    b.ToTable("conversation_pins", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Messaging.ConversationSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<int?>("DisappearAfterSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("disappear_after_seconds");
+
+                    b.Property<bool>("E2eeEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("e2ee_enabled");
+
+                    b.Property<DateTime?>("MutedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("muted_until");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversation_settings");
+
+                    b.HasIndex("ConversationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_conversation_settings_conversation_id");
+
+                    b.ToTable("conversation_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Messaging.DeadLetterRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<string>("ConsumerGroup")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("consumer_group");
+
+                    b.Property<string>("Error")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("error");
+
+                    b.Property<string>("FailureKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("failure_kind");
+
+                    b.Property<DateTime>("FirstFailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_failed_at");
+
+                    b.Property<string>("HeadersJson")
+                        .HasColumnType("text")
+                        .HasColumnName("headers_json");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime?>("LastFailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_failed_at");
+
+                    b.Property<long>("Offset")
+                        .HasColumnType("bigint")
+                        .HasColumnName("offset");
+
+                    b.Property<int>("Partition")
+                        .HasColumnType("integer")
+                        .HasColumnName("partition");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload");
+
+                    b.Property<int>("RedriveCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("redrive_count");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid?>("ResolvedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("topic");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dead_letter_records");
+
+                    b.HasIndex("Status", "FirstFailedAt")
+                        .HasDatabaseName("ix_dead_letter_records_status_first_failed_at");
+
+                    b.HasIndex("Topic", "Partition", "Offset", "ConsumerGroup")
+                        .HasDatabaseName("ix_dead_letter_records_topic_partition_offset_consumer_group");
+
+                    b.ToTable("dead_letter_records", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Messaging.Message", b =>
@@ -2566,6 +3424,34 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("message_attachments", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Messaging.MessageEdit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("EditedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("edited_at");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<string>("PreviousContent")
+                        .HasColumnType("text")
+                        .HasColumnName("previous_content");
+
+                    b.HasKey("Id")
+                        .HasName("pk_message_edits");
+
+                    b.HasIndex("MessageId")
+                        .HasDatabaseName("ix_message_edits_message_id");
+
+                    b.ToTable("message_edits", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Messaging.MessageReadReceipt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2673,6 +3559,15 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
 
+                    b.Property<string>("ClaimedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("claimed_by");
+
+                    b.Property<DateTime?>("ClaimedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("claimed_until");
+
                     b.Property<string>("CorrelationId")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
@@ -2739,7 +3634,8 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_outbox_messages_occurred_at");
 
                     b.HasIndex("Status", "NextAttemptAt")
-                        .HasDatabaseName("ix_outbox_messages_status_next_attempt_at");
+                        .HasDatabaseName("ix_outbox_messages_pending_next_attempt")
+                        .HasFilter("status = 0");
 
                     b.ToTable("outbox_messages", (string)null);
                 });
@@ -2778,6 +3674,40 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_user_blocks_blocker_id_blocked_user_id");
 
                     b.ToTable("user_blocks", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Messaging.UserE2eeKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("PublicKeyJwk")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("public_key_jwk");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_e2ee_keys");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_e2ee_keys_user_id");
+
+                    b.ToTable("user_e2ee_keys", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Moderation.AdminActionLog", b =>
@@ -3096,6 +4026,127 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("notifications", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Notifications.NotificationDigestPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("frequency");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("LastDigestAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_digest_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_digest_preferences");
+
+                    b.HasIndex("UserId", "Category")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_digest_preferences_user_id_category");
+
+                    b.ToTable("notification_digest_preferences", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Notifications.NotificationMute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("MutedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("muted_until");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("ScopeId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("scope_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_mutes");
+
+                    b.HasIndex("UserId", "Scope", "ScopeId")
+                        .HasDatabaseName("ix_notification_mutes_user_id_scope_scope_id");
+
+                    b.ToTable("notification_mutes", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Notifications.NotificationPreference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3375,6 +4426,247 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("breeding_records", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.CarePlanTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Breed")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("breed");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_published");
+
+                    b.Property<Guid>("PublishedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("published_by_user_id");
+
+                    b.Property<int>("Species")
+                        .HasColumnType("integer")
+                        .HasColumnName("species");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_care_plan_templates");
+
+                    b.HasIndex("PublishedByUserId")
+                        .HasDatabaseName("ix_care_plan_templates_published_by_user_id");
+
+                    b.HasIndex("IsPublished", "Species")
+                        .HasDatabaseName("ix_care_plan_templates_is_published_species");
+
+                    b.ToTable("care_plan_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.CarePlanTemplateItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<int>("OffsetDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("offset_days");
+
+                    b.Property<int?>("RepeatCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("repeat_count");
+
+                    b.Property<int?>("RepeatEveryDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("repeat_every_days");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_care_plan_template_items");
+
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("ix_care_plan_template_items_template_id");
+
+                    b.ToTable("care_plan_template_items", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.ExposureReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AmountEstimate")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("amount_estimate");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("Escalated")
+                        .HasColumnType("boolean")
+                        .HasColumnName("escalated");
+
+                    b.Property<DateTime>("ExposedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("exposed_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("OnsetAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("onset_at");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<Guid>("ReportedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reported_by_user_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Substance")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("substance");
+
+                    b.Property<string>("Symptoms")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("symptoms");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_exposure_reports");
+
+                    b.HasIndex("PetId", "CreatedAt")
+                        .HasDatabaseName("ix_exposure_reports_pet_id_created_at");
+
+                    b.ToTable("exposure_reports", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.ExposureReportEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid>("ExposureReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exposure_report_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_exposure_report_events");
+
+                    b.HasIndex("ExposureReportId", "At")
+                        .HasDatabaseName("ix_exposure_report_events_exposure_report_id_at");
+
+                    b.ToTable("exposure_report_events", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Pets.GroomingRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3442,6 +4734,356 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_grooming_records_pet_id");
 
                     b.ToTable("grooming_records", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.HealthRecordSeal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<int>("RecordType")
+                        .HasColumnType("integer")
+                        .HasColumnName("record_type");
+
+                    b.Property<DateTime>("SealedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sealed_at");
+
+                    b.Property<Guid>("SealedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sealed_by_user_id");
+
+                    b.Property<string>("SignatureHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("signature_hash");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_json");
+
+                    b.Property<Guid?>("VetDoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vet_doctor_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_health_record_seals");
+
+                    b.HasIndex("PetId")
+                        .HasDatabaseName("ix_health_record_seals_pet_id");
+
+                    b.HasIndex("RecordType", "RecordId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_health_record_seals_record_type_record_id");
+
+                    b.ToTable("health_record_seals", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.HealthRecordVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChangeReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("change_reason");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("changed_by_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<int>("RecordType")
+                        .HasColumnType("integer")
+                        .HasColumnName("record_type");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_json");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_health_record_versions");
+
+                    b.HasIndex("RecordType", "RecordId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_health_record_versions_record_type_record_id_version");
+
+                    b.ToTable("health_record_versions", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.LivestockTreatment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AdministeredOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("administered_on");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Diagnosis")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("diagnosis");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("MeatSafeOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("meat_safe_on");
+
+                    b.Property<int>("MeatWithdrawalDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("meat_withdrawal_days");
+
+                    b.Property<DateTime?>("MilkSafeOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("milk_safe_on");
+
+                    b.Property<int>("MilkWithdrawalDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("milk_withdrawal_days");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<Guid?>("PetGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_group_id");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<string>("Treatment")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("treatment");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_livestock_treatments");
+
+                    b.HasIndex("BatchId")
+                        .HasDatabaseName("ix_livestock_treatments_batch_id");
+
+                    b.HasIndex("PetGroupId")
+                        .HasDatabaseName("ix_livestock_treatments_pet_group_id");
+
+                    b.HasIndex("PetId")
+                        .HasDatabaseName("ix_livestock_treatments_pet_id");
+
+                    b.HasIndex("OwnerId", "AdministeredOn")
+                        .HasDatabaseName("ix_livestock_treatments_owner_id_administered_on");
+
+                    b.ToTable("livestock_treatments", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.LostFoundAlertSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<int?>("AnimalType")
+                        .HasColumnType("integer")
+                        .HasColumnName("animal_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<double>("RadiusKm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("radius_km");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_lost_found_alert_subscriptions");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_lost_found_alert_subscriptions_user_id");
+
+                    b.HasIndex("Active", "Latitude", "Longitude")
+                        .HasDatabaseName("ix_lost_found_alert_subscriptions_active_latitude_longitude");
+
+                    b.ToTable("lost_found_alert_subscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.LostFoundDetailExtra", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AgeEstimate")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("age_estimate");
+
+                    b.Property<string>("CollarDescription")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("collar_description");
+
+                    b.Property<DateTime?>("LocationExpiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("location_expired_at");
+
+                    b.Property<string>("Markings")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("markings");
+
+                    b.Property<string>("MicrochipNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("microchip_number");
+
+                    b.Property<Guid>("ReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("report_id");
+
+                    b.Property<string>("Sex")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("sex");
+
+                    b.Property<DateTime?>("TimeWindowEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("time_window_end");
+
+                    b.Property<DateTime?>("TimeWindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("time_window_start");
+
+                    b.HasKey("Id")
+                        .HasName("pk_lost_found_detail_extras");
+
+                    b.HasIndex("MicrochipNumber")
+                        .HasDatabaseName("ix_lost_found_detail_extras_microchip_number");
+
+                    b.HasIndex("ReportId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_lost_found_detail_extras_report_id");
+
+                    b.ToTable("lost_found_detail_extras", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.LostFoundEvidence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("ReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("report_id");
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_lost_found_evidence");
+
+                    b.HasIndex("ReportId")
+                        .HasDatabaseName("ix_lost_found_evidence_report_id");
+
+                    b.ToTable("lost_found_evidence", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.LostFoundReport", b =>
@@ -3571,6 +5213,69 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_lost_found_reports_status_kind_city");
 
                     b.ToTable("lost_found_reports", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.LostFoundSighting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("photo_url");
+
+                    b.Property<Guid>("ReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("report_id");
+
+                    b.Property<Guid>("ReporterUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reporter_user_id");
+
+                    b.Property<DateTime>("SeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("seen_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.Property<Guid?>("VerifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("verified_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_lost_found_sightings");
+
+                    b.HasIndex("ReportId", "CreatedAt")
+                        .HasDatabaseName("ix_lost_found_sightings_report_id_created_at");
+
+                    b.ToTable("lost_found_sightings", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.MedicalRecord", b =>
@@ -3843,6 +5548,80 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("pets", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetAllergy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<string>("Allergen")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("allergen");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("NotedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("noted_at");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<string>("Reaction")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reaction");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer")
+                        .HasColumnName("severity");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_allergies");
+
+                    b.HasIndex("Allergen")
+                        .HasDatabaseName("ix_pet_allergies_allergen");
+
+                    b.HasIndex("PetId", "Active")
+                        .HasDatabaseName("ix_pet_allergies_pet_id_active");
+
+                    b.ToTable("pet_allergies", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCareLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3888,6 +5667,181 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_pet_care_logs_pet_id_performed_at");
 
                     b.ToTable("pet_care_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCarePlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsCustom")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_custom");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_care_plans");
+
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("ix_pet_care_plans_template_id");
+
+                    b.HasIndex("PetId", "Status")
+                        .HasDatabaseName("ix_pet_care_plans_pet_id_status");
+
+                    b.ToTable("pet_care_plans", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCarePlanItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AssignedUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_user_id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid?>("CompletedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("completed_by_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int?>("LastNotifiedStage")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_notified_stage");
+
+                    b.Property<Guid?>("LinkedRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("linked_record_id");
+
+                    b.Property<string>("LinkedRecordType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("linked_record_type");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTime?>("OriginalDueDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("original_due_date");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plan_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_care_plan_items");
+
+                    b.HasIndex("PlanId")
+                        .HasDatabaseName("ix_pet_care_plan_items_plan_id");
+
+                    b.HasIndex("Status", "DueDate")
+                        .HasDatabaseName("ix_pet_care_plan_items_status_due_date");
+
+                    b.HasIndex("PetId", "Status", "DueDate")
+                        .HasDatabaseName("ix_pet_care_plan_items_pet_id_status_due_date");
+
+                    b.ToTable("pet_care_plan_items", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCareRoutine", b =>
@@ -4020,6 +5974,137 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("pet_caretakers", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetDietEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<string>("Amount")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Food")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("food");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("frequency");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_diet_entries");
+
+                    b.HasIndex("PetId", "Active")
+                        .HasDatabaseName("ix_pet_diet_entries_pet_id_active");
+
+                    b.ToTable("pet_diet_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetEmergencyCardLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("token");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_emergency_card_links");
+
+                    b.HasIndex("PetId")
+                        .HasDatabaseName("ix_pet_emergency_card_links_pet_id");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pet_emergency_card_links_token");
+
+                    b.ToTable("pet_emergency_card_links", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.PetExpense", b =>
@@ -4296,6 +6381,92 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_pet_insurance_policies_pet_id");
 
                     b.ToTable("pet_insurance_policies", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetLabResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DocumentUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("document_url");
+
+                    b.Property<int>("Flag")
+                        .HasColumnType("integer")
+                        .HasColumnName("flag");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("OcrText")
+                        .HasColumnType("text")
+                        .HasColumnName("ocr_text");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<string>("ReferenceRange")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reference_range");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("TakenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("taken_at");
+
+                    b.Property<string>("TestName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("test_name");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("unit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_lab_results");
+
+                    b.HasIndex("PetId", "TakenAt")
+                        .HasDatabaseName("ix_pet_lab_results_pet_id_taken_at");
+
+                    b.ToTable("pet_lab_results", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.PetMedication", b =>
@@ -4615,6 +6786,78 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_production_logs_owner_id_recorded_on");
 
                     b.ToTable("production_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.VaccinationCertificate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<Guid>("IssuedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issued_by_user_id");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("token");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_vaccination_certificates");
+
+                    b.HasIndex("PetId")
+                        .HasDatabaseName("ix_vaccination_certificates_pet_id");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_vaccination_certificates_token");
+
+                    b.ToTable("vaccination_certificates", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.VaccinationRecord", b =>
@@ -5118,6 +7361,143 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("hashtags", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Social.PetAlbum", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CoverUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("cover_url");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Visibility")
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_albums");
+
+                    b.HasIndex("PetId")
+                        .HasDatabaseName("ix_pet_albums_pet_id");
+
+                    b.ToTable("pet_albums", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Social.PetAlbumPhoto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AlbumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("album_id");
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("caption");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("TakenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("taken_at");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_album_photos");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_pet_album_photos_created_at");
+
+                    b.HasIndex("AlbumId", "SortOrder")
+                        .HasDatabaseName("ix_pet_album_photos_album_id_sort_order");
+
+                    b.ToTable("pet_album_photos", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Social.PetFollow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pet_follows");
+
+                    b.HasIndex("PetId")
+                        .HasDatabaseName("ix_pet_follows_pet_id");
+
+                    b.HasIndex("UserId", "PetId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pet_follows_user_id_pet_id");
+
+                    b.ToTable("pet_follows", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Social.Post", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5200,6 +7580,50 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_post_hashtags_hashtag_id");
 
                     b.ToTable("post_hashtags", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Social.PostLocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("city");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_post_locations");
+
+                    b.HasIndex("City")
+                        .HasDatabaseName("ix_post_locations_city");
+
+                    b.HasIndex("PostId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_post_locations_post_id");
+
+                    b.HasIndex("Latitude", "Longitude")
+                        .HasDatabaseName("ix_post_locations_latitude_longitude");
+
+                    b.ToTable("post_locations", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Social.PostMedia", b =>
@@ -5473,6 +7897,39 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_brands_name");
 
                     b.ToTable("brands", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.BundleCartDiscount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BundleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bundle_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_bundle_cart_discounts");
+
+                    b.HasIndex("UserId", "BundleId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_bundle_cart_discounts_user_id_bundle_id");
+
+                    b.ToTable("bundle_cart_discounts", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Store.Cart", b =>
@@ -5991,6 +8448,362 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("delivery_proofs", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Store.DeliveryZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("BaseFee")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("base_fee");
+
+                    b.Property<string>("Cities")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("cities");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<int>("EstimatedMaxHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("estimated_max_hours");
+
+                    b.Property<int>("EstimatedMinHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("estimated_min_hours");
+
+                    b.Property<decimal?>("FreeShippingThreshold")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("free_shipping_threshold");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_delivery_zones");
+
+                    b.HasIndex("StoreId", "IsActive")
+                        .HasDatabaseName("ix_delivery_zones_store_id_is_active");
+
+                    b.ToTable("delivery_zones", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.FulfillmentSla", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("MaxHoursToDeliver")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_hours_to_deliver");
+
+                    b.Property<int>("MaxHoursToShip")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_hours_to_ship");
+
+                    b.Property<string>("PenaltyNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("penalty_note");
+
+                    b.Property<Guid?>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_fulfillment_slas");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_fulfillment_slas_store_id");
+
+                    b.ToTable("fulfillment_slas", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.GiftCard", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("balance");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("currency");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<decimal>("InitialAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("initial_amount");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("message");
+
+                    b.Property<Guid?>("PurchaserUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("purchaser_user_id");
+
+                    b.Property<string>("RecipientEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("recipient_email");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_gift_cards");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_gift_cards_code");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_gift_cards_code_hash");
+
+                    b.ToTable("gift_cards", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.GiftCardTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("GiftCardId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("gift_card_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_gift_card_transactions");
+
+                    b.HasIndex("GiftCardId")
+                        .HasDatabaseName("ix_gift_card_transactions_gift_card_id");
+
+                    b.HasIndex("OrderId", "GiftCardId", "Type")
+                        .IsUnique()
+                        .HasDatabaseName("ix_gift_card_transactions_order_id_gift_card_id_type")
+                        .HasFilter("order_id IS NOT NULL");
+
+                    b.ToTable("gift_card_transactions", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("method");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("path");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_hash");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("text")
+                        .HasColumnName("response_body");
+
+                    b.Property<int?>("ResponseStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status_code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_idempotency_records");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_idempotency_records_expires_at");
+
+                    b.HasIndex("UserId", "Key", "Method", "Path")
+                        .IsUnique()
+                        .HasDatabaseName("ix_idempotency_records_user_id_key_method_path");
+
+                    b.ToTable("idempotency_records", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Store.InventoryAdjustment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6135,6 +8948,93 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("ledger_entries", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Store.LoyaltyAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Balance")
+                        .HasColumnType("integer")
+                        .HasColumnName("balance");
+
+                    b.Property<int>("LifetimePoints")
+                        .HasColumnType("integer")
+                        .HasColumnName("lifetime_points");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("integer")
+                        .HasColumnName("tier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_loyalty_accounts");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_loyalty_accounts_user_id");
+
+                    b.ToTable("loyalty_accounts", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.LoyaltyTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("integer")
+                        .HasColumnName("points");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_loyalty_transactions");
+
+                    b.HasIndex("OrderId", "Type")
+                        .IsUnique()
+                        .HasDatabaseName("ix_loyalty_transactions_order_id_type")
+                        .HasFilter("order_id IS NOT NULL");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_loyalty_transactions_user_id_created_at");
+
+                    b.ToTable("loyalty_transactions", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Store.Order", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6262,6 +9162,58 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("orders", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Store.OrderAppliedAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<int?>("Points")
+                        .HasColumnType("integer")
+                        .HasColumnName("points");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reference_id");
+
+                    b.Property<DateTime?>("ReversedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reversed_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_order_applied_adjustments");
+
+                    b.HasIndex("OrderId")
+                        .HasDatabaseName("ix_order_applied_adjustments_order_id");
+
+                    b.ToTable("order_applied_adjustments", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Store.OrderItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6313,6 +9265,68 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_order_items_store_id_order_id");
 
                     b.ToTable("order_items", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.OrderRefund", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid?>("ByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("by_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("GatewayStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("gateway_status");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<Guid>("OrderItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_item_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.HasKey("Id")
+                        .HasName("pk_order_refunds");
+
+                    b.HasIndex("OrderId")
+                        .HasDatabaseName("ix_order_refunds_order_id");
+
+                    b.HasIndex("OrderItemId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_order_refunds_order_item_id");
+
+                    b.ToTable("order_refunds", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Store.Payment", b =>
@@ -6380,6 +9394,218 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_payments_transaction_ref");
 
                     b.ToTable("payments", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.PaymentAuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_id");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("RawPayloadHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("raw_payload_hash");
+
+                    b.Property<string>("RawPayloadJson")
+                        .HasColumnType("text")
+                        .HasColumnName("raw_payload_json");
+
+                    b.HasKey("Id")
+                        .HasName("pk_payment_audit_entries");
+
+                    b.HasIndex("PaymentId")
+                        .HasDatabaseName("ix_payment_audit_entries_payment_id");
+
+                    b.HasIndex("EventType", "CreatedAt")
+                        .HasDatabaseName("ix_payment_audit_entries_event_type_created_at");
+
+                    b.HasIndex("OrderId", "CreatedAt")
+                        .HasDatabaseName("ix_payment_audit_entries_order_id_created_at");
+
+                    b.ToTable("payment_audit_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.PaymentCallbackLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("event_type");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("outcome");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("result");
+
+                    b.Property<string>("TransactionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("transaction_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_payment_callback_logs");
+
+                    b.HasIndex("OrderId")
+                        .HasDatabaseName("ix_payment_callback_logs_order_id");
+
+                    b.HasIndex("Provider", "TransactionId", "EventType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payment_callback_logs_provider_transaction_id_event_type");
+
+                    b.ToTable("payment_callback_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.PeakHourRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("DaysOfWeek")
+                        .HasColumnType("integer")
+                        .HasColumnName("days_of_week");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("interval")
+                        .HasColumnName("end_time");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("label");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("interval")
+                        .HasColumnName("start_time");
+
+                    b.Property<decimal>("SurchargeFixed")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("surcharge_fixed");
+
+                    b.Property<decimal>("SurchargePercent")
+                        .HasPrecision(7, 2)
+                        .HasColumnType("numeric(7,2)")
+                        .HasColumnName("surcharge_percent");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("ZoneId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("zone_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_peak_hour_rules");
+
+                    b.HasIndex("ZoneId", "IsActive")
+                        .HasDatabaseName("ix_peak_hour_rules_zone_id_is_active");
+
+                    b.ToTable("peak_hour_rules", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Store.PriceWatch", b =>
@@ -6587,6 +9813,110 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("products", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ProductBundle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<decimal?>("DiscountPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("discount_percent");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("price");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_product_bundles");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_product_bundles_store_id");
+
+                    b.ToTable("product_bundles", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ProductBundleItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BundleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bundle_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid?>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_product_bundle_items");
+
+                    b.HasIndex("BundleId")
+                        .HasDatabaseName("ix_product_bundle_items_bundle_id");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_product_bundle_items_product_id");
+
+                    b.ToTable("product_bundle_items", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Store.ProductCategory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6767,6 +10097,62 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("product_review_images", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ProductStockThreshold", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("LastAlertedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_alerted_at");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Threshold")
+                        .HasColumnType("integer")
+                        .HasColumnName("threshold");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_product_stock_thresholds");
+
+                    b.HasIndex("ProductId", "VariantId")
+                        .HasDatabaseName("ix_product_stock_thresholds_product_id_variant_id");
+
+                    b.ToTable("product_stock_thresholds", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Store.ProductSubscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6943,6 +10329,110 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("product_variants", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Store.Promotion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("BuyQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("buy_quantity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime?>("EndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
+
+                    b.Property<int>("GetQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("get_quantity");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal>("MinSubtotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("min_subtotal");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer")
+                        .HasColumnName("scope");
+
+                    b.Property<Guid?>("ScopeRefId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scope_ref_id");
+
+                    b.Property<bool>("Stackable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("stackable");
+
+                    b.Property<DateTime?>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int?>("UsageLimit")
+                        .HasColumnType("integer")
+                        .HasColumnName("usage_limit");
+
+                    b.Property<int>("UsedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("used_count");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_promotions");
+
+                    b.HasIndex("IsActive", "StartsAt", "EndsAt")
+                        .HasDatabaseName("ix_promotions_is_active_starts_at_ends_at");
+
+                    b.ToTable("promotions", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Store.RecentlyViewedItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6973,6 +10463,289 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_recently_viewed_items_user_id_viewed_at");
 
                     b.ToTable("recently_viewed_items", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ReferralCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_referral_codes");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_referral_codes_code");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_referral_codes_user_id");
+
+                    b.ToTable("referral_codes", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ReferralRedemption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("RedeemedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("redeemed_at");
+
+                    b.Property<Guid>("ReferredUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("referred_user_id");
+
+                    b.Property<Guid>("ReferrerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("referrer_user_id");
+
+                    b.Property<DateTime?>("RewardedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rewarded_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_referral_redemptions");
+
+                    b.HasIndex("ReferredUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_referral_redemptions_referred_user_id");
+
+                    b.HasIndex("ReferrerUserId")
+                        .HasDatabaseName("ix_referral_redemptions_referrer_user_id");
+
+                    b.ToTable("referral_redemptions", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ReplenishmentReminder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("Dismissed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("dismissed");
+
+                    b.Property<DateTime>("ExpectedRunOutAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expected_run_out_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<DateTime?>("RemindedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reminded_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_replenishment_reminders");
+
+                    b.HasIndex("ExpectedRunOutAt")
+                        .HasDatabaseName("ix_replenishment_reminders_expected_run_out_at");
+
+                    b.HasIndex("UserId", "ProductId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_replenishment_reminders_user_id_product_id");
+
+                    b.ToTable("replenishment_reminders", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ReturnPickup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AddressSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("address_snapshot");
+
+                    b.Property<DateTime?>("AssignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeliveryUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delivery_user_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTime?>("PickedUpAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("picked_up_at");
+
+                    b.Property<string>("ProofPhotoUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("proof_photo_url");
+
+                    b.Property<string>("ProofSignatureName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("proof_signature_name");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<int>("RescheduleCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("reschedule_count");
+
+                    b.Property<Guid>("ReturnRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("return_request_id");
+
+                    b.Property<DateTime>("ScheduledWindowEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_window_end");
+
+                    b.Property<DateTime>("ScheduledWindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_window_start");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_return_pickups");
+
+                    b.HasIndex("ReturnRequestId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_return_pickups_return_request_id");
+
+                    b.HasIndex("DeliveryUserId", "Status")
+                        .HasDatabaseName("ix_return_pickups_delivery_user_id_status");
+
+                    b.ToTable("return_pickups", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ReturnPickupCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("ReturnPickupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("return_pickup_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_return_pickup_checkpoints");
+
+                    b.HasIndex("ReturnPickupId", "OccurredAt")
+                        .HasDatabaseName("ix_return_pickup_checkpoints_return_pickup_id_occurred_at");
+
+                    b.ToTable("return_pickup_checkpoints", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Store.ReturnRequest", b =>
@@ -7269,6 +11042,141 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_shipping_addresses_user_id_is_default");
 
                     b.ToTable("shipping_addresses", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.SlaBreach", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("BreachedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("breached_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sla_breaches");
+
+                    b.HasIndex("StoreId", "BreachedAt")
+                        .HasDatabaseName("ix_sla_breaches_store_id_breached_at");
+
+                    b.HasIndex("OrderId", "StoreId", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sla_breaches_order_id_store_id_kind");
+
+                    b.ToTable("sla_breaches", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Store.SponsoredPlacement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("BidWeight")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)")
+                        .HasColumnName("bid_weight");
+
+                    b.Property<decimal?>("Budget")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("budget");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime>("EndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
+
+                    b.Property<int>("Impressions")
+                        .HasColumnType("integer")
+                        .HasColumnName("impressions");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<Guid?>("RequestedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<decimal>("Spent")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("spent");
+
+                    b.Property<DateTime>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sponsored_placements");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_sponsored_placements_product_id");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_sponsored_placements_store_id");
+
+                    b.HasIndex("Status", "IsActive", "StartsAt", "EndsAt")
+                        .HasDatabaseName("ix_sponsored_placements_status_is_active_starts_at_ends_at");
+
+                    b.ToTable("sponsored_placements", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Store.StockReservation", b =>
@@ -7996,6 +11904,83 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("appointments", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentDeposit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<decimal>("FeeAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("fee_amount");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_id");
+
+                    b.Property<decimal>("RefundAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("refund_amount");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_appointment_deposits");
+
+                    b.HasIndex("AppointmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_appointment_deposits_appointment_id");
+
+                    b.ToTable("appointment_deposits", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentDispute", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8076,6 +12061,150 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_appointment_disputes_appointment_id_status");
 
                     b.ToTable("appointment_disputes", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentFollowUp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("doctor_id");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<Guid?>("FollowUpAppointmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("follow_up_appointment_id");
+
+                    b.Property<int>("InDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("in_days");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("PatientUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_user_id");
+
+                    b.Property<Guid?>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<Guid>("SourceAppointmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_appointment_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_appointment_follow_ups");
+
+                    b.HasIndex("FollowUpAppointmentId")
+                        .HasDatabaseName("ix_appointment_follow_ups_follow_up_appointment_id");
+
+                    b.HasIndex("SourceAppointmentId")
+                        .HasDatabaseName("ix_appointment_follow_ups_source_appointment_id");
+
+                    b.HasIndex("PatientUserId", "Status")
+                        .HasDatabaseName("ix_appointment_follow_ups_patient_user_id_status");
+
+                    b.ToTable("appointment_follow_ups", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentQuestionnaireResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AnswersJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("answers_json");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_appointment_questionnaire_responses");
+
+                    b.HasIndex("AppointmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_appointment_questionnaire_responses_appointment_id");
+
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("ix_appointment_questionnaire_responses_template_id");
+
+                    b.ToTable("appointment_questionnaire_responses", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentSeries", b =>
@@ -8271,6 +12400,184 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_appointment_waitlist_entries_doctor_id_status_created_at");
 
                     b.ToTable("appointment_waitlist_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.CalendarShare", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("label");
+
+                    b.Property<DateTime?>("LastAccessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_accessed_at");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<string>("TokenHint")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("token_hint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_calendar_shares");
+
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("ix_calendar_shares_owner_user_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_calendar_shares_token_hash");
+
+                    b.ToTable("calendar_shares", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.ClinicalEncounter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
+
+                    b.Property<string>("ChiefComplaint")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("chief_complaint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Diagnosis")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("diagnosis");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("doctor_id");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finalized_at");
+
+                    b.Property<Guid?>("FinalizedByDoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("finalized_by_doctor_id");
+
+                    b.Property<string>("Findings")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("findings");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<string>("SignatureHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("signature_hash");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TreatmentPlan")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("treatment_plan");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_clinical_encounters");
+
+                    b.HasIndex("AppointmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_clinical_encounters_appointment_id");
+
+                    b.HasIndex("DoctorId", "Status")
+                        .HasDatabaseName("ix_clinical_encounters_doctor_id_status");
+
+                    b.ToTable("clinical_encounters", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.ConsultationNote", b =>
@@ -8531,6 +12838,83 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("doctor_availabilities", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.DoctorBookingPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AllowRescheduleHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("allow_reschedule_hours");
+
+                    b.Property<int>("CancellationWindowHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("cancellation_window_hours");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<decimal?>("DepositFixed")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("deposit_fixed");
+
+                    b.Property<decimal?>("DepositPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("deposit_percent");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("doctor_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal>("LateCancelFeePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("late_cancel_fee_percent");
+
+                    b.Property<decimal>("NoShowFeePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("no_show_fee_percent");
+
+                    b.Property<bool>("RequiresQuestionnaire")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_questionnaire");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_doctor_booking_policies");
+
+                    b.HasIndex("DoctorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_doctor_booking_policies_doctor_id");
+
+                    b.ToTable("doctor_booking_policies", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.DoctorCredentialDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8622,6 +13006,90 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_doctor_credential_documents_verified_by_user_id");
 
                     b.ToTable("doctor_credential_documents", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.DoctorEmergencyProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AcceptsWalkInEmergency")
+                        .HasColumnType("boolean")
+                        .HasColumnName("accepts_walk_in_emergency");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("ClinicAddress")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("clinic_address");
+
+                    b.Property<string>("ClinicName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("clinic_name");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("doctor_id");
+
+                    b.Property<string>("EmergencyPhone")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("emergency_phone");
+
+                    b.Property<bool>("Is24x7")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is24x7");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_doctor_emergency_profiles");
+
+                    b.HasIndex("DoctorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_doctor_emergency_profiles_doctor_id");
+
+                    b.HasIndex("Is24x7", "City")
+                        .HasDatabaseName("ix_doctor_emergency_profiles_is24x7_city");
+
+                    b.ToTable("doctor_emergency_profiles", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.DoctorHoliday", b =>
@@ -8808,6 +13276,273 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.ToTable("doctor_time_slots", (string)null);
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.EncounterAmendment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AmendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("amended_at");
+
+                    b.Property<Guid>("AmendedByDoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("amended_by_doctor_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("encounter_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("SignatureHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("signature_hash");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot_json");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_encounter_amendments");
+
+                    b.HasIndex("EncounterId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_encounter_amendments_encounter_id_version");
+
+                    b.ToTable("encounter_amendments", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.EncounterCompletionOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("doctor_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_encounter_completion_overrides");
+
+                    b.HasIndex("AppointmentId")
+                        .HasDatabaseName("ix_encounter_completion_overrides_appointment_id");
+
+                    b.ToTable("encounter_completion_overrides", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.EncounterDiagnosisCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("encounter_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("System")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("system");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_encounter_diagnosis_codes");
+
+                    b.HasIndex("EncounterId")
+                        .HasDatabaseName("ix_encounter_diagnosis_codes_encounter_id");
+
+                    b.HasIndex("System", "Code")
+                        .HasDatabaseName("ix_encounter_diagnosis_codes_system_code");
+
+                    b.ToTable("encounter_diagnosis_codes", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.EncounterLabResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DocumentUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("document_url");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("encounter_id");
+
+                    b.Property<string>("Flag")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("flag");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("ReferenceRange")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reference_range");
+
+                    b.Property<string>("Test")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("test");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("unit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_encounter_lab_results");
+
+                    b.HasIndex("EncounterId")
+                        .HasDatabaseName("ix_encounter_lab_results_encounter_id");
+
+                    b.ToTable("encounter_lab_results", (string)null);
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.Prescription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8879,6 +13614,275 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_prescriptions_issued_by_id");
 
                     b.ToTable("prescriptions", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.PrescriptionSeal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("encounter_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("PrescriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("prescription_id");
+
+                    b.Property<DateTime>("SealedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sealed_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_prescription_seals");
+
+                    b.HasIndex("EncounterId")
+                        .HasDatabaseName("ix_prescription_seals_encounter_id");
+
+                    b.HasIndex("PrescriptionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_prescription_seals_prescription_id");
+
+                    b.ToTable("prescription_seals", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.QuestionnaireTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("doctor_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("QuestionsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("questions_json");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_questionnaire_templates");
+
+                    b.HasIndex("DoctorId", "IsActive")
+                        .HasDatabaseName("ix_questionnaire_templates_doctor_id_is_active");
+
+                    b.ToTable("questionnaire_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.RecordShareConsent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("GrantedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by_user_id");
+
+                    b.Property<Guid>("GranteeDoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("grantee_doctor_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("PetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_id");
+
+                    b.Property<Guid?>("ReferralId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("referral_id");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("scope");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_record_share_consents");
+
+                    b.HasIndex("PetId", "GranteeDoctorId")
+                        .HasDatabaseName("ix_record_share_consents_pet_id_grantee_doctor_id");
+
+                    b.ToTable("record_share_consents", (string)null);
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.Referral", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("ConsentToShareRecords")
+                        .HasColumnType("boolean")
+                        .HasColumnName("consent_to_share_records");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("encounter_id");
+
+                    b.Property<string>("ExternalClinic")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("external_clinic");
+
+                    b.Property<Guid>("FromDoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_doctor_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("ToDoctorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_doctor_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_referrals");
+
+                    b.HasIndex("EncounterId")
+                        .HasDatabaseName("ix_referrals_encounter_id");
+
+                    b.HasIndex("ToDoctorId", "Status")
+                        .HasDatabaseName("ix_referrals_to_doctor_id_status");
+
+                    b.ToTable("referrals", (string)null);
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.Specialty", b =>
@@ -9111,6 +14115,42 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("SubmittedBy");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdopterProfile", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Identity.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_adopter_profiles_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionFollowUp", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Adoption.AdoptionListing", "Listing")
+                        .WithMany()
+                        .HasForeignKey("ListingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_adoption_follow_ups_adoption_listings_listing_id");
+
+                    b.Navigation("Listing");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionHomeVisit", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Adoption.AdoptionRequest", "Request")
+                        .WithMany()
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_adoption_home_visits_adoption_requests_request_id");
+
+                    b.Navigation("Request");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionListing", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Identity.User", "AdoptedByUser")
@@ -9159,6 +14199,30 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("AdoptionListing");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionListingRiskFlag", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Adoption.AdoptionListing", "Listing")
+                        .WithMany()
+                        .HasForeignKey("ListingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_adoption_listing_risk_flags_adoption_listings_listing_id");
+
+                    b.Navigation("Listing");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionReference", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Adoption.AdoptionRequest", "Request")
+                        .WithMany()
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_adoption_references_adoption_requests_request_id");
+
+                    b.Navigation("Request");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionRequest", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Adoption.AdoptionListing", "AdoptionListing")
@@ -9180,6 +14244,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Requester");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionRequestStageEvent", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Adoption.AdoptionRequest", "Request")
+                        .WithMany()
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_adoption_request_stage_events_adoption_requests_request_id");
+
+                    b.Navigation("Request");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Adoption.AdoptionWantedPost", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Identity.User", "Requester")
@@ -9190,6 +14266,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_adoption_wanted_posts_users_requester_id");
 
                     b.Navigation("Requester");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Adoption.FosterPlacement", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Adoption.AdoptionListing", "Listing")
+                        .WithMany()
+                        .HasForeignKey("ListingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_foster_placements_adoption_listings_listing_id");
+
+                    b.Navigation("Listing");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Adoption.SavedAdoptionListing", b =>
@@ -9223,6 +14311,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_assistant_messages_assistant_conversations_conversation_id");
 
                     b.Navigation("Conversation");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Communities.PollOption", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Communities.CommunityPoll", "Poll")
+                        .WithMany("Options")
+                        .HasForeignKey("PollId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_community_poll_options_community_polls_poll_id");
+
+                    b.Navigation("Poll");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Identity.OtpCode", b =>
@@ -9387,6 +14487,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_report_runs_scheduled_report_scheduled_report_id");
 
                     b.Navigation("ScheduledReport");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Messaging.ConversationFolderItem", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Messaging.ConversationFolder", "Folder")
+                        .WithMany()
+                        .HasForeignKey("FolderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_conversation_folder_items_conversation_folders_folder_id");
+
+                    b.Navigation("Folder");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Messaging.ConversationParticipant", b =>
@@ -9614,6 +14726,42 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Sire");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.CarePlanTemplateItem", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.CarePlanTemplate", "Template")
+                        .WithMany("Items")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_care_plan_template_items_care_plan_templates_template_id");
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.ExposureReport", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
+                        .WithMany()
+                        .HasForeignKey("PetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_exposure_reports_pets_pet_id");
+
+                    b.Navigation("Pet");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.ExposureReportEvent", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.ExposureReport", "ExposureReport")
+                        .WithMany("Timeline")
+                        .HasForeignKey("ExposureReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_exposure_report_events_exposure_reports_exposure_report_id");
+
+                    b.Navigation("ExposureReport");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Pets.GroomingRecord", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
@@ -9622,6 +14770,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_grooming_records_pets_pet_id");
+
+                    b.Navigation("Pet");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.LivestockTreatment", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
+                        .WithMany()
+                        .HasForeignKey("PetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_livestock_treatments_pets_pet_id");
 
                     b.Navigation("Pet");
                 });
@@ -9713,6 +14873,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Sire");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetAllergy", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
+                        .WithMany()
+                        .HasForeignKey("PetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pet_allergies_pets_pet_id");
+
+                    b.Navigation("Pet");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCareLog", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Identity.User", "PerformedBy")
@@ -9740,6 +14912,38 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Pet");
 
                     b.Navigation("Routine");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCarePlan", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
+                        .WithMany()
+                        .HasForeignKey("PetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pet_care_plans_pets_pet_id");
+
+                    b.HasOne("Pawzaroo.Domain.Pets.CarePlanTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_pet_care_plans_care_plan_templates_template_id");
+
+                    b.Navigation("Pet");
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCarePlanItem", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.PetCarePlan", "Plan")
+                        .WithMany("Items")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pet_care_plan_items_pet_care_plans_plan_id");
+
+                    b.Navigation("Plan");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCareRoutine", b =>
@@ -9773,6 +14977,30 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Pet");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetDietEntry", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
+                        .WithMany()
+                        .HasForeignKey("PetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pet_diet_entries_pets_pet_id");
+
+                    b.Navigation("Pet");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetEmergencyCardLink", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
+                        .WithMany()
+                        .HasForeignKey("PetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pet_emergency_card_links_pets_pet_id");
+
+                    b.Navigation("Pet");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.PetExpense", b =>
@@ -9819,6 +15047,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_pet_insurance_policies_pets_pet_id");
+
+                    b.Navigation("Pet");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetLabResult", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
+                        .WithMany()
+                        .HasForeignKey("PetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pet_lab_results_pets_pet_id");
 
                     b.Navigation("Pet");
                 });
@@ -9888,6 +15128,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Pet");
 
                     b.Navigation("PetGroup");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.VaccinationCertificate", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Pets.Pet", "Pet")
+                        .WithMany()
+                        .HasForeignKey("PetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_vaccination_certificates_pets_pet_id");
+
+                    b.Navigation("Pet");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.VaccinationRecord", b =>
@@ -10041,6 +15293,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Followed");
 
                     b.Navigation("Follower");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Social.PetAlbumPhoto", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Social.PetAlbum", "Album")
+                        .WithMany("Photos")
+                        .HasForeignKey("AlbumId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pet_album_photos_pet_albums_album_id");
+
+                    b.Navigation("Album");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Social.Post", b =>
@@ -10397,6 +15661,18 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Store");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ProductBundleItem", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Store.ProductBundle", "Bundle")
+                        .WithMany("Items")
+                        .HasForeignKey("BundleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_bundle_items_product_bundles_bundle_id");
+
+                    b.Navigation("Bundle");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Store.ProductCategory", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Store.ProductCategory", "ParentCategory")
@@ -10653,6 +15929,16 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("TimeSlot");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentDeposit", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Appointment", null)
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_appointment_deposits_appointments_appointment_id");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentDispute", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Veterinary.Appointment", "Appointment")
@@ -10680,6 +15966,39 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("OpenedByUser");
 
                     b.Navigation("ResolvedByUser");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentFollowUp", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Appointment", null)
+                        .WithMany()
+                        .HasForeignKey("FollowUpAppointmentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_appointment_follow_ups_appointments_follow_up_appointment_id");
+
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Appointment", null)
+                        .WithMany()
+                        .HasForeignKey("SourceAppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_appointment_follow_ups_appointments_source_appointment_id");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentQuestionnaireResponse", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Appointment", null)
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_appointment_questionnaire_responses_appointments_appointmen");
+
+                    b.HasOne("Pawzaroo.Domain.Veterinary.QuestionnaireTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_appointment_questionnaire_responses_questionnaire_template_");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentSeries", b =>
@@ -10725,6 +16044,16 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_appointment_waitlist_entries_doctors_doctor_id");
 
                     b.Navigation("Doctor");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.ClinicalEncounter", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Appointment", null)
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_clinical_encounters_appointments_appointment_id");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.ConsultationNote", b =>
@@ -10784,6 +16113,16 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Doctor");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.DoctorBookingPolicy", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Doctor", null)
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_doctor_booking_policies_doctors_doctor_id");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.DoctorCredentialDocument", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Veterinary.Doctor", "Doctor")
@@ -10802,6 +16141,16 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Doctor");
 
                     b.Navigation("VerifiedByUser");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.DoctorEmergencyProfile", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Doctor", null)
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_doctor_emergency_profiles_doctors_doctor_id");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.DoctorHoliday", b =>
@@ -10887,6 +16236,46 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Doctor");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.EncounterAmendment", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.ClinicalEncounter", null)
+                        .WithMany()
+                        .HasForeignKey("EncounterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_amendments_clinical_encounters_encounter_id");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.EncounterCompletionOverride", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Appointment", null)
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_completion_overrides_appointments_appointment_id");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.EncounterDiagnosisCode", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.ClinicalEncounter", null)
+                        .WithMany("DiagnosisCodes")
+                        .HasForeignKey("EncounterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_diagnosis_codes_clinical_encounters_encounter_id");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.EncounterLabResult", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.ClinicalEncounter", null)
+                        .WithMany("LabResults")
+                        .HasForeignKey("EncounterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_lab_results_clinical_encounters_encounter_id");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.Prescription", b =>
                 {
                     b.HasOne("Pawzaroo.Domain.Veterinary.Appointment", "Appointment")
@@ -10906,6 +16295,36 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Appointment");
 
                     b.Navigation("IssuedBy");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.PrescriptionSeal", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Prescription", null)
+                        .WithMany()
+                        .HasForeignKey("PrescriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_prescription_seals_prescriptions_prescription_id");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.QuestionnaireTemplate", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.Doctor", null)
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_questionnaire_templates_doctors_doctor_id");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.Referral", b =>
+                {
+                    b.HasOne("Pawzaroo.Domain.Veterinary.ClinicalEncounter", null)
+                        .WithMany()
+                        .HasForeignKey("EncounterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_referrals_clinical_encounters_encounter_id");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.TelemedicineEvent", b =>
@@ -10942,6 +16361,11 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Pawzaroo.Domain.Assistant.AssistantConversation", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Communities.CommunityPoll", b =>
+                {
+                    b.Navigation("Options");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Identity.Permission", b =>
@@ -10987,6 +16411,16 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Participants");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.CarePlanTemplate", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.ExposureReport", b =>
+                {
+                    b.Navigation("Timeline");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Pets.Pet", b =>
                 {
                     b.Navigation("Appointments");
@@ -11004,6 +16438,11 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Vaccinations");
 
                     b.Navigation("WeightLogs");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Pets.PetCarePlan", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Pets.PetGroup", b =>
@@ -11029,6 +16468,11 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Pawzaroo.Domain.Social.Hashtag", b =>
                 {
                     b.Navigation("PostHashtags");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Social.PetAlbum", b =>
+                {
+                    b.Navigation("Photos");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Social.Post", b =>
@@ -11076,6 +16520,11 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
                     b.Navigation("Reviews");
                 });
 
+            modelBuilder.Entity("Pawzaroo.Domain.Store.ProductBundle", b =>
+                {
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("Pawzaroo.Domain.Store.ProductCategory", b =>
                 {
                     b.Navigation("Products");
@@ -11101,6 +16550,13 @@ namespace Pawzaroo.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.AppointmentSeries", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Pawzaroo.Domain.Veterinary.ClinicalEncounter", b =>
+                {
+                    b.Navigation("DiagnosisCodes");
+
+                    b.Navigation("LabResults");
                 });
 
             modelBuilder.Entity("Pawzaroo.Domain.Veterinary.Doctor", b =>

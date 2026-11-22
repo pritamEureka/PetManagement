@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pawzaroo.Application.Common.Interfaces;
+using Pawzaroo.Application.Modules.Push;
+using Pawzaroo.Domain.Notifications;
+using Pawzaroo.Infrastructure.Modules.Push;
 using Pawzaroo.Infrastructure.Persistence;
 
 namespace Pawzaroo.Api.Controllers.V1;
@@ -48,12 +51,40 @@ public class NotificationsController : ControllerBase
         var q = _db.Notifications.AsNoTracking().Where(n => n.UserId == uid);
         if (unreadOnly == true) q = q.Where(n => !n.IsRead);
 
-        return await q.OrderByDescending(n => n.CreatedAt)
+        var rows = await q.OrderByDescending(n => n.CreatedAt)
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(n => new NotificationDto(
                 n.Id, n.Title, n.Body, n.Payload, n.Url,
                 n.IsRead, n.CreatedAt, n.ReadAt))
             .ToListAsync(ct);
+
+        // Hide notifications from muted categories / sources (rows carry no category, so it is inferred).
+        var mutes = await ActiveMutesAsync(uid, ct);
+        if (mutes.Count == 0) return rows;
+        return rows.Where(n => !NotificationMuteFilter.IsMuted(mutes, n.Payload, n.Url)).ToList();
+    }
+
+    /// <summary>Dismiss (soft-delete) one of the caller's notifications. Backs the "Undo" soft-commit in the UI.</summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Dismiss(Guid id, CancellationToken ct)
+    {
+        var uid = _current.UserId!.Value;
+        var n = await _db.Notifications.SingleOrDefaultAsync(x => x.Id == id && x.UserId == uid, ct);
+        if (n is null) return NotFound();
+        var wasUnread = !n.IsRead;
+        _db.Notifications.Remove(n);
+        await _db.SaveChangesAsync(ct);
+        if (wasUnread) await _counter.DecrementUnreadAsync(uid, 1, ct);
+        return NoContent();
+    }
+
+    private async Task<List<(NotificationMuteScope Scope, string ScopeId)>> ActiveMutesAsync(Guid uid, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var rows = await _db.Set<NotificationMute>().AsNoTracking()
+            .Where(m => m.UserId == uid && (m.MutedUntil == null || m.MutedUntil > now))
+            .Select(m => new { m.Scope, m.ScopeId }).ToListAsync(ct);
+        return rows.Select(m => (m.Scope, m.ScopeId)).ToList();
     }
 
     public record UnreadCountDto(int Count);
@@ -62,6 +93,17 @@ public class NotificationsController : ControllerBase
     public async Task<UnreadCountDto> UnreadCount(CancellationToken ct)
     {
         var uid = _current.UserId!.Value;
+
+        // Muted categories/sources: the Redis counter cannot know about them (producers are scattered), so
+        // when the user has active mutes count from the DB with the same filter the list uses.
+        var mutes = await ActiveMutesAsync(uid, ct);
+        if (mutes.Count > 0)
+        {
+            var unread = await _db.Notifications.AsNoTracking()
+                .Where(n => n.UserId == uid && !n.IsRead)
+                .Select(n => new { n.Payload, n.Url }).Take(1000).ToListAsync(ct);
+            return new UnreadCountDto(unread.Count(n => !NotificationMuteFilter.IsMuted(mutes, n.Payload, n.Url)));
+        }
 
         // Fast path: Redis counter. If the key is unset (cold cache, fresh user,
         // TTL eviction) the counter returns 0 — we hydrate from the DB and

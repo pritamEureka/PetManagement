@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pawzaroo-config
+  namespace: pawzaroo
+data:
+  # Production keeps the unprefixed (historical) topic names. Do not set a prefix here without migrating topics.
+  Kafka__TopicPrefix: ""

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Messaging;
 using Pawzaroo.Domain.Messaging;
 using Pawzaroo.Infrastructure.Caching;
+using Pawzaroo.Infrastructure.Observability;
 using Pawzaroo.Infrastructure.Persistence;
 using StackExchange.Redis;
 
@@ -110,19 +111,68 @@ public class OutboxDispatcherJob : BackgroundService
         }
     }
 
+    private static readonly TimeSpan Lease = TimeSpan.FromMinutes(2);
+    private readonly string _instanceId = $"{Truncate(Environment.MachineName, 24)}-{Guid.NewGuid():N}";
+
+    /// <summary>
+    /// Atomically claims a batch (SELECT ... FOR UPDATE SKIP LOCKED inside a short transaction, stamping
+    /// ClaimedBy/ClaimedUntil as a lease), then publishes outside the transaction. If this replica dies mid-batch the
+    /// lease expires and another replica re-claims the rows (at-least-once; consumers dedupe by event id).
+    /// </summary>
+    private async Task<List<OutboxMessage>> ClaimBatchAsync(ApplicationDbContext db, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var leaseUntil = now + Lease;
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var batch = await db.OutboxMessages
+            .FromSqlInterpolated($@"
+                SELECT * FROM outbox_messages
+                WHERE status = 0
+                  AND (next_attempt_at IS NULL OR next_attempt_at <= {now})
+                  AND (claimed_until IS NULL OR claimed_until < {now})
+                ORDER BY occurred_at
+                LIMIT {BatchSize}
+                FOR UPDATE SKIP LOCKED")
+            .ToListAsync(ct);
+
+        foreach (var m in batch)
+        {
+            m.ClaimedBy = _instanceId;
+            m.ClaimedUntil = leaseUntil;
+        }
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+        return batch;
+    }
+
+    private async Task RefreshSnapshotAsync(ApplicationDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            var pending = await db.OutboxMessages.AsNoTracking().CountAsync(m => m.Status == OutboxStatus.Pending, ct);
+            var oldest = pending == 0 ? null : await db.OutboxMessages.AsNoTracking()
+                .Where(m => m.Status == OutboxStatus.Pending).MinAsync(m => (DateTime?)m.OccurredAt, ct);
+            PawzarooTelemetry.SetOutboxSnapshot(pending,
+                oldest is null ? 0 : Math.Max(0, (DateTime.UtcNow - oldest.Value).TotalSeconds));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "[outbox] snapshot refresh failed");
+        }
+    }
+
     private async Task DispatchBatchAsync(IProducer<string, string> producer, CancellationToken ct)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var now = DateTime.UtcNow;
 
-        var batch = await db.OutboxMessages
-            .Where(m => m.Status == OutboxStatus.Pending && (m.NextAttemptAt == null || m.NextAttemptAt <= now))
-            .OrderBy(m => m.OccurredAt)
-            .Take(BatchSize)
-            .ToListAsync(ct);
-
+        var batch = await ClaimBatchAsync(db, ct);
+        await RefreshSnapshotAsync(db, ct);
         if (batch.Count == 0) return;
+
+        using var activity = PawzarooTelemetry.StartActivity("outbox.dispatch_batch");
+        activity?.SetTag("outbox.batch_size", batch.Count);
 
         foreach (var msg in batch)
         {
@@ -137,7 +187,7 @@ public class OutboxDispatcherJob : BackgroundService
                 if (!string.IsNullOrEmpty(msg.CorrelationId))
                     headers.Add(new Header("correlation-id", Encoding.UTF8.GetBytes(msg.CorrelationId)));
 
-                await producer.ProduceAsync(msg.Topic, new Message<string, string>
+                await producer.ProduceAsync(KafkaTopicNaming.Apply(_kafka.TopicPrefix, msg.Topic), new Message<string, string>
                 {
                     Key     = msg.PartitionKey,
                     Value   = msg.Payload,
@@ -147,25 +197,47 @@ public class OutboxDispatcherJob : BackgroundService
                 msg.Status       = OutboxStatus.Dispatched;
                 msg.DispatchedAt = DateTime.UtcNow;
                 msg.LastError    = null;
+                msg.ClaimedBy    = null;
+                msg.ClaimedUntil = null;
+                PawzarooTelemetry.OutboxDispatchLatencyMs.Record(Math.Max(0, (msg.DispatchedAt.Value - msg.OccurredAt).TotalMilliseconds));
+                PawzarooTelemetry.OutboxDispatched.Add(1, new KeyValuePair<string, object?>("result", "dispatched"));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // Shutting down: release the lease so another replica can pick the row up immediately.
+                msg.ClaimedBy = null;
+                msg.ClaimedUntil = null;
+                break;
             }
             catch (Exception ex)
             {
                 msg.Attempts++;
                 msg.LastError = Truncate(ex.Message, 2000);
-                if (msg.Attempts >= MaxAttempts)
+                msg.ClaimedBy = null;
+                msg.ClaimedUntil = null;
+
+                if (FailureClassifier.ClassifyProducerFailure(ex) == FailureKind.Permanent)
+                {
+                    msg.Status = OutboxStatus.Poisoned;
+                    PawzarooTelemetry.OutboxDispatched.Add(1, new KeyValuePair<string, object?>("result", "poisoned"));
+                    _logger.LogError(ex, "[outbox] poisoned {EventId} (permanent failure): {Error}", msg.Id, msg.LastError);
+                }
+                else if (msg.Attempts >= MaxAttempts)
                 {
                     msg.Status = OutboxStatus.Failed;
+                    PawzarooTelemetry.OutboxDispatched.Add(1, new KeyValuePair<string, object?>("result", "failed"));
                     _logger.LogError(ex, "[outbox] giving up on {EventId} after {N} attempts", msg.Id, msg.Attempts);
                 }
                 else
                 {
-                    var backoff = TimeSpan.FromSeconds(Math.Min(60, Math.Pow(2, msg.Attempts)));
+                    var backoff = OutboxBackoff.Delay(msg.Attempts, Random.Shared.NextDouble());
                     msg.NextAttemptAt = DateTime.UtcNow + backoff;
+                    PawzarooTelemetry.OutboxDispatched.Add(1, new KeyValuePair<string, object?>("result", "retry"));
                     _logger.LogWarning(ex, "[outbox] dispatch failed for {EventId}, retry in {Backoff}", msg.Id, backoff);
                 }
             }
         }
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(CancellationToken.None);
     }
 
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];

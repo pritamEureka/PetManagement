@@ -7,3 +7,5 @@ data:
   ASPNETCORE_ENVIRONMENT: "Development"
   DOTNET_ENVIRONMENT: "Development"
   LOG_LEVEL: "Debug"
+  # Shared-cluster safety: every topic and consumer group is prefixed on the wire (Kafka:TopicPrefix).
+  Kafka__TopicPrefix: "dev-"

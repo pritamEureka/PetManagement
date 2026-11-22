@@ -23,10 +23,13 @@ public class TelemedicineService : ITelemedicineService
     private readonly IConfiguration _config;
     private readonly Application.Modules.Messaging.Services.IMessagingService _messaging;
     private readonly ILogger<TelemedicineService> _log;
+    private readonly Application.Modules.ClinicPlus.IQuestionnaireService? _questionnaires;
 
     public TelemedicineService(ApplicationDbContext db, ICurrentUserService current, IConfiguration config,
-        Application.Modules.Messaging.Services.IMessagingService messaging, ILogger<TelemedicineService> log)
+        Application.Modules.Messaging.Services.IMessagingService messaging, ILogger<TelemedicineService> log,
+        Application.Modules.ClinicPlus.IQuestionnaireService? questionnaires = null)
     {
+        _questionnaires = questionnaires;
         _messaging = messaging;
         _log = log;
         _db = db;
@@ -117,6 +120,7 @@ public class TelemedicineService : ITelemedicineService
         var note = input.PreConsultNote?.Trim();
         if (note is { Length: > 2000 }) throw new AppException("note_too_long", "Note is too long (max 2000 characters).");
 
+        if (_questionnaires is not null) await _questionnaires.EnsureCompletedIfRequiredAsync(c.Appt.Id, ct);
         var room = await EnsureRoomAsync(c.Appt, ct);
         if (StateOf(room) != "Open") throw new ConflictException("The room is not open for check-in right now.");
 

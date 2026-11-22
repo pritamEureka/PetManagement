@@ -24,3 +24,4 @@ data:
   JWT_ACCESS_MINUTES: "60"
   JWT_REFRESH_DAYS: "14"
   LOG_LEVEL: "Information"
+  Database__AutoMigrate: "false"

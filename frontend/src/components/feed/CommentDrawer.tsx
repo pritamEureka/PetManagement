@@ -20,6 +20,7 @@ import { toast } from "@/components/ui/sonner";
 import { MoreHorizontal } from "lucide-react";
 import { ReportPostDialog } from "./ReportPostDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { AuthorRepBadge } from "./AuthorRepBadge";
 
 interface Props {
   open: boolean;
@@ -156,7 +157,7 @@ function CommentRow({ c, onDelete, onReport, onEdited }: RowProps) {
       <div className="flex-1 min-w-0 space-y-1">
         <div className="rounded-lg bg-muted px-3 py-2 relative">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-xs font-semibold">{c.authorName} {c.updatedAt && <Badge variant="muted" className="text-[8px] ml-1">edited</Badge>}</p>
+            <p className="text-xs font-semibold">{c.authorName}<AuthorRepBadge userId={c.authorId} /> {c.updatedAt && <Badge variant="muted" className="text-[8px] ml-1">edited</Badge>}</p>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-3 w-3" /></Button>

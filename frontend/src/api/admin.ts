@@ -1,3 +1,4 @@
+import { withStepUp } from "@/lib/withStepUp";
 import { api } from "./client";
 
 export interface AdminUser {
@@ -57,10 +58,10 @@ export const adminApi = {
     api.delete(`/v1/admin/users/${id}`),
 
   grantRole: (id: string, roleName: string) =>
-    api.post(`/v1/admin/users/${id}/roles`, { roleName }),
+    withStepUp(() => api.post(`/v1/admin/users/${id}/roles`, { roleName })),
 
   revokeRole: (id: string, roleName: string) =>
-    api.delete(`/v1/admin/users/${id}/roles/${encodeURIComponent(roleName)}`),
+    withStepUp(() => api.delete(`/v1/admin/users/${id}/roles/${encodeURIComponent(roleName)}`)),
 
   // Suspend via the moderation surface. UsersPage only collects a confirm() click,
   // so we send a generic reason; richer flows should call the moderation API directly.

@@ -33,7 +33,7 @@ public class S3ObjectStorage : IObjectStorage, IDisposable
             ContentType = contentType,
             DisablePayloadSigning = true
         }, ct);
-        return PublicUrl(key);
+        return ResolveUrl(key);
     }
 
     public Task<PresignedUpload> CreatePresignedUploadAsync(string key, string contentType, TimeSpan? expiresIn = null, CancellationToken ct = default)
@@ -47,7 +47,7 @@ public class S3ObjectStorage : IObjectStorage, IDisposable
             Expires = expiry,
             ContentType = contentType
         });
-        return Task.FromResult(new PresignedUpload(url, key, PublicUrl(key), expiry));
+        return Task.FromResult(new PresignedUpload(url, key, ResolveUrl(key), expiry));
     }
 
     public Task<string> CreatePresignedDownloadAsync(string key, TimeSpan? expiresIn = null, CancellationToken ct = default)
@@ -64,6 +64,49 @@ public class S3ObjectStorage : IObjectStorage, IDisposable
 
     public Task DeleteAsync(string key, CancellationToken ct = default)
         => _s3.DeleteObjectAsync(_opts.Bucket, key, ct);
+
+    public async Task<ObjectHead?> HeadAsync(string key, CancellationToken ct = default)
+    {
+        try
+        {
+            var m = await _s3.GetObjectMetadataAsync(_opts.Bucket, key, ct);
+            return new ObjectHead(m.ContentLength, m.Headers.ContentType, m.LastModified.ToUniversalTime());
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<byte[]> ReadRangeAsync(string key, long from, int length, CancellationToken ct = default)
+    {
+        if (length <= 0) return Array.Empty<byte>();
+        using var resp = await _s3.GetObjectAsync(new GetObjectRequest
+        {
+            BucketName = _opts.Bucket,
+            Key = key,
+            ByteRange = new ByteRange(from, from + length - 1)
+        }, ct);
+        using var ms = new MemoryStream();
+        await resp.ResponseStream.CopyToAsync(ms, ct);
+        return ms.ToArray();
+    }
+
+    public string GetUrl(string key) => ResolveUrl(key);
+
+    /// <summary>Public URL, or an expiring presigned GET when Storage:PrivateByDefault is on.</summary>
+    private string ResolveUrl(string key)
+    {
+        if (!_opts.PrivateByDefault) return PublicUrl(key);
+        var minutes = Math.Clamp(_opts.SignedUrlMinutes, 1, 7 * 24 * 60);
+        return _s3.GetPreSignedURL(new GetPreSignedUrlRequest
+        {
+            BucketName = _opts.Bucket,
+            Key = key,
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.AddMinutes(minutes)
+        });
+    }
 
     private string PublicUrl(string key)
     {

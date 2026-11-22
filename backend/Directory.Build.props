@@ -5,5 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+
+  <!-- CI only (GitHub Actions sets CI=true): stricter analysis. Local builds keep analyzers as plain warnings.
+       Warnings become errors only when the pipeline opts in with -p:StrictWarnings=true (see ci.yml). -->
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(CI)' == 'true' And '$(StrictWarnings)' == 'true'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Dependency vulnerability advisories are tracked by Trivy, not by the compiler gate. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904;NU1603</WarningsNotAsErrors>
   </PropertyGroup>
 </Project>

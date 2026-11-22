@@ -11,7 +11,12 @@ public class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage
         b.ToTable("outbox_messages");
         // The dispatcher scans by (status, NextAttemptAt). A composite index
         // keeps that scan cheap even with millions of rows.
-        b.HasIndex(x => new { x.Status, x.NextAttemptAt });
+        // Partial: only Pending (status = 0) rows are ever scanned, so the index stays tiny
+        // regardless of how many Dispatched rows accumulate. Status is stored as int.
+        b.HasIndex(x => new { x.Status, x.NextAttemptAt })
+            .HasDatabaseName("ix_outbox_messages_pending_next_attempt")
+            .HasFilter("status = 0");
+        b.Property(x => x.ClaimedBy).HasMaxLength(64);
         b.HasIndex(x => x.OccurredAt);
         b.Property(x => x.Topic).HasMaxLength(128).IsRequired();
         b.Property(x => x.EventType).HasMaxLength(128).IsRequired();

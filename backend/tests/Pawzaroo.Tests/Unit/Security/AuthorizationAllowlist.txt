@@ -1,0 +1,165 @@
+# Authorization allowlist for ControllerAuthorizationTests.
+#
+# Format: one entry per line, '#' starts a comment.
+#   anon <Controller>.<Action>   endpoint reachable WITHOUT a token (explicit [AllowAnonymous] or no auth
+#                                metadata at all). Public endpoints must be approved here deliberately.
+#   ownership <Controller>       controller whose authorized actions may lack [Permission] because access is
+#                                enforced by object ownership / service-level checks (PetAccessService etc).
+#
+# Rules enforced by the test:
+#   1. Every action is [Authorize]/[Permission] (class or action) or listed here as 'anon'.
+#   2. Anonymous actions NOT listed here fail the test (the message lists them so they can be reviewed + approved).
+#   3. Controllers NOT listed as 'ownership' must put [Permission] on every authorized action.
+# Seeded from a source scan; extend (do not blindly append) when adding controllers.
+
+# ---- anonymous / public endpoints ------------------------------------------
+anon ProductsLegacyController.List
+anon AdoptionController.Public
+anon AdoptionController.Get
+anon AdoptionRequestsController.SearchWanted
+anon CommentsController.List
+anon CourierWebhooksController.Receive
+anon MarketplaceDiscoveryController.Search
+anon MarketplaceDiscoveryController.Suggest
+anon PaymentsController.Success
+anon PaymentsController.Fail
+anon PaymentsController.Cancel
+anon PaymentsController.Ipn
+anon PostsController.Public
+anon PostsController.ByUser
+anon PostsController.Get
+anon ProductsController.Search
+anon ProductsController.Get
+anon ProductsController.ListReviews
+anon ProductsController.Categories
+anon PublicPetsController.Pet
+anon PublicPetsController.Sighting
+anon PublicPetsController.SharedHealth
+anon PublicPetsController.SharedHealthHtml
+anon PetHealthPlusPublicController.Card
+anon PetHealthPlusPublicController.CardHtml
+anon PetHealthPlusPublicController.Verify
+anon PetHealthPlusPublicController.CertificateHtml
+anon PushController.VapidPublicKey
+anon SecurityPlusController.PasskeyLoginOptions
+anon SecurityPlusController.PasskeyLoginVerify
+anon SecurityPlusController.RecoveryStart
+anon SecurityPlusController.RecoveryComplete
+anon ShopPlusController.Variants
+anon StoresController.Search
+anon StoresController.Get
+anon StoresController.ListReviews
+anon VetsController.Search
+anon VetsController.Specialties
+anon VetsController.Get
+anon VetsController.Reviews
+anon VetsController.Slots
+anon AuthController.Register
+anon AuthController.Login
+anon AuthController.Refresh
+
+# ---- ownership-authorized controllers (seeded with every controller present at creation) ----
+ownership AdminAppointmentsController
+ownership AdminController
+ownership AdminDashboardController
+ownership AdminNotificationsController
+ownership AdminSettingsController
+ownership AdoptionController
+ownership AdoptionRequestsController
+ownership AppointmentSeriesController
+ownership AppointmentsController
+ownership AssistantController
+ownership AuditController
+ownership AuthController
+ownership CalendarController
+ownership CartController
+ownership CommentsController
+ownership CommissionsController
+ownership CommunitiesController
+ownership CommunityEventsController
+ownership CouponsController
+ownership CourierWebhooksController
+ownership DeliveriesController
+ownership DeliveryTrackingController
+ownership LivestockController
+ownership LostFoundController
+ownership MarketplaceDiscoveryController
+ownership MediaController
+ownership MessagesController
+ownership ModerationController
+ownership NotificationPreferencesController
+ownership NotificationsController
+ownership OperationsIntelligenceController
+ownership OrdersController
+ownership OrdersLegacyController
+ownership PaymentsController
+ownership PermissionsController
+ownership PetServicesController
+ownership PetsController
+ownership PostsController
+ownership ProductsController
+ownership ProductsLegacyController
+ownership PublicPetsController
+ownership PushController
+ownership ReportsController
+ownership RolesController
+ownership SavedPostsController
+ownership ScheduledReportsController
+ownership SecurityController
+ownership SecurityPlusController
+ownership SettlementsController
+ownership ShippingAddressesController
+ownership ShopPlusController
+ownership StoresController
+ownership TelemedicineController
+ownership UserRolesController
+ownership UsersAdminController
+ownership UsersController
+ownership VetsController
+ownership WaitlistsController
+ownership WishlistController
+
+# ---- added in the second pass (controllers introduced concurrently; reviewed: token-gated or authorized) ----
+anon ClinicPlusController.SharedFeed
+anon PetHealthPlusPublicController.Card
+anon PetHealthPlusPublicController.CardHtml
+anon PetHealthPlusPublicController.Verify
+anon PetHealthPlusPublicController.CertificateHtml
+ownership AdminCapacityController
+ownership AdminDeadLettersController
+ownership AdminSecuritySignalsController
+ownership AdoptionPlusController
+ownership ClinicPlusController
+ownership CommunityPlusController
+ownership LivestockHealthController
+ownership MessagingPlusController
+ownership NearbyFeedController
+ownership PaymentReconciliationController
+ownership PetHealthPlusController
+ownership PetHealthPlusPublicController
+ownership PetSocialController
+
+# --- improvements.md package: reviewed by the lead ---------------------------------------------------------------
+# Public marketplace catalog reads (active-only data; inactive items require store ownership in the service).
+anon MarketplacePlusController.ActivePromotions
+anon MarketplacePlusController.Bundle
+anon MarketplacePlusController.Bundles
+anon MarketplacePlusController.BundlesForProduct
+anon MarketplacePlusController.BundlesForStore
+anon MarketplacePlusController.Compare
+anon MarketplacePlusController.DeliveryForStore
+# HMAC-signed, expiring media link (signature + expiry verified before redirecting to a short-lived presigned URL).
+anon MediaController.Signed
+# Public pet profile: visibility (Public/Followers/Private) enforced server-side.
+anon PublicPetsController.PetSocial
+
+# Service-level checks: Settings.View/Edit (zones, rules, SLAs), Orders.Refund, Delivery.*, store ownership,
+# or per-user scoping (mutes, digests, loyalty, return pickups).
+ownership FulfillmentSlaController
+ownership MarketplacePlusController
+ownership NotificationDigestController
+ownership NotificationMutesController
+ownership PartialRefundsController
+ownership ReturnPickupsController
+ownership ShippingController
+ownership StoreMetricsController

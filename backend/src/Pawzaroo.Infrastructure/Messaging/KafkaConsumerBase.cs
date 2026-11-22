@@ -32,6 +32,9 @@ public abstract class KafkaConsumerBase : BackgroundService
     /// <summary>Unique consumer group id (one per concern).</summary>
     protected abstract string GroupId { get; }
 
+    /// <summary>Group id as seen by the broker (<c>Kafka:TopicPrefix</c> applied).</summary>
+    protected string PhysicalGroupId => KafkaTopicNaming.ApplyGroup(Options.TopicPrefix, GroupId);
+
     /// <summary>Topics to subscribe to.</summary>
     protected abstract IReadOnlyList<string> Topics { get; }
 
@@ -52,12 +55,12 @@ public abstract class KafkaConsumerBase : BackgroundService
         var config = new ConsumerConfig
         {
             BootstrapServers   = Options.BootstrapServers,
-            GroupId            = GroupId,
+            GroupId            = PhysicalGroupId,
             AutoOffsetReset    = AutoOffsetReset.Earliest,
             EnableAutoCommit   = false,                  // we commit after success only
             EnableAutoOffsetStore = false,
             SessionTimeoutMs   = 45_000,
-            ClientId           = $"{GroupId}-{Environment.MachineName}"
+            ClientId           = $"{PhysicalGroupId}-{Environment.MachineName}"
         };
 
         if (!string.IsNullOrWhiteSpace(Options.SecurityProtocol)
@@ -77,8 +80,9 @@ public abstract class KafkaConsumerBase : BackgroundService
             .SetErrorHandler((_, e) => Logger.LogWarning("[kafka consumer {Group}] {Reason}", GroupId, e.Reason))
             .Build();
 
-        consumer.Subscribe(Topics);
-        Logger.LogInformation("[kafka] consumer {Group} subscribed to {Topics}", GroupId, string.Join(", ", Topics));
+        var wireTopics = Topics.Select(t => KafkaTopicNaming.Apply(Options.TopicPrefix, t)).ToList();
+        consumer.Subscribe(wireTopics);
+        Logger.LogInformation("[kafka] consumer {Group} subscribed to {Topics}", PhysicalGroupId, string.Join(", ", wireTopics));
 
         try
         {
@@ -93,7 +97,7 @@ public abstract class KafkaConsumerBase : BackgroundService
                     if (!TryParseEnvelope(cr.Message, out var header, out var data))
                     {
                         Logger.LogWarning("[kafka {Group}] malformed envelope on {Topic}; routing to DLQ", GroupId, cr.Topic);
-                        await ParkInDlqAsync(cr, "malformed-envelope", stoppingToken);
+                        await ParkInDlqAsync(cr, "malformed-envelope", FailureKind.Permanent, 1, DateTime.UtcNow, stoppingToken);
                         consumer.StoreOffset(cr);
                         consumer.Commit(cr);
                         continue;
@@ -101,23 +105,23 @@ public abstract class KafkaConsumerBase : BackgroundService
 
                     await using var scope = ScopeFactory.CreateAsyncScope();
                     var idempotency = scope.ServiceProvider.GetService<IConsumerIdempotency>();
-                    if (idempotency is not null && !await idempotency.TryClaimAsync(GroupId, header.EventId, stoppingToken))
+                    if (idempotency is not null && !await idempotency.TryClaimAsync(PhysicalGroupId, header.EventId, stoppingToken))
                     {
                         Logger.LogDebug("[kafka {Group}] duplicate event {EventId}, skipping", GroupId, header.EventId);
                     }
                     else
                     {
-                        try
+                        var firstFailedAt = DateTime.UtcNow;
+                        var outcome = await RunHandlerWithRetryAsync(ct =>
+                            HandleAsync(LogicalTopic(cr.Topic), data, header, scope.ServiceProvider, ct), stoppingToken);
+                        if (outcome.Error is not null)
                         {
-                            await WithRetryAsync(ct =>
-                                HandleAsync(cr.Topic, data, header, scope.ServiceProvider, ct), stoppingToken);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.LogError(ex, "[kafka {Group}] handler exhausted retries on {Topic} key={Key}; parking", GroupId, cr.Topic, cr.Message.Key);
-                            await ParkInDlqAsync(cr, ex.GetType().Name + ": " + ex.Message, stoppingToken);
+                            var ex = outcome.Error;
+                            Logger.LogError(ex, "[kafka {Group}] {Kind} failure after {Attempts} attempt(s) on {Topic} key={Key}; parking",
+                                GroupId, outcome.Kind, outcome.Attempts, cr.Topic, cr.Message.Key);
+                            await ParkInDlqAsync(cr, ex.GetType().Name + ": " + ex.Message, outcome.Kind, outcome.Attempts, firstFailedAt, stoppingToken);
                             // Release idempotency claim so a replay from DLQ can re-run.
-                            if (idempotency is not null) await idempotency.ReleaseAsync(GroupId, header.EventId, stoppingToken);
+                            if (idempotency is not null) await idempotency.ReleaseAsync(PhysicalGroupId, header.EventId, stoppingToken);
                         }
                     }
 
@@ -131,55 +135,89 @@ public abstract class KafkaConsumerBase : BackgroundService
         finally { consumer.Close(); }
     }
 
-    /// <summary>Exponential backoff: base * 2^attempt with jitter.</summary>
-    private async Task WithRetryAsync(Func<CancellationToken, Task> work, CancellationToken ct)
+    private string LogicalTopic(string wireTopic) => KafkaTopicNaming.Strip(Options.TopicPrefix, wireTopic);
+
+    private readonly record struct HandlerOutcome(Exception? Error, FailureKind Kind, int Attempts);
+
+    /// <summary>
+    /// Runs the handler. Transient failures are retried with exponential backoff up to
+    /// <c>RetryAttempts</c> extra attempts; permanent failures (see <see cref="FailureClassifier"/>) stop at once.
+    /// Returns the final error (null on success) instead of throwing so the caller can route to the DLQ.
+    /// </summary>
+    private async Task<HandlerOutcome> RunHandlerWithRetryAsync(Func<CancellationToken, Task> work, CancellationToken ct)
     {
         var attempts = Options.RetryAttempts;
         var baseDelay = Options.RetryBaseDelayMs;
 
         for (var i = 0; ; i++)
         {
-            try { await work(ct); return; }
-            catch when (i >= attempts) { throw; }
+            try { await work(ct); return new HandlerOutcome(null, FailureKind.Transient, i + 1); }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
-                var delay = TimeSpan.FromMilliseconds(baseDelay * Math.Pow(2, i) + Random.Shared.Next(50, 250));
-                Logger.LogWarning(ex, "[kafka {Group}] handler attempt {Attempt} failed, retrying in {Delay}", GroupId, i + 1, delay);
+                var kind = FailureClassifier.ClassifyConsumerFailure(ex);
+                if (kind == FailureKind.Permanent || i >= attempts)
+                    return new HandlerOutcome(ex, kind, i + 1);
+
+                var delay = ConsumerBackoff.Delay(baseDelay, i, Random.Shared.Next(50, 250));
+                Logger.LogWarning(ex, "[kafka {Group}] transient handler failure (attempt {Attempt}), retrying in {Delay}", GroupId, i + 1, delay);
                 await Task.Delay(delay, ct);
             }
         }
     }
 
     /// <summary>
-    /// Routes the offending message to <c>{topic}.dlq</c> with two extra headers
-    /// (<c>dlq-reason</c>, <c>dlq-source-topic</c>) so operators can replay.
+    /// Routes the offending message to <c>{topic}.dlq</c> (headers <c>dlq-reason</c>, <c>dlq-source-topic</c>)
+    /// using the shared producer, and persists a <c>DeadLetterRecord</c> for the admin re-drive UI.
+    /// Both writes are independent and best-effort so one failing never blocks the other.
     /// </summary>
-    private async Task ParkInDlqAsync(ConsumeResult<string, string> source, string reason, CancellationToken ct)
+    private async Task ParkInDlqAsync(ConsumeResult<string, string> source, string reason, FailureKind kind,
+        int attempts, DateTime firstFailedAt, CancellationToken ct)
     {
+        var logicalTopic = LogicalTopic(source.Topic);
+        Pawzaroo.Infrastructure.Observability.PawzarooTelemetry.DlqMessages.Add(1,
+            new KeyValuePair<string, object?>("topic", logicalTopic),
+            new KeyValuePair<string, object?>("kind", kind.ToString()));
+
+        var headerMap = new Dictionary<string, string>();
+        foreach (var h in source.Message.Headers ?? new Headers())
+            headerMap[h.Key] = Encoding.UTF8.GetString(h.GetValueBytes());
+
+        // 1) durable record (fresh scope: the handler scope's DbContext may hold failed changes)
         try
         {
-            var dlqTopic = source.Topic + Pawzaroo.Application.Common.Messaging.KafkaTopics.DeadLetterSuffix;
-            using var dlqProducer = new ProducerBuilder<string, string>(new ProducerConfig
-            {
-                BootstrapServers = Options.BootstrapServers,
-                EnableIdempotence = true
-            }).Build();
-
-            var headers = source.Message.Headers ?? new Headers();
-            headers.Add(new Header("dlq-reason", Encoding.UTF8.GetBytes(reason)));
-            headers.Add(new Header("dlq-source-topic", Encoding.UTF8.GetBytes(source.Topic)));
-
-            await dlqProducer.ProduceAsync(dlqTopic, new Message<string, string>
-            {
-                Key = source.Message.Key,
-                Value = source.Message.Value,
-                Headers = headers
-            }, ct);
-            dlqProducer.Flush(TimeSpan.FromSeconds(2));
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var recorder = scope.ServiceProvider.GetService<IDeadLetterRecorder>();
+            if (recorder is not null)
+                await recorder.RecordAsync(new DeadLetterEntry(logicalTopic, source.Partition.Value, source.Offset.Value,
+                    source.Message.Key, source.Message.Value ?? "", headerMap, GroupId, reason, kind, attempts, firstFailedAt), ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.LogError(ex, "[kafka {Group}] failed to write to DLQ — message dropped", GroupId);
+            Logger.LogError(ex, "[kafka {Group}] failed to persist DeadLetterRecord for {Topic}[{Partition}]@{Offset}",
+                GroupId, source.Topic, source.Partition.Value, source.Offset.Value);
+        }
+
+        // 2) DLQ topic via the single shared producer
+        try
+        {
+            var dlqTopic = logicalTopic + Pawzaroo.Application.Common.Messaging.KafkaTopics.DeadLetterSuffix;
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var producer = scope.ServiceProvider.GetService<IRawKafkaProducer>() ?? SharedKafkaProducer.GetShared(Options);
+
+            var headers = headerMap
+                .Where(kv => kv.Key is not ("dlq-reason" or "dlq-source-topic"))
+                .Select(kv => new KeyValuePair<string, byte[]>(kv.Key, Encoding.UTF8.GetBytes(kv.Value)))
+                .ToList();
+            headers.Add(new("dlq-reason", Encoding.UTF8.GetBytes(reason)));
+            headers.Add(new("dlq-source-topic", Encoding.UTF8.GetBytes(logicalTopic)));
+            headers.Add(new("dlq-failure-kind", Encoding.UTF8.GetBytes(kind.ToString())));
+
+            await producer.ProduceAsync(dlqTopic, source.Message.Key, source.Message.Value ?? "", headers, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "[kafka {Group}] failed to write to DLQ topic (record persisted if DB was reachable)", GroupId);
         }
     }
 

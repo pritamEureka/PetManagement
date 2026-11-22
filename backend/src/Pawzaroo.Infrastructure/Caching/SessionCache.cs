@@ -13,7 +13,13 @@ namespace Pawzaroo.Infrastructure.Caching;
 public class SessionCache : ISessionCache
 {
     private readonly CacheHelper _cache;
-    public SessionCache(CacheHelper cache) => _cache = cache;
+    private readonly IDegradedModePolicy _policy;
+
+    public SessionCache(CacheHelper cache, IDegradedModePolicy? policy = null)
+    {
+        _cache = cache;
+        _policy = policy ?? new DegradedModePolicyService();
+    }
 
     // --- Access-token blacklist --------------------------------------------
 
@@ -24,8 +30,16 @@ public class SessionCache : ISessionCache
         catch (RedisException) { /* swallow: blacklist is best-effort */ }
     }
 
-    public Task<bool> IsAccessTokenBlacklistedAsync(string jti, CancellationToken ct = default)
-        => _cache.ExistsAsync(RedisKeys.Blacklist(jti));
+    public async Task<bool> IsAccessTokenBlacklistedAsync(string jti, CancellationToken ct = default)
+    {
+        try { return await _cache.Db.KeyExistsAsync(RedisKeys.Blacklist(jti)); }
+        catch (RedisException ex)
+        {
+            // Policy-driven (Security:RedisDegraded:TokenBlacklist). Default FailOpen: access tokens are short-lived (<=15 min).
+            _policy.Report(DegradedSites.TokenBlacklist, ex);
+            return _policy.For(DegradedSites.TokenBlacklist) == DegradedModePolicy.FailClosed;
+        }
+    }
 
     // --- Refresh-token sessions --------------------------------------------
 

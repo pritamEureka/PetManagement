@@ -7,7 +7,11 @@ export type ChatEvent =
   | { kind: "typing"; payload: { conversationId: string; userId: string; isTyping: boolean } }
   | { kind: "read"; payload: { conversationId: string; userId: string; lastMessageId?: string; readAt: string } }
   | { kind: "delivered"; payload: { messageId: string; userId: string; at: string } }
-  | { kind: "presence"; payload: { userId: string; online: boolean } };
+  | { kind: "presence"; payload: { userId: string; online: boolean } }
+  | { kind: "messageEdited"; payload: { messageId: string; conversationId: string; content: string; isEdited: boolean } }
+  | { kind: "messageRemoved"; payload: { messageId: string; conversationId: string; reason: string } }
+  | { kind: "pinned"; payload: { conversationId: string; messageId: string; pinned: boolean } }
+  | { kind: "convSettings"; payload: { conversationId: string; disappearAfterSeconds?: number | null; e2eeEnabled: boolean } };
 
 type ConnState = "disconnected" | "connecting" | "connected";
 
@@ -32,7 +36,15 @@ function ensureHub(): SharedHub {
   const h: SharedHub = { conn, state: "disconnected", subscribers, stateSubscribers, refCount: 0 };
 
   const fan = (e: ChatEvent) => { subscribers.forEach((s) => s(e)); };
-  conn.on("message",   (p) => fan({ kind: "message",   payload: p }));
+  conn.on("message", (p) => {
+    // Plus-events share the "message" channel, discriminated by payload.kind.
+    const k = p?.kind;
+    if (k === "edited") return fan({ kind: "messageEdited", payload: p.data });
+    if (k === "removed") return fan({ kind: "messageRemoved", payload: p.data });
+    if (k === "pinned") return fan({ kind: "pinned", payload: p.data });
+    if (k === "settings") return fan({ kind: "convSettings", payload: p.data });
+    fan({ kind: "message", payload: p });
+  });
   conn.on("typing",    (p) => fan({ kind: "typing",    payload: p }));
   conn.on("read",      (p) => fan({ kind: "read",      payload: p }));
   conn.on("delivered", (p) => fan({ kind: "delivered", payload: p }));
@@ -93,6 +105,7 @@ export function useChatHub(onEvent: (e: ChatEvent) => void) {
     leaveConversation: (id: string) => shared?.conn.invoke("LeaveConversation", id).catch(() => {}),
     sendTyping: (id: string, on: boolean) => shared?.conn.invoke("Typing", id, on).catch(() => {}),
     markRead: (id: string, lastMessageId?: string) => shared?.conn.invoke("MarkRead", id, lastMessageId ?? null).catch(() => {}),
+    heartbeat: () => shared?.conn.invoke("Heartbeat").catch(() => {}),
     ackDelivered: (messageId: string) => shared?.conn.invoke("AckDelivered", messageId).catch(() => {})
   };
 }

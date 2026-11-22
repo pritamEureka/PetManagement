@@ -370,7 +370,7 @@ public class PetsController : ControllerBase
     [Produces("text/html")]
     [SkipApiResponseWrapping]
     public async Task<IActionResult> HealthReport(Guid id, CancellationToken ct)
-        => Content(PetHealthReportRenderer.Render(await _sharing.GetHealthReportAsync(id, ct)), "text/html");
+        { await HttpContext.RequestServices.GetRequiredService<Pawzaroo.Application.Modules.SecurityPlus.IStepUpAuthService>().RequireRecentAsync(ct); return Content(PetHealthReportRenderer.Render(await _sharing.GetHealthReportAsync(id, ct)), "text/html"); }
 
     [HttpGet("{id:guid}/share-links")]
     [Permission(Permissions.Pets.View)]

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { Search, Stethoscope, Star, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,13 +31,16 @@ export function VetsPage() {
     })
   });
 
+  // `?emergency=true` hands off to the dedicated emergency directory.
+  if (searchParams.get("emergency") === "true") return <Navigate to="/vets/emergency" replace />;
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Stethoscope className="h-6 w-6 text-primary" /> Find a veterinarian
         </h1>
-        <p className="text-sm text-muted-foreground">Approved doctors only. Book online or in-clinic visits.</p>
+        <p className="text-sm text-muted-foreground">Approved doctors only. Book online or in-clinic visits. <Link to="/vets/emergency" className="underline text-destructive">Emergency or 24/7 vet?</Link></p>
       </div>
 
       <Card>

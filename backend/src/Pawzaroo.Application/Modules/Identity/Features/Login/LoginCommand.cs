@@ -4,6 +4,7 @@ using Pawzaroo.Application.Common.Cqrs;
 using Pawzaroo.Application.Common.DTOs;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Modules.Security.Services;
+using Pawzaroo.Application.Modules.SecurityPlus;
 using Pawzaroo.Domain.Common;
 using Pawzaroo.Shared.Exceptions;
 
@@ -33,20 +34,24 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponse>
     private readonly ITokenIssuer _tokens;
     private readonly IUserDeviceService _devices;
     private readonly ITwoFactorService _twoFactor;
+    private readonly ISecuritySignalService? _signals;
 
     public LoginCommandHandler(IApplicationDbContext db, IPasswordHasher hasher, ITokenIssuer tokens,
-        IUserDeviceService devices, ITwoFactorService twoFactor)
+        IUserDeviceService devices, ITwoFactorService twoFactor, ISecuritySignalService? signals = null)
     {
         _db = db;
         _hasher = hasher;
         _tokens = tokens;
         _devices = devices;
         _twoFactor = twoFactor;
+        _signals = signals;
     }
 
     public async Task<AuthResponse> HandleAsync(LoginCommand req, CancellationToken ct)
     {
         var email = req.Email.Trim().ToLowerInvariant();
+        if (_signals is not null && await _signals.RecordIdentifierAttemptAsync(req.Ip, email, "login", ct))
+            throw new ForbiddenException("Too many attempts. Try again later.");
         var user = await _db.Users.SingleOrDefaultAsync(u => u.Email == email, ct)
             ?? throw new ForbiddenException("Invalid credentials.");
 
@@ -86,6 +91,8 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponse>
         // Track the device (best-effort — login should not fail if cache is down).
         try { await _devices.TrackOnLoginAsync(user.Id, req.UserAgent, req.Ip, req.ClientFingerprint, ct); }
         catch { /* ignore — device hint is non-critical */ }
+        try { if (_signals is not null) await _signals.AnalyzeLoginAsync(user.Id, req.Ip, ct); }
+        catch { /* detection is best-effort */ }
 
         return await _tokens.IssueAsync(user, req.Ip, ct);
     }

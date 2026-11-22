@@ -1,0 +1,92 @@
+# Prometheus alert rules for Pawzaroo.
+# Application metrics (Meter "Pawzaroo") reach Prometheus via an OpenTelemetry Collector
+# (OTLP -> prometheus exporter); counters gain "_total", ms histograms become "*_milliseconds".
+# http_* series come from prometheus-net (/metrics on the API). Adjust thresholds per environment.
+groups:
+  - name: pawzaroo-availability
+    rules:
+      - alert: ApiDown
+        expr: up{job="pawzaroo-api"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations: { summary: "API target is down" }
+
+      - alert: High5xxRate
+        expr: |
+          sum(rate(http_requests_received_total{code=~"5.."}[5m]))
+            / clamp_min(sum(rate(http_requests_received_total[5m])), 1) > 0.02
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "More than 2% of requests are failing with 5xx" }
+
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 1.5
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "API p95 latency above 1.5s" }
+
+  - name: pawzaroo-outbox-kafka
+    rules:
+      - alert: OutboxBacklogHigh
+        expr: outbox_pending > 1000
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Outbox has more than 1000 pending rows" }
+
+      - alert: OutboxOldestPendingTooOld
+        expr: outbox_oldest_pending_age_seconds > 300
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "Oldest pending outbox row is older than 5 minutes (dispatcher stuck?)" }
+
+      - alert: OutboxPoisonedOrFailed
+        expr: increase(outbox_dispatched_total{result=~"poisoned|failed"}[15m]) > 0
+        labels: { severity: warning }
+        annotations: { summary: "Outbox rows were poisoned or exhausted retries" }
+
+      - alert: KafkaConsumerLagHigh
+        # Requires kafka-exporter (kafka_consumergroup_lag).
+        expr: sum by (consumergroup, topic) (kafka_consumergroup_lag) > 5000
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Consumer group {{ $labels.consumergroup }} lagging on {{ $labels.topic }}" }
+
+      - alert: DeadLettersAccumulating
+        expr: increase(dlq_messages_total[15m]) > 10
+        labels: { severity: warning }
+        annotations: { summary: "More than 10 messages dead-lettered in 15 minutes" }
+
+  - name: pawzaroo-datastores
+    rules:
+      - alert: PostgresConnectionPoolNearExhaustion
+        # npgsql metrics when exported; otherwise falls back to pg_exporter.
+        expr: |
+          (db_client_connections_usage / clamp_min(db_client_connections_max, 1)) > 0.85
+          or (sum(pg_stat_activity_count) / max(pg_settings_max_connections)) > 0.85
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "Database connection pool above 85%" }
+
+      - alert: RedisMemorySaturation
+        # Requires redis_exporter.
+        expr: redis_memory_used_bytes / (redis_memory_max_bytes > 0) > 0.85
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Redis memory above 85% of maxmemory" }
+
+  - name: pawzaroo-business
+    rules:
+      - alert: PaymentFailuresSpike
+        # payments_failed_total / payments_attempted_total are expected from the payments module.
+        expr: |
+          sum(rate(payments_failed_total[10m])) / clamp_min(sum(rate(payments_attempted_total[10m])), 0.001) > 0.1
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "More than 10% of payments are failing" }
+
+      - alert: WebhookRejectionsSpike
+        expr: sum(rate(webhook_rejected_total[10m])) / clamp_min(sum(rate(webhook_received_total[10m])), 0.001) > 0.2
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "More than 20% of inbound webhooks are rejected (bad signatures?)" }

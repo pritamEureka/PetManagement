@@ -1,5 +1,6 @@
 import { api } from "./client";
 import { withStepUp } from "@/lib/withStepUp";
+import { withIdempotency } from "@/lib/idempotency";
 
 // ---------- Shared types --------------------------------------------------
 
@@ -206,6 +207,8 @@ export interface CheckoutPayload {
   shippingAddress?: string; shippingCity?: string; shippingCountry?: string;
   paymentMethod?: string;
   couponCode?: string;
+  redeemLoyaltyPoints?: number;
+  giftCardCode?: string;
 }
 
 // ---------- Shipping address ----------------------------------------------
@@ -334,7 +337,8 @@ export const productsV2Api = {
 };
 
 export const cartApi = {
-  get: () => api.get<ServerCart>(`${V1}/cart`).then((r) => r.data),
+  /** city: optional destination so the server previews delivery-zone shipping (defaults to the default address). */
+  get: (city?: string) => api.get<ServerCart>(`${V1}/cart`, { params: city ? { city } : undefined }).then((r) => r.data),
   add: (productId: string, quantity = 1) =>
     api.post<ServerCart>(`${V1}/cart/items`, { productId, quantity }).then((r) => r.data),
   update: (cartItemId: string, quantity: number) =>
@@ -345,7 +349,7 @@ export const cartApi = {
 };
 
 export const ordersV2Api = {
-  checkout: (payload: CheckoutPayload) => api.post<Order>(`${V1}/orders/checkout`, payload).then((r) => r.data),
+  checkout: (payload: CheckoutPayload) => api.post<Order>(`${V1}/orders/checkout`, payload, withIdempotency()).then((r) => r.data),
   mine: (page = 1, pageSize = 20) =>
     api.get<PageResult<Order>>(`${V1}/orders/mine`, { params: { page, pageSize } }).then((r) => r.data),
   get: (id: string) => api.get<Order>(`${V1}/orders/${id}`).then((r) => r.data),
@@ -365,7 +369,7 @@ export const ordersV2Api = {
   deny: (id: string, reason?: string) => api.post(`${V1}/orders/${id}/deny`, { reason }),
   // Refunds need a recent re-authentication: the server answers 403 step_up_required and withStepUp shows the dialog then retries.
   refund: (id: string, amount?: number) =>
-    withStepUp(() => api.post(`${V1}/orders/${id}/refund`, { amount })),
+    withStepUp(() => api.post(`${V1}/orders/${id}/refund`, { amount }, withIdempotency())),
   approveReturn: (id: string, amount?: number) =>
     withStepUp(() => api.post(`${V1}/orders/returns/${id}/approve`, { amount })),
   /** Absolute path the browser can open in a new tab — server renders text/html. */

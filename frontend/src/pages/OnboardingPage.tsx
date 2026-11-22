@@ -11,6 +11,8 @@ import { toast } from "@/components/ui/sonner";
 import { petsApi } from "@/api/pets";
 import { useI18n } from "@/lib/i18n";
 import { animalTypes } from "@/lib/schemas";
+import { useDraft } from "@/hooks/useDraft";
+import { DraftBanner } from "@/components/common/DraftBanner";
 
 type Intent = "owner" | "vet" | "store" | "shelter";
 
@@ -28,6 +30,8 @@ export function OnboardingPage() {
   const [intent, setIntent] = useState<Intent>("owner");
   const [pet, setPet] = useState({ name: "", animalType: "Dog", breed: "" });
   const [busy, setBusy] = useState(false);
+  const draftValue = { step, intent, pet };
+  const draft = useDraft("onboarding", draftValue, { enabled: !busy });
 
   async function finish(skipPet = false) {
     setBusy(true);
@@ -42,6 +46,7 @@ export function OnboardingPage() {
         });
         toast.success(`${t("onboarding.welcomePet", { name: pet.name })} 🐾`);
       }
+      draft.clear();
       nav("/home", { replace: true });
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message ?? t("onboarding.saveError"));
@@ -51,6 +56,14 @@ export function OnboardingPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-primary/5 to-background">
       <div className="w-full max-w-2xl space-y-4">
+        <DraftBanner<typeof draftValue>
+          draft={draft}
+          onRestore={(d) => {
+            if (d.intent) setIntent(d.intent);
+            if (d.pet) setPet(d.pet);
+            if (d.step) setStep(d.step);
+          }}
+        />
         <div className="flex items-center gap-2 justify-center text-muted-foreground text-sm">
           {[1, 2, 3].map((n) => (
             <Badge key={n} variant={step === n ? "default" : step > n ? "muted" : "outline"}>

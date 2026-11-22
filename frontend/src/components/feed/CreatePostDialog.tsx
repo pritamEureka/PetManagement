@@ -31,6 +31,15 @@ export function CreatePostDialog({ open, onOpenChange, onCreated }: Props) {
 
   const [mediaInput, setMediaInput] = useState("");
   const [tagInput, setTagInput] = useState("");
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  function toggleCoords() {
+    if (coords) return setCoords(null);
+    if (!navigator.geolocation) return toast.error("Location isn't available in this browser.");
+    navigator.geolocation.getCurrentPosition(
+      (p) => setCoords({ latitude: p.coords.latitude, longitude: p.coords.longitude }),
+      () => toast.error("Couldn't get your location."), { timeout: 10000 });
+  }
 
   function addMedia() {
     const url = mediaInput.trim();
@@ -66,6 +75,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreated }: Props) {
       await postsApi.create({
         ...values,
         animalType: values.animalType,
+        ...(coords ?? {}),
         mediaUrls: values.mediaUrls && values.mediaUrls.length > 0 ? values.mediaUrls : undefined,
         hashtags: values.hashtags && values.hashtags.length > 0 ? values.hashtags : undefined
       });
@@ -125,6 +135,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreated }: Props) {
             <Button type="button" variant="outline" onClick={addTag}><Hash className="h-4 w-4" /></Button>
           </div>
 
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!coords} onChange={toggleCoords} /> Add my approximate location (shows in Nearby)</label>
           {/* Location + animal type */}
           <div className="grid grid-cols-2 gap-3">
             <div className="relative">

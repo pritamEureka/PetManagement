@@ -1,3 +1,4 @@
+import { withStepUp } from "@/lib/withStepUp";
 /**
  * Admin V2 API surface. Maps every endpoint added under /api/v1/admin/*
  * plus the cross-module reads the dashboard pages depend on.
@@ -116,8 +117,8 @@ export const adminApi = {
     list: (params: { q?: string; role?: string; suspended?: boolean; active?: boolean; approvalStatus?: "Pending" | "Approved" | "Rejected"; page?: number; pageSize?: number } = {}) =>
       api.get<AdminUserListResponse>(`${V1}/admin/users`, { params }).then((r) => r.data),
     get: (id: string) => api.get<AdminUserDetail>(`${V1}/admin/users/${id}`).then((r) => r.data),
-    grantRole: (id: string, roleName: string) => api.post(`${V1}/admin/users/${id}/roles`, { roleName }),
-    revokeRole: (id: string, roleName: string) => api.delete(`${V1}/admin/users/${id}/roles/${roleName}`),
+    grantRole: (id: string, roleName: string) => withStepUp(() => api.post(`${V1}/admin/users/${id}/roles`, { roleName })),
+    revokeRole: (id: string, roleName: string) => withStepUp(() => api.delete(`${V1}/admin/users/${id}/roles/${roleName}`)),
     forceLogout: (id: string) => api.post(`${V1}/admin/users/${id}/force-logout`),
     approve: (id: string, notes?: string) => api.post(`${V1}/admin/users/${id}/approve`, { notes }),
     reject: (id: string, reason: string) => api.post(`${V1}/admin/users/${id}/reject`, { reason })

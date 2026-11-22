@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/common/PageHeader";
 import { adminApi } from "@/api/adminV2";
 import { AreaSeriesChart, DonutChart, HBarChart, LineSeriesChart } from "@/components/admin/Charts";
+import { useI18n } from "@/lib/i18n";
+import { formatNumber } from "@/lib/format";
 
 /**
  * Deep-dive analytics — same shape as the overview dashboard but with a
@@ -13,6 +15,7 @@ import { AreaSeriesChart, DonutChart, HBarChart, LineSeriesChart } from "@/compo
  * the Overview KPI cards so this page can grow without crowding the landing.
  */
 export function AdminAnalyticsPage() {
+  const { t } = useI18n();
   const [days, setDays] = useState(30);
 
   const { data: series, isLoading: seriesLoading } = useQuery({
@@ -26,17 +29,17 @@ export function AdminAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Analytics" icon={BarChart3} description="Platform trends, deep-dives and rankings." />
+      <PageHeader title={t("admin.nav.analytics")} icon={BarChart3} description={t("adm.analytics.desc")} />
 
       <div className="flex justify-end">
         <Select value={String(days)} onValueChange={(v) => setDays(Number(v))}>
           <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="14">Last 14 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="60">Last 60 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
+            <SelectItem value="7">{t("adm.analytics.days", { count: formatNumber(7) })}</SelectItem>
+            <SelectItem value="14">{t("adm.analytics.days", { count: formatNumber(14) })}</SelectItem>
+            <SelectItem value="30">{t("adm.analytics.days", { count: formatNumber(30) })}</SelectItem>
+            <SelectItem value="60">{t("adm.analytics.days", { count: formatNumber(60) })}</SelectItem>
+            <SelectItem value="90">{t("adm.analytics.days", { count: formatNumber(90) })}</SelectItem>
           </SelectContent>
         </Select>
       </div>

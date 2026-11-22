@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Interfaces;
+using Pawzaroo.Application.Modules.Reliability;
 
 namespace Pawzaroo.Infrastructure.Payments;
 
@@ -20,7 +21,7 @@ namespace Pawzaroo.Infrastructure.Payments;
 ///      forge it. Only Outcome=Succeeded after validator returns status=VALID
 ///      or VALIDATED.
 /// </summary>
-public class SslCommerzPaymentGateway : IPaymentGateway
+public class SslCommerzPaymentGateway : IPaymentGateway, IPaymentStatusQuery
 {
     private readonly SslCommerzOptions _options;
     private readonly HttpClient _http;
@@ -200,6 +201,59 @@ public class SslCommerzPaymentGateway : IPaymentGateway
             }
             default:
                 return null;
+        }
+    }
+
+    // ---- IPaymentStatusQuery (gateway reconciliation) ----
+    public bool SupportsQuery => IsConfigured;
+
+    /// <summary>
+    /// Looks a transaction up by OUR tran_id (the order Guid) via SSLCommerz's merchantTransIDvalidationAPI.
+    /// Returns null on transport/parse failure so reconciliation reports "unknown" instead of a false mismatch.
+    /// </summary>
+    public async Task<GatewayTransactionStatus?> QueryByTransactionIdAsync(string transactionId, CancellationToken ct = default)
+    {
+        if (!IsConfigured) return null;
+        var url = _options.ValidatorUrl.Replace("validationserverAPI.php", "merchantTransIDvalidationAPI.php")
+                  + $"?tran_id={Uri.EscapeDataString(transactionId)}"
+                  + $"&store_id={Uri.EscapeDataString(_options.StoreId)}"
+                  + $"&store_passwd={Uri.EscapeDataString(_options.StorePassword)}&format=json";
+        try
+        {
+            using var resp = await _http.GetAsync(url, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("element", out var elements) || elements.ValueKind != JsonValueKind.Array
+                || elements.GetArrayLength() == 0)
+                return new GatewayTransactionStatus(transactionId, false, false, null, null, null, null);
+
+            var pick = elements[0];
+            foreach (var el in elements.EnumerateArray())
+            {
+                var st = el.TryGetProperty("status", out var s0) ? s0.GetString() : null;
+                if (string.Equals(st, "VALID", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(st, "VALIDATED", StringComparison.OrdinalIgnoreCase)) { pick = el; break; }
+            }
+            var status = pick.TryGetProperty("status", out var s1) ? s1.GetString() : null;
+            var paid = string.Equals(status, "VALID", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(status, "VALIDATED", StringComparison.OrdinalIgnoreCase);
+            // currency_type/currency_amount are in the currency we requested; amount is the settled one.
+            decimal? amount = null;
+            foreach (var name in new[] { "currency_amount", "amount" })
+                if (amount is null && pick.TryGetProperty(name, out var a) &&
+                    decimal.TryParse(a.GetString(), System.Globalization.NumberStyles.Number,
+                        System.Globalization.CultureInfo.InvariantCulture, out var d)) amount = d;
+            var currency = pick.TryGetProperty("currency_type", out var c) ? c.GetString() : null;
+            var bank = pick.TryGetProperty("bank_tran_id", out var bt) ? bt.GetString() : null;
+            return new GatewayTransactionStatus(transactionId, true, paid, status, amount, currency, bank);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _log.LogWarning(ex, "SSLCommerz transaction query failed for {TranId}", transactionId);
+            return null;
         }
     }
 

@@ -15,6 +15,12 @@ import { ReviewDialog } from "@/components/vet/ReviewDialog";
 import { AddToCalendarButton } from "@/components/vet/AddToCalendarButton";
 import { toast } from "@/components/ui/sonner";
 import { PromptDialog } from "@/components/common/PromptDialog";
+import { CalendarSharePanel } from "@/components/vet/CalendarSharePanel";
+import { CancellationQuoteNote } from "@/components/vet/CancellationQuoteNote";
+import { FollowUpPanel } from "@/components/vet/FollowUpPanel";
+import { SwitchDoctorDialog } from "@/components/vet/SwitchDoctorDialog";
+import { QuestionnaireForm } from "@/components/vet/QuestionnaireForm";
+import { ClinicalEncounterPanel } from "@/components/vet/ClinicalEncounterPanel";
 
 // Radix Select disallows empty-string item values (it reserves "" to mean "cleared").
 // "all" is the sentinel for the no-filter case, converted to `undefined` at the API.
@@ -93,6 +99,8 @@ export function MyAppointmentsPage() {
         <AddToCalendarButton label="Export all (.ics)" />
       </div>
 
+      <FollowUpPanel />
+
       <div className="w-full sm:w-64">
         <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
           <SelectTrigger><SelectValue placeholder="Filter status" /></SelectTrigger>
@@ -121,11 +129,13 @@ export function MyAppointmentsPage() {
         </div>
       )}
 
+      <CalendarSharePanel />
+
       <PromptDialog
         open={!!cancelTarget}
         onOpenChange={(v) => !v && setCancelTarget(null)}
         title={`Cancel appointment with Dr. ${cancelTarget?.doctorName ?? ""}?`}
-        description="Let the doctor know why you're cancelling."
+        description={<>Let the doctor know why you're cancelling.{cancelTarget && <CancellationQuoteNote appointmentId={cancelTarget.id} />}</>}
         label="Reason for cancellation"
         placeholder="Why are you cancelling?"
         confirmLabel="Cancel appointment"
@@ -156,6 +166,10 @@ function AppointmentRow({ a, onCancel, onPay, onJoin, onReview }: {
   const canReview = a.status === "Completed";
   const canRoom = isOnline && upcoming && (a.status === "Confirmed" || a.status === "Rescheduled");
   const canCalendar = upcoming && ["PendingConfirmation", "Confirmed", "Rescheduled"].includes(a.status);
+  const canSwitch = upcoming && ["PendingPayment", "PendingConfirmation", "Confirmed", "Rescheduled"].includes(a.status);
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const hasDetails = canCancel || a.status === "Completed";
 
   return (
     <Card>
@@ -184,9 +198,17 @@ function AppointmentRow({ a, onCancel, onPay, onJoin, onReview }: {
             </Button>
           )}
           {canReview && <Button size="sm" variant="outline" onClick={onReview}><Star className="h-3.5 w-3.5 mr-1" /> Review</Button>}
+          {canSwitch && <Button size="sm" variant="outline" onClick={() => setSwitchOpen(true)}>Switch doctor</Button>}
+          {hasDetails && <Button size="sm" variant="outline" onClick={() => setDetailsOpen((v) => !v)} aria-expanded={detailsOpen}>{a.status === "Completed" ? "Visit summary" : "Pre-visit form"}</Button>}
           {canCancel && <Button size="sm" variant="destructive" onClick={onCancel}><X className="h-3.5 w-3.5" /></Button>}
         </div>
       </CardContent>
+      {detailsOpen && (
+        <div className="px-4 pb-4 space-y-3">
+          {a.status === "Completed" ? <ClinicalEncounterPanel appointmentId={a.id} /> : <QuestionnaireForm appointmentId={a.id} />}
+        </div>
+      )}
+      {canSwitch && <SwitchDoctorDialog appointmentId={a.id} open={switchOpen} onOpenChange={setSwitchOpen} />}
     </Card>
   );
 }

@@ -32,13 +32,15 @@ public class AccountRecoveryService : IAccountRecoveryService
     private readonly IAuditLogger _audit;
     private readonly IConfiguration _config;
     private readonly ILogger<AccountRecoveryService> _log;
+    private readonly ISecuritySignalService? _signals;
 
     public AccountRecoveryService(ApplicationDbContext db, CacheHelper cache, IRedisRateLimiter limiter,
         IEmailService email, IPasswordHasher hasher, IRecoveryCodeService codes, IAuditLogger audit,
-        IConfiguration config, ILogger<AccountRecoveryService> log)
+        IConfiguration config, ILogger<AccountRecoveryService> log, ISecuritySignalService? signals = null)
     {
         _db = db; _cache = cache; _limiter = limiter; _email = email; _hasher = hasher; _codes = codes;
         _audit = audit; _config = config; _log = log;
+        _signals = signals;
     }
 
     private static string TokenKey(string token) =>
@@ -58,6 +60,7 @@ public class AccountRecoveryService : IAccountRecoveryService
     {
         var e = Norm(email);
         if (e.Length == 0 || e.Length > 256) return;
+        if (_signals is not null && await _signals.RecordIdentifierAttemptAsync(ip, e, "recovery", ct)) return;
 
         // Throttle silently so the response is identical whether or not we sent anything.
         var byIp = await _limiter.CheckAsync("recovery-ip", ip ?? "unknown", 10, TimeSpan.FromHours(1), ct);

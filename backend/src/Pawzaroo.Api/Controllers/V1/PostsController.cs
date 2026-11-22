@@ -11,7 +11,8 @@ using Pawzaroo.Application.Modules.Feed.Services;
 namespace Pawzaroo.Api.Controllers.V1;
 
 public record CreatePostDto(string? Content, string? AnimalType, string? Location,
-                            List<string>? MediaUrls, List<string>? Hashtags, List<Guid>? PetTagIds);
+                            List<string>? MediaUrls, List<string>? Hashtags, List<Guid>? PetTagIds,
+                            double? Latitude = null, double? Longitude = null);
 public record UpdatePostDto(string? Content, string? AnimalType, string? Location, List<string>? Hashtags);
 public record ReactionDto(string Type);
 public record ShareDto(string? Note);
@@ -80,7 +81,8 @@ public class PostsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreatePostDto dto, CancellationToken ct)
     {
         var id = await _feed.CreateAsync(new CreatePostInput(
-            dto.Content, dto.AnimalType, dto.Location, dto.MediaUrls, dto.Hashtags, dto.PetTagIds), ct);
+            dto.Content, dto.AnimalType, dto.Location, dto.MediaUrls, dto.Hashtags, dto.PetTagIds,
+            dto.Latitude, dto.Longitude), ct);
         return CreatedAtAction(nameof(Get), new { id, version = "1.0" }, new { id });
     }
 

@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "@/components/ui/sonner";
 import { Field } from "@/pages/pets/detail/shared";
 import { useI18n } from "@/lib/i18n";
+import { useCareT } from "@/lib/careT";
 import {
-  communitiesApi, EVENT_TYPES,
+  communitiesApi, EVENT_TYPES, COMMUNITY_KINDS, type CommunityKind,
   type Community, type CommunityEventType,
 } from "@/api/communities";
 
@@ -29,16 +30,18 @@ export function CreateCommunityDialog({
   const [city, setCity] = useState("");
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const [kind, setKind] = useState<CommunityKind>("Community");
+  const ct = useCareT();
 
   const create = useMutation({
     mutationFn: () => communitiesApi.create({
       name: name.trim(), species: species || null, breed: breed.trim() || null,
-      city: city.trim() || null, description: description.trim() || null, isPublic,
+      city: city.trim() || null, description: description.trim() || null, isPublic, kind,
     }),
     onSuccess: (c) => {
       toast.success(t("cdlg.communityCreated"));
       qc.invalidateQueries({ queryKey: ["communities"] });
-      setName(""); setSpecies(""); setBreed(""); setCity(""); setDescription(""); setIsPublic(true);
+      setName(""); setSpecies(""); setBreed(""); setCity(""); setDescription(""); setIsPublic(true); setKind("Community");
       onOpenChange(false);
       onCreated?.(c);
     },
@@ -54,6 +57,11 @@ export function CreateCommunityDialog({
         <div className="space-y-3">
           <Field label={t("cdlg.name")} htmlFor="cc-name">
             <Input id="cc-name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder={t("cdlg.namePlaceholder")} />
+          </Field>
+          <Field label={ct("cdlg.kind", "Type")} htmlFor="cc-kind">
+            <select id="cc-kind" className={nativeSelectCls} value={kind} onChange={(e) => setKind(e.target.value as CommunityKind)}>
+              {COMMUNITY_KINDS.map((k) => <option key={k.value} value={k.value}>{ct(`cdlg.kind.${k.value}`, k.label)}</option>)}
+            </select>
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t("cdlg.species")} htmlFor="cc-species">

@@ -24,6 +24,7 @@ public class KafkaProducer : IKafkaProducer, IDisposable
     private readonly IProducer<string, string> _producer;
     private readonly ILogger<KafkaProducer> _logger;
     private readonly IHttpContextAccessor? _http;
+    private readonly string _topicPrefix;
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -62,6 +63,7 @@ public class KafkaProducer : IKafkaProducer, IDisposable
             .Build();
         _logger = logger;
         _http   = http;
+        _topicPrefix = o.TopicPrefix ?? "";
     }
 
     public async Task PublishAsync<T>(string topic, T message, string? key = null, CancellationToken ct = default)
@@ -89,7 +91,7 @@ public class KafkaProducer : IKafkaProducer, IDisposable
 
         try
         {
-            var dr = await _producer.ProduceAsync(topic, new Message<string, string>
+            var dr = await _producer.ProduceAsync(KafkaTopicNaming.Apply(_topicPrefix, topic), new Message<string, string>
             {
                 Key     = key ?? envelope.EventId.ToString(),
                 Value   = payload,

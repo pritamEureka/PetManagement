@@ -48,7 +48,7 @@ export function ProductModerationPage() {
 
       <div className="relative max-w-md">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-8" placeholder="Search by name or SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input className="ps-8" placeholder="Search by name or SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       {isLoading ? <Skeleton className="h-64" />
@@ -58,13 +58,13 @@ export function ProductModerationPage() {
             <CardContent className="p-0">
               <table className="w-full text-sm">
                 <thead className="border-b text-muted-foreground">
-                  <tr className="text-left">
+                  <tr className="text-start">
                     <th className="p-3">Product</th>
                     <th className="p-3">Store</th>
                     <th className="p-3">Price</th>
                     <th className="p-3">Rating</th>
                     <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Actions</th>
+                    <th className="p-3 text-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -87,13 +87,13 @@ export function ProductModerationPage() {
                       </td>
                       <td className="p-3">
                         {p.isActive ? <Badge variant={statusBadgeVariant("Live")}>Live</Badge> : <Badge variant={statusBadgeVariant("Hidden")}>Hidden</Badge>}
-                        {p.isFeatured && <Badge variant="secondary" className="ml-1">Featured</Badge>}
+                        {p.isFeatured && <Badge variant="secondary" className="ms-1">Featured</Badge>}
                       </td>
                       <td className="p-3">
                         <div className="flex justify-end gap-1">
                           <Button size="sm" variant="outline"
                             onClick={() => feature.mutate({ id: p.id, value: !p.isFeatured })}>
-                            <Star className="h-3 w-3 mr-1" /> {p.isFeatured ? "Unfeature" : "Feature"}
+                            <Star className="h-3 w-3 me-1" /> {p.isFeatured ? "Unfeature" : "Feature"}
                           </Button>
                           <Button size="icon" variant="ghost"
                             onClick={() => publish.mutate({ id: p.id, active: !p.isActive })}

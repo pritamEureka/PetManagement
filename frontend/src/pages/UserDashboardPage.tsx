@@ -7,26 +7,31 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryBoundary } from "@/components/common/QueryBoundary";
 import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatTile } from "@/components/common/StatTile";
 import { EmptyState } from "@/components/common/EmptyState";
 import { useI18n } from "@/lib/i18n";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { useAuthStore } from "@/store/authStore";
 import { petsApi } from "@/api/pets";
 import { ordersV2Api } from "@/api/marketplace";
+import { ReorderPrompt } from "@/components/store/ReorderPrompt";
 
 export function UserDashboardPage() {
   const { t } = useI18n();
   const me = useAuthStore((s) => s.user);
-  const { data: pets, isLoading: petsLoading } = useQuery({ queryKey: ["pets", "mine"], queryFn: petsApi.mine });
-  const { data: orders } = useQuery({ queryKey: ["orders", "mine"], queryFn: () => ordersV2Api.mine(1, 50) });
+  const petsQuery = useQuery({ queryKey: ["pets", "mine"], queryFn: petsApi.mine });
+  const ordersQuery = useQuery({ queryKey: ["orders", "mine"], queryFn: () => ordersV2Api.mine(1, 50) });
+  const pets = petsQuery.data;
+  const orders = ordersQuery.data;
 
   const firstName = me?.displayName?.split(" ")[0] ?? t("dash.friend");
 
   return (
     <div className="space-y-5">
+      <ReorderPrompt />
       <PageHeader
         title={`${t("dash.welcome", { name: firstName })} 👋`}
         description={t("dash.subtitle")}
@@ -34,10 +39,10 @@ export function UserDashboardPage() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatTile label={t("nav.pets")} value={pets?.length ?? 0} icon={PawPrint} />
-        <StatTile label={t("dash.upcomingVisits")} value={0} icon={Calendar} hint={t("dash.soon")} />
-        <StatTile label={t("dash.orders")} value={orders?.total ?? 0} icon={ShoppingBag} />
-        <StatTile label={t("dash.savedAdoptions")} value={0} icon={HeartHandshake} />
+        <StatTile label={t("nav.pets")} value={formatNumber(pets?.length ?? 0)} icon={PawPrint} />
+        <StatTile label={t("dash.upcomingVisits")} value={formatNumber(0)} icon={Calendar} hint={t("dash.soon")} />
+        <StatTile label={t("dash.orders")} value={formatNumber(orders?.total ?? 0)} icon={ShoppingBag} />
+        <StatTile label={t("dash.savedAdoptions")} value={formatNumber(0)} icon={HeartHandshake} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -50,27 +55,29 @@ export function UserDashboardPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {petsLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}</div>
-            ) : !pets || pets.length === 0 ? (
-              <EmptyState icon={PawPrint} title={t("dash.noPets")} description={t("dash.noPetsDesc")}
-                action={<Button asChild size="sm"><Link to="/pets"><Plus aria-hidden="true" className="h-3.5 w-3.5 me-1" /> {t("dash.addPet")}</Link></Button>} />
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {pets.slice(0, 6).map((p) => (
-                  <Link key={p.id} to={`/pets/${p.id}`} className="rounded-lg border hover:bg-background/80 dark:hover:bg-background/60 transition-colors p-3 flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={p.primaryPhotoUrl ?? undefined} />
-                      <AvatarFallback>{p.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{p.animalType}{p.breed ? ` · ${p.breed}` : ""}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+            <QueryBoundary
+              query={petsQuery}
+              skeleton={<div className="grid grid-cols-2 md:grid-cols-3 gap-2" role="status" aria-busy="true" aria-label={t("common.loading")}>{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}</div>}
+              empty={<EmptyState icon={PawPrint} title={t("dash.noPets")} description={t("dash.noPetsDesc")}
+                action={<Button asChild size="sm"><Link to="/pets"><Plus aria-hidden="true" className="h-3.5 w-3.5 me-1" /> {t("dash.addPet")}</Link></Button>} />}
+            >
+              {(rows) => (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {rows.slice(0, 6).map((p) => (
+                    <Link key={p.id} to={`/pets/${p.id}`} className="rounded-lg border hover:bg-background/80 dark:hover:bg-background/60 transition-colors p-3 flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src={p.primaryPhotoUrl ?? undefined} />
+                        <AvatarFallback>{p.name[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{p.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{p.animalType}{p.breed ? ` · ${p.breed}` : ""}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                )}
+            </QueryBoundary>
           </CardContent>
         </Card>
 
@@ -103,24 +110,28 @@ export function UserDashboardPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          {!orders || orders.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">{t("dash.noOrders")}</p>
-          ) : (
-            <div className="divide-y">
-              {orders.items.slice(0, 3).map((o) => (
-                <div key={o.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <div>
-                    <p className="text-sm font-medium">{o.orderNumber}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</p>
+          <QueryBoundary
+            query={ordersQuery}
+            isEmpty={(p) => p.items.length === 0}
+            empty={<p className="text-sm text-muted-foreground text-center py-6">{t("dash.noOrders")}</p>}
+          >
+            {(page) => (
+              <div className="divide-y">
+                {page.items.slice(0, 3).map((o) => (
+                  <div key={o.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <p className="text-sm font-medium">{o.orderNumber}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{o.status}</Badge>
+                      <span className="text-sm font-semibold">{formatCurrency(o.total)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{o.status}</Badge>
-                    <span className="text-sm font-semibold">{formatCurrency(o.total)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+              )}
+          </QueryBoundary>
         </CardContent>
       </Card>
     </div>

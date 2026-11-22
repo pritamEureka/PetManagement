@@ -249,6 +249,8 @@ public class PetService : IPetService
         await _access.EnsureCanEditClinicalAsync(petId, ct);
         var rec = await _db.VaccinationRecords.SingleOrDefaultAsync(x => x.Id == recordId && x.PetId == petId, ct)
             ?? throw new NotFoundException("Vaccination", recordId);
+        await HealthRecordGuard.EnsureNotSealedAsync(_db, HealthRecordType.Vaccination, recordId, ct);
+        await HealthRecordGuard.AddVersionAsync(_db, Uid(), rec, null, ct);
         var dueChanged = rec.NextDueOn != input.NextDueOn;
         Apply(rec, input);
         if (dueChanged) rec.LastReminderStage = null;   // re-arm reminders for the new date
@@ -260,6 +262,7 @@ public class PetService : IPetService
         await _access.EnsureCanEditClinicalAsync(petId, ct);
         var rec = await _db.VaccinationRecords.SingleOrDefaultAsync(x => x.Id == recordId && x.PetId == petId, ct)
             ?? throw new NotFoundException("Vaccination", recordId);
+        await HealthRecordGuard.EnsureNotSealedAsync(_db, HealthRecordType.Vaccination, recordId, ct);
         _db.VaccinationRecords.Remove(rec);
         await _db.SaveChangesAsync(ct);
     }
@@ -292,6 +295,8 @@ public class PetService : IPetService
         await _access.EnsureCanEditClinicalAsync(petId, ct);
         var rec = await _db.MedicalRecords.SingleOrDefaultAsync(x => x.Id == recordId && x.PetId == petId, ct)
             ?? throw new NotFoundException("MedicalRecord", recordId);
+        await HealthRecordGuard.EnsureNotSealedAsync(_db, HealthRecordType.Medical, recordId, ct);
+        await HealthRecordGuard.AddVersionAsync(_db, Uid(), rec, null, ct);
         Apply(rec, input);
         await _db.SaveChangesAsync(ct);
     }
@@ -301,6 +306,7 @@ public class PetService : IPetService
         await _access.EnsureCanEditClinicalAsync(petId, ct);
         var rec = await _db.MedicalRecords.SingleOrDefaultAsync(x => x.Id == recordId && x.PetId == petId, ct)
             ?? throw new NotFoundException("MedicalRecord", recordId);
+        await HealthRecordGuard.EnsureNotSealedAsync(_db, HealthRecordType.Medical, recordId, ct);
         if (rec.AppointmentId.HasValue)
             throw new ConflictException("Records created from a vet appointment can't be deleted.");
         _db.MedicalRecords.Remove(rec);

@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/store/cartStore";
-import { cartApi, couponsApi } from "@/api/marketplace";
+import { cartApi, couponsApi, shippingAddressesApi } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
+import { AvailabilityBanner } from "@/components/store/AvailabilityBanner";
+import { CartDeliveryPromise } from "@/components/store/BundleCard";
 
 export function CartPage() {
   const { lines, setQty, remove, subtotal, clear, appliedCoupon, setCoupon } = useCartStore();
@@ -18,9 +20,12 @@ export function CartPage() {
 
   // Pull authoritative totals (incl. shipping + tax) from the server so the
   // preview matches what OrderService.CheckoutAsync will stamp on the order.
+  // The destination city (default address) lets the server preview delivery-zone shipping like checkout does.
+  const { data: addresses } = useQuery({ queryKey: ["shipping-addresses"], queryFn: () => shippingAddressesApi.list() });
+  const city = (addresses?.find((a) => a.isDefault) ?? addresses?.[0])?.city ?? undefined;
   const { data: serverCart } = useQuery({
-    queryKey: ["cart-totals"],
-    queryFn: () => cartApi.get(),
+    queryKey: ["cart-totals", city],
+    queryFn: () => cartApi.get(city),
     enabled: lines.length > 0
   });
 
@@ -58,6 +63,7 @@ export function CartPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold flex items-center gap-2"><ShoppingCart className="h-6 w-6 text-primary" /> Cart</h1>
+      {lines.length > 0 && <AvailabilityBanner />}
 
       {lines.length === 0 ? (
         <Card>
@@ -155,6 +161,7 @@ export function CartPage() {
                 <span>Total</span>
                 <span>${total.toFixed(2)}</span>
               </div>
+              <CartDeliveryPromise city={city} />
               <Button className="w-full" onClick={() => nav("/checkout")}>Checkout</Button>
               <Button variant="ghost" className="w-full" onClick={() => clear().catch(reportCartError)}>Empty cart</Button>
             </CardContent>

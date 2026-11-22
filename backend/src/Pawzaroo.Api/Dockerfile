@@ -51,6 +51,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Non-root user. .NET 9 base images already ship an `app` user/group.
+ENV GIT_SHA=${GIT_SHA} BUILD_VERSION=${VERSION}
+
 COPY --from=build --chown=app:app /app/publish ./
 
 ENV ASPNETCORE_URLS=http://+:8080 \

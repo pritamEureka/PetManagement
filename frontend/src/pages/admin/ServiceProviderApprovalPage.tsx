@@ -13,10 +13,12 @@ import { PromptDialog } from "@/components/common/PromptDialog";
 import { Can } from "@/components/auth/Can";
 import { toast } from "@/components/ui/sonner";
 import { petServicesApi, type ProviderSummary } from "@/api/petServices";
+import { useI18n } from "@/lib/i18n";
 
 type Decision = { kind: "approve" | "reject" | "suspend"; provider: ProviderSummary };
 
 export function ServiceProviderApprovalPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [status, setStatus] = useState("Pending");
   const [decision, setDecision] = useState<Decision | null>(null);
@@ -32,7 +34,7 @@ export function ServiceProviderApprovalPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Service provider approvals" icon={Scissors} description="Groomers, trainers, boarding and walkers waiting to go live." />
+      <PageHeader title={t("adm.spApprovals.title")} icon={Scissors} description={t("adm.spApprovals.desc")} />
       <Tabs value={status} onValueChange={setStatus}>
         <TabsList>
           {["Pending", "Approved", "Rejected", "Suspended"].map((s) => <TabsTrigger key={s} value={s}>{s}</TabsTrigger>)}
@@ -60,17 +62,17 @@ export function ServiceProviderApprovalPage() {
                 <div className="flex gap-2">
                   {status !== "Approved" && (
                     <Can permission="services.approve">
-                      <Button size="sm" onClick={() => setDecision({ kind: "approve", provider: p })}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
+                      <Button size="sm" onClick={() => setDecision({ kind: "approve", provider: p })}><Check className="h-3.5 w-3.5 me-1" /> Approve</Button>
                     </Can>
                   )}
                   {status === "Pending" && (
                     <Can permission="services.reject">
-                      <Button size="sm" variant="outline" onClick={() => setDecision({ kind: "reject", provider: p })}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
+                      <Button size="sm" variant="outline" onClick={() => setDecision({ kind: "reject", provider: p })}><X className="h-3.5 w-3.5 me-1" /> Reject</Button>
                     </Can>
                   )}
                   {status === "Approved" && (
                     <Can permission="services.suspend">
-                      <Button size="sm" variant="destructive" onClick={() => setDecision({ kind: "suspend", provider: p })}><Ban className="h-3.5 w-3.5 mr-1" /> Suspend</Button>
+                      <Button size="sm" variant="destructive" onClick={() => setDecision({ kind: "suspend", provider: p })}><Ban className="h-3.5 w-3.5 me-1" /> Suspend</Button>
                     </Can>
                   )}
                 </div>

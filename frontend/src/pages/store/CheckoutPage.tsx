@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, Link } from "react-router-dom";
@@ -9,10 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { checkoutSchema, type CheckoutInput } from "@/lib/schemas";
-import { ordersV2Api, shippingAddressesApi } from "@/api/marketplace";
+import { cartApi, ordersV2Api, shippingAddressesApi } from "@/api/marketplace";
 import { useCartStore } from "@/store/cartStore";
 import { toast } from "@/components/ui/sonner";
 import { CountryCityPicker } from "@/components/common/CountryCityPicker";
+import { AvailabilityBanner } from "@/components/store/AvailabilityBanner";
+import { GiftCardRedeemBox, type CheckoutCredits } from "@/components/store/GiftCardRedeemBox";
+import { ShippingQuoteBox } from "@/components/store/ShippingQuoteBox";
+import { CartDeliveryPromise } from "@/components/store/BundleCard";
 
 export function CheckoutPage() {
   const nav = useNavigate();
@@ -20,6 +24,7 @@ export function CheckoutPage() {
   // removed the CartItems inside its transaction. We just need to drop the
   // optimistic local mirror.
   const { lines, subtotal, resetLocal, appliedCoupon } = useCartStore();
+  const [credits, setCredits] = useState<CheckoutCredits>({});
 
   const { data: addresses } = useQuery({
     queryKey: ["shipping-addresses"],
@@ -31,7 +36,17 @@ export function CheckoutPage() {
 
   const selectedAddressId = watch("shippingAddressId");
   const country = watch("shippingCountry") ?? "";
-  const city = watch("shippingCity") ?? "";
+  const oneOffCity = watch("shippingCity") ?? "";
+  const city = oneOffCity;
+  // OrderService prefers the saved address when one is selected, so its city is the destination.
+  const destCity = (addresses?.find((a) => a.id === selectedAddressId)?.city ?? oneOffCity) || undefined;
+
+  // Server totals preview using the same delivery-zone fee logic as checkout (flat fee when no zone matches).
+  const { data: serverCart } = useQuery({
+    queryKey: ["cart-totals", destCity],
+    queryFn: () => cartApi.get(destCity),
+    enabled: lines.length > 0
+  });
 
   useEffect(() => {
     const def = addresses?.find((a) => a.isDefault) ?? addresses?.[0];
@@ -47,7 +62,9 @@ export function CheckoutPage() {
         shippingCity: values.shippingCity || undefined,
         shippingCountry: values.shippingCountry || undefined,
         paymentMethod: values.paymentMethod,
-        couponCode: appliedCoupon?.code
+        couponCode: appliedCoupon?.code,
+        redeemLoyaltyPoints: credits.redeemLoyaltyPoints,
+        giftCardCode: credits.giftCardCode
       });
       resetLocal();
 
@@ -69,6 +86,7 @@ export function CheckoutPage() {
 
   return (
     <div className="max-w-4xl mx-auto grid lg:grid-cols-[1fr_20rem] gap-4">
+      <div className="lg:col-span-2"><AvailabilityBanner /></div>
       <Card>
         <CardHeader>
           <CardTitle>Shipping details</CardTitle>
@@ -182,17 +200,25 @@ export function CheckoutPage() {
             <span className="text-muted-foreground">Subtotal</span>
             <span>${subtotal().toFixed(2)}</span>
           </div>
+          <ShippingQuoteBox city={destCity} subtotal={subtotal()} />
+          <CartDeliveryPromise city={destCity} />
           {appliedCoupon && (
             <div className="flex justify-between text-sm text-emerald-600">
               <span>Coupon {appliedCoupon.code}</span>
               <span>−${appliedCoupon.discount.toFixed(2)}</span>
             </div>
           )}
+          <GiftCardRedeemBox
+            payable={Math.max(0, subtotal() - (appliedCoupon?.discount ?? 0))}
+            onChange={setCredits}
+          />
           <div className="flex justify-between font-semibold pt-1">
             <span>Estimated total</span>
-            <span>${Math.max(0, subtotal() - (appliedCoupon?.discount ?? 0)).toFixed(2)}</span>
+            <span>${(Math.max(0, subtotal() - (appliedCoupon?.discount ?? 0)) + (serverCart ? serverCart.shippingFee + serverCart.tax : 0)).toFixed(2)}</span>
           </div>
-          <p className="text-xs text-muted-foreground">+ shipping & tax computed at order placement.</p>
+          <p className="text-xs text-muted-foreground">
+            {serverCart ? "Includes estimated shipping & tax; credits and promotions are applied at order placement." : "+ shipping & tax computed at order placement."}
+          </p>
         </CardContent>
       </Card>
     </div>

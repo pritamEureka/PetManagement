@@ -16,7 +16,7 @@ public class CartController : ControllerBase
     public CartController(ICartService cart) => _cart = cart;
 
     [HttpGet]
-    public Task<CartDto> Get(CancellationToken ct) => _cart.GetMineAsync(ct);
+    public Task<CartDto> Get([FromQuery] string? city, CancellationToken ct) => _cart.GetMineAsync(city, ct);
 
     [HttpPost("items")]
     public Task<CartDto> Add([FromBody] AddToCartInput input, CancellationToken ct) => _cart.AddAsync(input, ct);

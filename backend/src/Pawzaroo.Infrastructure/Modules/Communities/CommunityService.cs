@@ -23,12 +23,15 @@ public class CommunityService : ICommunityService
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _current;
     private readonly INotificationCountCache _counter;
+    private readonly IReputationService? _reputation;
 
-    public CommunityService(ApplicationDbContext db, ICurrentUserService current, INotificationCountCache counter)
+    public CommunityService(ApplicationDbContext db, ICurrentUserService current, INotificationCountCache counter,
+        IReputationService? reputation = null)
     {
         _db = db;
         _current = current;
         _counter = counter;
+        _reputation = reputation;
     }
 
     private Guid Uid() => _current.UserId ?? throw new ForbiddenException();
@@ -66,6 +69,7 @@ public class CommunityService : ICommunityService
             var mine = Members.Where(m => m.UserId == me && m.Status != CommunityMemberStatus.Banned).Select(m => m.CommunityId);
             query = query.Where(c => mine.Contains(c.Id));
         }
+        if (q.Kind is { } kindFilter) query = query.Where(c => c.Kind == kindFilter);
         if (!string.IsNullOrWhiteSpace(q.Species))
         {
             var s = q.Species.Trim();
@@ -117,6 +121,7 @@ public class CommunityService : ICommunityService
             Description = Clean(req.Description, 2000),
             City = Clean(req.City, 100),
             OwnerId = uid,
+            Kind = Enum.IsDefined(req.Kind) ? req.Kind : CommunityKind.Community,
         };
         _db.Set<Community>().Add(community);
         _db.Set<CommunityMember>().Add(new CommunityMember
@@ -254,6 +259,7 @@ public class CommunityService : ICommunityService
         // The organizer is automatically going.
         _db.Set<EventRsvp>().Add(new EventRsvp { EventId = ev.Id, UserId = uid, Status = RsvpStatus.Going });
         await _db.SaveChangesAsync(ct);
+        if (_reputation is not null) await _reputation.AwardAsync(uid, communityId, ReputationKind.EventHosted, ev.Id, ct);
         return (await ToEventDtosAsync(new List<CommunityEvent> { ev }, uid, null, ct))[0];
     }
 
@@ -385,6 +391,7 @@ public class CommunityService : ICommunityService
         }
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+        // EventAttended is awarded by Worker/Jobs/EventAttendanceJob once the event has actually ended.
         return (await ToEventDtosAsync(new List<CommunityEvent> { ev }, uid, null, ct))[0];
     }
 
@@ -525,7 +532,7 @@ public class CommunityService : ICommunityService
         {
             mine.TryGetValue(c.Id, out var m);
             return new CommunityDto(c.Id, c.Name, c.Slug, c.Species, c.Breed, c.IsPublic, c.Description, c.City,
-                c.OwnerId, counts.GetValueOrDefault(c.Id), m?.Role, m?.Status, c.CreatedAt);
+                c.OwnerId, counts.GetValueOrDefault(c.Id), m?.Role, m?.Status, c.CreatedAt, c.Kind);
         }).ToList();
     }
 

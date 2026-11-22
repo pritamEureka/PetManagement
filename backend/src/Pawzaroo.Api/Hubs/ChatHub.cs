@@ -18,11 +18,18 @@ public class ChatHub : Hub
     private readonly IPresenceService _presence;
     private readonly IMessagingService _messaging;
 
-    public ChatHub(IPresenceService presence, IMessagingService messaging)
+    private readonly Pawzaroo.Infrastructure.Modules.Messaging.ITypingStateService? _typing;
+
+    public ChatHub(IPresenceService presence, IMessagingService messaging,
+        Pawzaroo.Infrastructure.Modules.Messaging.ITypingStateService? typing = null)
     {
         _presence = presence;
         _messaging = messaging;
+        _typing = typing;
     }
+
+    /// <summary>Client heartbeat (every ~45s) — refreshes the Redis presence TTL so crashed clients expire.</summary>
+    public Task Heartbeat() => UserId is { } uid ? _presence.TouchLastSeenAsync(uid) : Task.CompletedTask;
 
     private Guid? UserId
     {
@@ -68,11 +75,15 @@ public class ChatHub : Hub
 
     // ---------- Typing ----------
 
-    public Task Typing(string conversationId, bool isTyping) =>
-        Clients.OthersInGroup(ConvGroup(conversationId)).SendAsync("typing", new
+    public async Task Typing(string conversationId, bool isTyping)
+    {
+        if (_typing is not null && UserId is { } uid && Guid.TryParse(conversationId, out var cid))
+            await _typing.SetTypingAsync(cid, uid, isTyping);
+        await Clients.OthersInGroup(ConvGroup(conversationId)).SendAsync("typing", new
         {
             conversationId, userId = UserId, isTyping
         });
+    }
 
     // ---------- Read + delivery ACKs ----------
 

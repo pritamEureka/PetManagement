@@ -164,6 +164,7 @@ public class FeedService : IFeedService
 
         _db.Posts.Add(post);
         await _db.SaveChangesAsync(ct);
+        await PostGeo.TagAsync(_db, post, input, ct);
 
         await _cache.InvalidateFeedFirstPagesAsync(ct);
         await _kafka.PublishAsync(FeedTopics.Posts, new PostCreated(post.Id, uid, DateTime.UtcNow), post.Id.ToString(), ct);

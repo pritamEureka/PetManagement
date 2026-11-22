@@ -42,6 +42,7 @@ public class UserRolesController : ControllerBase
     [Permission(Permissions.Roles.Assign)]
     public async Task<IActionResult> Assign([FromBody] AssignRoleDto dto, CancellationToken ct)
     {
+        await HttpContext.RequestServices.GetRequiredService<Pawzaroo.Application.Modules.SecurityPlus.IStepUpAuthService>().RequireRecentAsync(ct);
         await _perms.AssignRoleToUserAsync(dto.UserId, dto.RoleId, ct);
         return NoContent();
     }
@@ -50,6 +51,7 @@ public class UserRolesController : ControllerBase
     [Permission(Permissions.Roles.Assign)]
     public async Task<IActionResult> Revoke([FromBody] AssignRoleDto dto, CancellationToken ct)
     {
+        await HttpContext.RequestServices.GetRequiredService<Pawzaroo.Application.Modules.SecurityPlus.IStepUpAuthService>().RequireRecentAsync(ct);
         await _perms.RevokeRoleFromUserAsync(dto.UserId, dto.RoleId, ct);
         return NoContent();
     }

@@ -13,7 +13,6 @@ public class ScheduledReportService : IScheduledReportService
 {
     /// <summary>Max CSV characters stored on a run row.</summary>
     public const int CsvInlineCap = 200_000;
-    private const int EmailInlineCap = 20_000;
     private const int MaxRecipients = 10;
     private static readonly Regex EmailRx = new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
 
@@ -178,16 +177,15 @@ public class ScheduledReportService : IScheduledReportService
             run.CsvTruncated = csv.Length > CsvInlineCap;
             run.CsvText = run.CsvTruncated ? csv[..CsvInlineCap] : csv;
 
-            // IEmailService has no attachment support, so the CSV travels inline in the body (capped);
-            // the stored copy is downloadable from the run history.
-            var inline = csv.Length > EmailInlineCap
-                ? csv[..EmailInlineCap] + "\n... (truncated; download the full CSV from Admin > Intelligence > Scheduled reports)"
-                : csv;
+            // SMTP delivers the FULL CSV as an attachment (no inline copy in the body). Transports without attachment
+            // support (console stub) fall back to inlining the CSV through the IEmailService default method.
+            var fileName = $"report-{r.Dataset}-{run.RanAt:yyyyMMdd-HHmm}.csv";
+            var attachments = new[] { new EmailAttachment(fileName, "text/csv", System.Text.Encoding.UTF8.GetBytes(csv)) };
             var subject = $"[Pawzaroo] Scheduled report: {r.Name} ({r.Dataset}) - {run.RanAt:yyyy-MM-dd}";
-            var body = $"Scheduled report \"{r.Name}\"\nDataset: {r.Dataset}\nGenerated: {run.RanAt:u}\nRows: {run.RowCount}\n\n{inline}";
+            var body = $"Scheduled report \"{r.Name}\"\nDataset: {r.Dataset}\nGenerated: {run.RanAt:u}\nRows: {run.RowCount}\n\nThe CSV is attached ({fileName}).";
             foreach (var to in r.Recipients)
             {
-                try { await _email.SendAsync(to, subject, body, null, ct); run.EmailsSent++; }
+                try { await _email.SendWithAttachmentsAsync(to, subject, body, attachments, null, ct); run.EmailsSent++; }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     _log.LogWarning(ex, "Report email to {To} failed", to);

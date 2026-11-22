@@ -18,8 +18,8 @@ public class JwtTokenService : IJwtTokenService
         Guid userId, string email,
         IEnumerable<string> roles, IEnumerable<string> permissions)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SigningKey));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        // Always the CURRENT key; the kid header lets validators pick it out of the key ring.
+        var creds = new JwtKeyRing(_settings.SigningKey).CreateSigningCredentials();
 
         var claims = new List<Claim>
         {

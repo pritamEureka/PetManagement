@@ -21,6 +21,7 @@ import { animalTypes } from "@/lib/schemas";
 import { petsApi } from "@/api/pets";
 import { lostFoundApi, type LostFoundKind, type LostFoundSummary } from "@/api/lostFound";
 import { Field } from "@/pages/pets/detail/shared";
+import { AlertSubscriptions, SightingsPanel, TimelinePanel } from "./LostFoundExtras";
 
 const ALL = "__all";
 
@@ -80,6 +81,7 @@ export function LostFoundListPage() {
             <Button asChild><Link to="/lost-found/new"><Plus className="h-4 w-4 mr-1" /> Report a pet</Link></Button>
           </>
         } />
+      <AlertSubscriptions />
 
       <div className="flex flex-wrap gap-2 items-center">
         <Tabs value={kind} onValueChange={(v) => setKind(v as any)}>
@@ -236,6 +238,9 @@ export function LostFoundDetailPage() {
         </div>
       )}
 
+      <SightingsPanel reportId={id} isMine={data.isMine} isOpen={r.status === "Open"} />
+      <TimelinePanel reportId={id} />
+
       <ConfirmDialog
         open={!!confirm}
         onOpenChange={(v) => !v && setConfirm(null)}
@@ -265,6 +270,7 @@ export function CreateLostFoundPage() {
     animalType: "Dog", breed: "", color: "", description: "", photoUrl: "",
     lastSeenAt: nowLocal, city: "", area: "", contactPreference: "Chat" as "Chat" | "Phone" | "Email",
     contactPhone: "", shareToFeed: true, latitude: null as number | null, longitude: null as number | null,
+    markings: "", collar: "",
   });
   const [busy, setBusy] = useState(false);
   const linkedPet = ownPets.find((p) => p.id === f.petId);
@@ -294,6 +300,7 @@ export function CreateLostFoundPage() {
         lastSeenAt: new Date(f.lastSeenAt).toISOString(), city: f.city.trim(), area: f.area || null,
         latitude: f.latitude, longitude: f.longitude, contactPreference: f.contactPreference,
         contactPhone: f.contactPhone || null, shareToFeed: f.shareToFeed,
+        extra: (f.markings.trim() || f.collar.trim()) ? { markings: f.markings.trim() || null, collarDescription: f.collar.trim() || null } : null,
       });
       toast.success("Report published. People nearby have been alerted.");
       qc.invalidateQueries({ queryKey: ["lost-found"] });
@@ -350,6 +357,8 @@ export function CreateLostFoundPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Field label="Last seen" htmlFor="ll"><Input id="ll" type="datetime-local" max={nowLocal} value={f.lastSeenAt} onChange={(e) => setF({ ...f, lastSeenAt: e.target.value })} /></Field>
               <Field label="City" htmlFor="lci"><Input id="lci" value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} /></Field>
+              <Field label="Markings (scars, patches, ...)" htmlFor="lmk"><Input id="lmk" maxLength={500} value={f.markings} onChange={(e) => setF({ ...f, markings: e.target.value })} /></Field>
+              <Field label="Collar / tag description" htmlFor="lcl"><Input id="lcl" maxLength={300} value={f.collar} onChange={(e) => setF({ ...f, collar: e.target.value })} /></Field>
               <Field label="Area / landmark" htmlFor="la"><Input id="la" value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })} /></Field>
             </div>
 

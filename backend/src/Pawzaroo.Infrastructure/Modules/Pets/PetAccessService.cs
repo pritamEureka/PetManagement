@@ -66,6 +66,15 @@ public class PetAccessService : IPetAccessService
                     && a.Status != AppointmentStatus.Draft, ct);
                 if (isTreatingVet) level = PetAccessLevel.Vet;
             }
+
+            if (level == PetAccessLevel.None)
+            {
+                // Owner-granted record-sharing consent (referrals) gives read-only (Viewer) access to the grantee doctor.
+                var consented = await _db.Set<Domain.Veterinary.RecordShareConsent>().AsNoTracking().AnyAsync(c =>
+                    c.PetId == petId && c.RevokedAt == null && c.ExpiresAt > DateTime.UtcNow
+                    && _db.Doctors.Any(d => d.Id == c.GranteeDoctorId && d.UserId == uid), ct);
+                if (consented) level = PetAccessLevel.Viewer;
+            }
         }
 
         _cache[petId] = level;

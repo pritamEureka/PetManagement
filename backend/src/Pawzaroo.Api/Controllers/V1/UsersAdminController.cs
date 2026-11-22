@@ -125,6 +125,7 @@ public class UsersAdminController : ControllerBase
         if (body.RoleName is SystemRoles.Admin or SystemRoles.SuperAdmin && !User.IsInRole(SystemRoles.SuperAdmin))
             throw new ForbiddenException("Only a SuperAdmin can grant Admin or SuperAdmin roles.");
 
+        await HttpContext.RequestServices.GetRequiredService<Pawzaroo.Application.Modules.SecurityPlus.IStepUpAuthService>().RequireRecentAsync(ct);
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct) ?? throw new NotFoundException("User", id);
         var role = await _db.Roles.FirstOrDefaultAsync(r => r.Name == body.RoleName, ct)
                     ?? throw new NotFoundException("Role", body.RoleName);
@@ -203,6 +204,7 @@ public class UsersAdminController : ControllerBase
     [Permission(Permissions.Roles.Assign)]
     public async Task<IActionResult> RevokeRole(Guid id, string roleName, CancellationToken ct)
     {
+        await HttpContext.RequestServices.GetRequiredService<Pawzaroo.Application.Modules.SecurityPlus.IStepUpAuthService>().RequireRecentAsync(ct);
         var link = await _db.UserRoles.Include(ur => ur.Role)
             .FirstOrDefaultAsync(ur => ur.UserId == id && ur.Role.Name == roleName, ct);
         if (link is not null) { _db.UserRoles.Remove(link); await _db.SaveChangesAsync(ct); }

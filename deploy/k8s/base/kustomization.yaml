@@ -2,7 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Workloads, services, autoscalers, and policies.
-# The migration / smoke-test Jobs are NOT part of the base — CI renders them
+# The migration (--migrate-only), seed (--seed-only) and smoke-test Jobs are NOT part of the base;
+# CI renders them
 # with envsubst so a fresh ${IMAGE_TAG} can be injected on each deploy.
 resources:
   - namespace.yaml
@@ -20,6 +21,8 @@ resources:
   - web.deployment.yaml
   - ingress.yaml
   - networkpolicy.yaml
+  - pdb.yaml
+  - backup.cronjob.yaml
 
 # Common labels stamped onto every resource — easy filtering with kubectl.
 commonLabels:

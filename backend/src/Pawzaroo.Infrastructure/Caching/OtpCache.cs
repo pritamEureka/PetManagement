@@ -10,7 +10,13 @@ namespace Pawzaroo.Infrastructure.Caching;
 public class OtpCache : IOtpCache
 {
     private readonly CacheHelper _cache;
-    public OtpCache(CacheHelper cache) => _cache = cache;
+    private readonly IDegradedModePolicy _policy;
+
+    public OtpCache(CacheHelper cache, IDegradedModePolicy? policy = null)
+    {
+        _cache = cache;
+        _policy = policy ?? new DegradedModePolicyService();
+    }
 
     public async Task SetAsync(string subject, string code, TimeSpan ttl, CancellationToken ct = default)
     {
@@ -35,8 +41,19 @@ public class OtpCache : IOtpCache
     public async Task<int> RecordAttemptAsync(string subject, CancellationToken ct = default)
     {
         var key = RedisKeys.OtpAttempts(subject);
-        var n = await _cache.IncrementAsync(key, 1, RedisTtls.OtpAttempts);
-        return (int)n;
+        try
+        {
+            var n = await _cache.Db.StringIncrementAsync(key, 1);
+            if (n == 1) await _cache.Db.KeyExpireAsync(key, RedisTtls.OtpAttempts);
+            return (int)n;
+        }
+        catch (RedisException ex)
+        {
+            // Brute-force counters must never silently allow: default FailClosed reports "too many attempts".
+            _policy.Report(DegradedSites.OtpCounters, ex);
+            if (_policy.For(DegradedSites.OtpCounters) == DegradedModePolicy.FailClosed) return int.MaxValue;
+            return 0;
+        }
     }
 
     public Task ClearAsync(string subject, CancellationToken ct = default)

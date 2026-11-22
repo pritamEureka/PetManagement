@@ -49,6 +49,7 @@ public class AppointmentsController : ControllerBase
     // ---------- Booking + status transitions ----------
 
     [HttpPost("book")]
+    [Pawzaroo.Api.Filters.Idempotent]
     [EnableRateLimiting("writes")]
     public async Task<ActionResult<AppointmentSummaryDto>> Book([FromBody] BookAppointmentInput input, CancellationToken ct)
         => Ok(await _appointments.BookAsync(input, ct));
@@ -82,9 +83,11 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/complete")]
-    public async Task<IActionResult> Complete(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Complete(Guid id,
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] Pawzaroo.Application.Modules.ClinicPlus.CompleteInput? input,
+        CancellationToken ct)
     {
-        await _appointments.CompleteAsync(id, ct);
+        await _appointments.CompleteWithOverrideAsync(id, input?.OverrideReason, ct);
         return NoContent();
     }
 
@@ -96,6 +99,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/pay")]
+    [Pawzaroo.Api.Filters.Idempotent]
     public async Task<IActionResult> Pay(Guid id, CancellationToken ct)
     {
         await _appointments.MarkPaidAsync(id, ct);
@@ -103,6 +107,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/refund")]
+    [Pawzaroo.Api.Filters.Idempotent]
     public async Task<IActionResult> Refund(Guid id, CancellationToken ct)
     {
         await _appointments.RefundAsync(id, ct);

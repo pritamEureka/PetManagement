@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { telemedicineApi, type ConsultationNoteInput } from "@/api/vetPlus";
+import { ClinicalEncounterPanel } from "@/components/vet/ClinicalEncounterPanel";
+import { QuestionnaireForm } from "@/components/vet/QuestionnaireForm";
 
 const fmt = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : "-");
 
@@ -170,7 +172,9 @@ export function TelemedicineRoomPage() {
         </CardContent>
       </Card>
 
+      {room.isDoctor ? <QuestionnaireForm appointmentId={id} readOnly /> : !closed && !checkedIn && <QuestionnaireForm appointmentId={id} />}
       <NotesCard appointmentId={id} isDoctor={room.isDoctor} />
+      {room.isDoctor && <ClinicalEncounterPanel appointmentId={id} />}
     </div>
   );
 }

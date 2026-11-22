@@ -19,9 +19,9 @@ public class CommunitiesController : ControllerBase
     [HttpGet]
     public Task<CommunityPage<CommunityDto>> List(
         [FromQuery] string? q, [FromQuery] string? species, [FromQuery] string? city,
-        [FromQuery] bool mine = false, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+        [FromQuery] bool mine = false, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] CommunityKind? kind = null,
         CancellationToken ct = default) =>
-        _svc.ListAsync(new CommunityQuery(q, species, city, mine, page, pageSize), ct);
+        _svc.ListAsync(new CommunityQuery(q, species, city, mine, page, pageSize, kind), ct);
 
     /// <summary>Accepts a community id (guid) or slug.</summary>
     [HttpGet("{idOrSlug}")]

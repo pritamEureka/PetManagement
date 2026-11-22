@@ -2,6 +2,7 @@ using Pawzaroo.Application;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Infrastructure;
 using Pawzaroo.Infrastructure.Features;
+using Pawzaroo.Infrastructure.Observability;
 using Pawzaroo.Infrastructure.Messaging;
 using Pawzaroo.Worker.Jobs;
 using Serilog;
@@ -14,6 +15,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<ICurrentUserService, SystemCurrentUserService>();
 // Must come after ICurrentUserService: decorates it so jobs can act on behalf of a subscriber.
 builder.Services.AddShopPlusFeatures();
+builder.Services.AddPawzarooTelemetry(builder.Configuration);
 builder.Services.AddScoped<INotificationService, NoopNotificationService>();
 
 // Outbox dispatcher: durable producer for events written transactionally.
@@ -32,6 +34,17 @@ builder.Services.AddHostedService<ReservationExpiryJob>();
 builder.Services.AddHostedService<SavedSearchAlertJob>();
 builder.Services.AddHostedService<PriceDropJob>();
 builder.Services.AddHostedService<ScheduledReportJob>();
+builder.Services.AddHostedService<IdempotencyCleanupJob>();
+builder.Services.AddHostedService<SlaMonitorJob>();
+builder.Services.AddHostedService<LostFoundLocationExpiryJob>();
+builder.Services.AddHostedService<Pawzaroo.Infrastructure.Modules.Push.NotificationDigestJob>();
+builder.Services.AddHostedService<AdoptionSlaJob>();
+builder.Services.AddHostedService<CarePlanReminderJob>();
+builder.Services.AddHostedService<EventAttendanceJob>();
+builder.Services.AddHostedService<LowStockAlertJob>();
+builder.Services.AddHostedService<ReplenishmentReminderJob>();
+builder.Services.AddHostedService<LoyaltyPointsExpiryJob>();
+builder.Services.AddHostedService<DisappearingMessageJob>();
 
 var host = builder.Build();
 await host.RunAsync();

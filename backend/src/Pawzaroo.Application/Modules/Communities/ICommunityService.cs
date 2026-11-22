@@ -4,15 +4,15 @@ namespace Pawzaroo.Application.Modules.Communities;
 
 public record CommunityPage<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
 
-public record CommunityQuery(string? Q, string? Species, string? City, bool Mine = false, int Page = 1, int PageSize = 20);
+public record CommunityQuery(string? Q, string? Species, string? City, bool Mine = false, int Page = 1, int PageSize = 20, CommunityKind? Kind = null);
 
 public record CommunityDto(
     Guid Id, string Name, string Slug, string? Species, string? Breed, bool IsPublic,
     string? Description, string? City, Guid OwnerId, int MemberCount,
-    CommunityRole? MyRole, CommunityMemberStatus? MyStatus, DateTime CreatedAt);
+    CommunityRole? MyRole, CommunityMemberStatus? MyStatus, DateTime CreatedAt, CommunityKind Kind = CommunityKind.Community);
 
 public record CreateCommunityRequest(
-    string Name, string? Species, string? Breed, bool IsPublic, string? Description, string? City);
+    string Name, string? Species, string? Breed, bool IsPublic, string? Description, string? City, CommunityKind Kind = CommunityKind.Community);
 
 public record CommunityMemberDto(
     Guid UserId, string DisplayName, string? AvatarUrl, CommunityRole Role,

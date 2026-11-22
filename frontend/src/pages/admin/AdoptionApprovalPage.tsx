@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Can } from "@/components/auth/Can";
-import { adoptionApi, type AdoptionListingSummary } from "@/api/adoption";
+import { adoptionApi, adoptionPlusApi, type AdoptionListingSummary } from "@/api/adoption";
 import { toast } from "@/components/ui/sonner";
 import { RejectReasonModal } from "@/components/adoption/RejectReasonModal";
 
@@ -18,6 +18,13 @@ export function AdoptionApprovalPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["adoption", "admin-queue"],
     queryFn: () => adoptionApi.adminQueue({ status: "PendingApproval", pageSize: 50 })
+  });
+  const queueIds = (data?.items ?? []).map((l) => l.id);
+  const { data: riskFlags } = useQuery({
+    queryKey: ["adoption", "risk-flags", queueIds],
+    queryFn: () => adoptionPlusApi.riskFlags(queueIds),
+    enabled: queueIds.length > 0,
+    retry: false,
   });
   const [rejectTarget, setRejectTarget] = useState<AdoptionListingSummary | null>(null);
 
@@ -47,6 +54,14 @@ export function AdoptionApprovalPage() {
         </Link>
       )
     },
+    { key: "risk", header: "Risk flags", render: (l) => {
+        const fl = (riskFlags ?? []).filter((f) => f.listingId === l.id);
+        return fl.length === 0 ? <span className="text-xs text-muted-foreground">—</span> : (
+          <div className="flex flex-col gap-1" title="Advisory only. Review before deciding.">
+            {fl.map((f, i) => <Badge key={i} variant={f.severity >= 3 ? "destructive" : "secondary"} title={f.detail}>{f.kind}</Badge>)}
+          </div>
+        );
+      } },
     { key: "owner", header: "Owner", render: (l) => <span className="text-sm">{l.ownerDisplayName}</span> },
     { key: "location", header: "Location", render: (l) => <span className="text-xs text-muted-foreground">{l.location ?? "—"}</span> },
     { key: "fee", header: "Fee", render: (l) => <span>{l.adoptionFee > 0 ? `$${l.adoptionFee.toFixed(2)}` : "Free"}</span> },

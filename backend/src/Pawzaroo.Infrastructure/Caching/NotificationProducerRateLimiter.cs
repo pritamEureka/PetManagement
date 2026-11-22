@@ -18,7 +18,13 @@ public class NotificationProducerRateLimiter : INotificationProducerRateLimiter
     private const int NotifyProducerLimit = 5;
 
     private readonly CacheHelper _cache;
-    public NotificationProducerRateLimiter(CacheHelper cache) => _cache = cache;
+    private readonly IDegradedModePolicy _policy;
+
+    public NotificationProducerRateLimiter(CacheHelper cache, IDegradedModePolicy? policy = null)
+    {
+        _cache = cache;
+        _policy = policy ?? new DegradedModePolicyService();
+    }
 
     public async Task<bool> ShouldThrottleAsync(Guid recipientId, string title, CancellationToken ct = default)
     {
@@ -30,10 +36,11 @@ public class NotificationProducerRateLimiter : INotificationProducerRateLimiter
                 await _cache.Db.KeyExpireAsync(key, RedisTtls.NotifyProducerRl, ExpireWhen.HasNoExpiry);
             return count > NotifyProducerLimit;
         }
-        catch (RedisException)
+        catch (RedisException ex)
         {
-            // Fail-open: if Redis is down don't drop notifications.
-            return false;
+            // Default FailOpen (don't drop notifications); configurable via Security:RedisDegraded:NotificationRateLimit.
+            _policy.Report(DegradedSites.NotificationRateLimit, ex);
+            return _policy.For(DegradedSites.NotificationRateLimit) == DegradedModePolicy.FailClosed;
         }
     }
 

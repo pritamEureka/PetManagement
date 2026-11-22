@@ -11,6 +11,8 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { PageHeader } from "@/components/common/PageHeader";
 import { FilterBar } from "@/components/admin/FilterBar";
 import { adminApi, type AdminAppointment } from "@/api/adminV2";
+import { formatDateTime, formatDate, formatNumber } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 // Status set lifted from Domain.Common.AppointmentStatus. Keep in sync if the
 // enum gets new entries; the API will silently ignore unknown filters.
@@ -21,6 +23,7 @@ const STATUSES = [
 ];
 
 export function AdminAppointmentManagementPage() {
+  const { t } = useI18n();
   const [status, setStatus] = useState<string>("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -41,8 +44,8 @@ export function AdminAppointmentManagementPage() {
       key: "when", header: "When",
       render: (a) => (
         <div>
-          <p className="text-sm font-medium">{new Date(a.scheduledAt).toLocaleString()}</p>
-          <p className="text-[10px] text-muted-foreground">created {new Date(a.createdAt).toLocaleDateString()}</p>
+          <p className="text-sm font-medium">{formatDateTime(a.scheduledAt)}</p>
+          <p className="text-[10px] text-muted-foreground">created {formatDate(a.createdAt)}</p>
         </div>
       )
     },
@@ -53,7 +56,7 @@ export function AdminAppointmentManagementPage() {
       render: (a) => <Badge variant={statusBadgeVariant(a.status)}>{a.status}</Badge>
     },
     { key: "pay",  header: "Payment", render: (a) => <Badge variant={statusBadgeVariant(a.paymentStatus)}>{a.paymentStatus}</Badge> },
-    { key: "amount", header: "Amount", className: "text-right w-24",
+    { key: "amount", header: "Amount", className: "text-end w-24",
       render: (a) => <span className="font-semibold">${a.amount.toFixed(2)}</span> }
   ];
 
@@ -61,7 +64,7 @@ export function AdminAppointmentManagementPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Appointments" icon={Calendar} description={data ? `${data.total} total` : ""} />
+      <PageHeader title={t("admin.nav.appointments")} icon={Calendar} description={data ? t("adm.totalCount", { count: formatNumber(data.total) }) : ""} />
 
       <Card>
         <CardContent className="pt-6 space-y-4">

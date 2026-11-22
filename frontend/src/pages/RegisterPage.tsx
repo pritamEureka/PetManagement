@@ -19,6 +19,8 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { FormField } from "@/components/common/a11y";
+import { useDraft } from "@/hooks/useDraft";
+import { DraftBanner } from "@/components/common/DraftBanner";
 
 // Per-role icon. Kept here instead of in schemas.ts because that file is
 // data-only and shouldn't import React component types.
@@ -42,7 +44,7 @@ export function RegisterPage() {
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { register: r, handleSubmit, setValue, trigger, getValues, formState: { errors } } =
+  const { register: r, handleSubmit, setValue, trigger, getValues, watch, formState: { errors } } =
     useForm<RegisterInput>({
       resolver: zodResolver(registerSchema),
       // Default the role to Pet Owner so schema validation passes even before
@@ -50,6 +52,18 @@ export function RegisterPage() {
       // explicit click before we submit, so the default is never used silently.
       defaultValues: { requestedRole: "User" }
     });
+
+  // Draft autosave. NEVER persist secrets: only whitelisted non-password fields are stored.
+  const watched = watch();
+  const draft = useDraft("register-details", watched, {
+    enabled: step !== "done" && !submitting,
+    sanitize: (v: Partial<RegisterInput>) => ({
+      displayName: v.displayName ?? "",
+      email: v.email ?? "",
+      phoneNumber: v.phoneNumber ?? "",
+      requestedRole: v.requestedRole ?? "User",
+    }),
+  });
 
   // Step 1: validate the visible fields only, then advance to the role picker.
   async function continueToRoles() {
@@ -67,6 +81,7 @@ export function RegisterPage() {
     setSubmitting(true);
     try {
       const result = await register(v.email, v.password, v.displayName, v.phoneNumber || undefined, v.requestedRole);
+      draft.clear();
       setSubmittedEmail(result.email);
       setStep("done");
     } catch (err: any) {
@@ -101,6 +116,19 @@ export function RegisterPage() {
           <p className="text-sm text-muted-foreground">{subheading}</p>
         </CardHeader>
         <CardContent>
+          {step === "details" && (
+            <DraftBanner<Partial<RegisterInput>>
+              draft={draft}
+              className="mb-4"
+              onRestore={(d) => {
+                // Passwords are never stored, so the user re-types it.
+                for (const k of ["displayName", "email", "phoneNumber", "requestedRole"] as const) {
+                  const val = d[k];
+                  if (typeof val === "string" && val) setValue(k, val as never);
+                }
+              }}
+            />
+          )}
           {step === "details" && (
             <DetailsForm
               register={r}

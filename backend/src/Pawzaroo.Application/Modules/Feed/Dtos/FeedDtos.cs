@@ -41,7 +41,9 @@ public record CreatePostInput(
     string? Location,
     IReadOnlyList<string>? MediaUrls,
     IReadOnlyList<string>? Hashtags,
-    IReadOnlyList<Guid>? PetTagIds);
+    IReadOnlyList<Guid>? PetTagIds,
+    double? Latitude = null,
+    double? Longitude = null);
 
 public record UpdatePostInput(
     string? Content,

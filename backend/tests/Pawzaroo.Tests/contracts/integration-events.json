@@ -1,0 +1,778 @@
+{
+  "Pawzaroo.Application.Common.Messaging.AdoptionListingApprovedIntegration": {
+    "ApprovedBy": "Guid",
+    "EventId": "Guid",
+    "ListingId": "Guid",
+    "OccurredAt": "DateTime"
+  },
+  "Pawzaroo.Application.Common.Messaging.AdoptionListingCreatedIntegration": {
+    "EventId": "Guid",
+    "ListingId": "Guid",
+    "OccurredAt": "DateTime",
+    "OwnerId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.AdoptionListingRejectedIntegration": {
+    "EventId": "Guid",
+    "ListingId": "Guid",
+    "OccurredAt": "DateTime",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Common.Messaging.AppointmentBooked": {
+    "AppointmentId": "Guid",
+    "DoctorId": "Guid",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "StartUtc": "DateTime",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.AppointmentCancelled": {
+    "AppointmentId": "Guid",
+    "CancelledBy": "Guid",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Common.Messaging.AppointmentRescheduled": {
+    "AppointmentId": "Guid",
+    "EventId": "Guid",
+    "NewStartUtc": "DateTime",
+    "OccurredAt": "DateTime"
+  },
+  "Pawzaroo.Application.Common.Messaging.AuditLogCreated": {
+    "Action": "string",
+    "ActorId": "Guid?",
+    "Detail": "string?",
+    "EntityId": "Guid?",
+    "EntityType": "string",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime"
+  },
+  "Pawzaroo.Application.Common.Messaging.CommentAdded": {
+    "AuthorId": "Guid",
+    "Body": "string",
+    "CommentId": "Guid",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "PostId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.DoctorApproved": {
+    "ApprovedBy": "Guid",
+    "DoctorId": "Guid",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime"
+  },
+  "Pawzaroo.Application.Common.Messaging.DoctorRegistered": {
+    "DoctorId": "Guid",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.DoctorRejected": {
+    "DoctorId": "Guid",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Common.Messaging.FeedPostCreated": {
+    "AuthorId": "Guid",
+    "Caption": "string?",
+    "EventId": "Guid",
+    "MediaUrls": "IReadOnlyList<string>",
+    "OccurredAt": "DateTime",
+    "PostId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.FeedPostReacted": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "PostId": "Guid",
+    "Reaction": "string",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.FeedPostShared": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "PostId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.MessageRead": {
+    "EventId": "Guid",
+    "MessageId": "Guid",
+    "OccurredAt": "DateTime",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.MessageSent": {
+    "ConversationId": "Guid",
+    "EventId": "Guid",
+    "MessageId": "Guid",
+    "OccurredAt": "DateTime",
+    "Preview": "string",
+    "Recipients": "IReadOnlyList<Guid>",
+    "SenderId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.NotificationCreated": {
+    "Body": "string",
+    "EventId": "Guid",
+    "NotificationId": "Guid",
+    "OccurredAt": "DateTime",
+    "Payload": "object?",
+    "Title": "string",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.OrderCancelledIntegration": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "OrderId": "Guid",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Common.Messaging.OrderPlacedIntegration": {
+    "EventId": "Guid",
+    "ItemCount": "int",
+    "OccurredAt": "DateTime",
+    "OrderId": "Guid",
+    "OrderNumber": "string",
+    "StoreIds": "IReadOnlyList<Guid>",
+    "Total": "decimal",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.OrderShipped": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "OrderId": "Guid",
+    "TrackingNumber": "string?"
+  },
+  "Pawzaroo.Application.Common.Messaging.PaymentCompleted": {
+    "Amount": "decimal",
+    "EventId": "Guid",
+    "Method": "string",
+    "OccurredAt": "DateTime",
+    "OrderId": "Guid",
+    "PaymentId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.PaymentFailedIntegration": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "OrderId": "Guid",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Common.Messaging.PermissionsChanged": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.ProductCreatedIntegration": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "ProductId": "Guid",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.ProductPriceChanged": {
+    "EventId": "Guid",
+    "NewPrice": "decimal",
+    "OccurredAt": "DateTime",
+    "OldPrice": "decimal",
+    "ProductId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.ProductStockLow": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "ProductId": "Guid",
+    "RemainingStock": "int",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.ReviewSubmitted": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "ProductId": "Guid",
+    "Rating": "int",
+    "ReviewId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.RoleAssigned": {
+    "AssignedBy": "Guid",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "RoleName": "string",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.StoreApprovedIntegration": {
+    "ApprovedBy": "Guid",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.StoreRegisteredIntegration": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "OwnerUserId": "Guid",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.StoreSuspendedIntegration": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "Reason": "string?",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.UserDeactivated": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "Reason": "string?",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.UserEmailVerified": {
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.UserLoggedIn": {
+    "EventId": "Guid",
+    "Ip": "string",
+    "OccurredAt": "DateTime",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Common.Messaging.UserRegistered": {
+    "DisplayName": "string",
+    "Email": "string",
+    "EventId": "Guid",
+    "OccurredAt": "DateTime",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingAdopted": {
+    "AdoptedByUserId": "Guid?",
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "OwnerId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingApproved": {
+    "ApprovedBy": "Guid",
+    "At": "DateTime",
+    "ListingId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingClosed": {
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "OwnerId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingCreated": {
+    "At": "DateTime",
+    "DraftSubmitted": "bool",
+    "ListingId": "Guid",
+    "OwnerId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingDeleted": {
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "OwnerId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingRejected": {
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "Reason": "string?",
+    "RejectedBy": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingSaved": {
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "Saved": "bool",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingSubmitted": {
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "OwnerId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionListingUpdated": {
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "OwnerId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionRequestCreated": {
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "RequestId": "Guid",
+    "RequesterId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionRequestStatusChanged": {
+    "At": "DateTime",
+    "ListingId": "Guid",
+    "RequestId": "Guid",
+    "Status": "string"
+  },
+  "Pawzaroo.Application.Modules.Adoption.Events.AdoptionWantedPostCreated": {
+    "At": "DateTime",
+    "PostId": "Guid",
+    "RequesterId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.CommentAdded": {
+    "At": "DateTime",
+    "AuthorId": "Guid",
+    "CommentId": "Guid",
+    "ParentCommentId": "Guid?",
+    "PostId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.CommentDeleted": {
+    "At": "DateTime",
+    "AuthorId": "Guid",
+    "CommentId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.CommentEdited": {
+    "At": "DateTime",
+    "AuthorId": "Guid",
+    "CommentId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.CommentReported": {
+    "At": "DateTime",
+    "CommentId": "Guid",
+    "Reason": "string",
+    "ReporterId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.PostCreated": {
+    "At": "DateTime",
+    "AuthorId": "Guid",
+    "PostId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.PostDeleted": {
+    "At": "DateTime",
+    "AuthorId": "Guid",
+    "ByModerator": "bool",
+    "PostId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.PostModerated": {
+    "Action": "string",
+    "ActorId": "Guid",
+    "At": "DateTime",
+    "PostId": "Guid",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.PostReacted": {
+    "At": "DateTime",
+    "PostId": "Guid",
+    "Removed": "bool",
+    "Type": "string",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.PostReported": {
+    "At": "DateTime",
+    "PostId": "Guid",
+    "Reason": "string",
+    "ReporterId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.PostSavedEvt": {
+    "At": "DateTime",
+    "PostId": "Guid",
+    "Saved": "bool",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.PostShared": {
+    "At": "DateTime",
+    "PostId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Feed.Events.PostUpdated": {
+    "At": "DateTime",
+    "AuthorId": "Guid",
+    "PostId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.CartCleared": {
+    "At": "DateTime",
+    "CartId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.CartItemAdded": {
+    "At": "DateTime",
+    "CartId": "Guid",
+    "ProductId": "Guid",
+    "Quantity": "int",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.CartItemRemoved": {
+    "At": "DateTime",
+    "CartId": "Guid",
+    "ProductId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.CommissionConfigurationChanged": {
+    "At": "DateTime",
+    "CategoryId": "Guid?",
+    "ConfigId": "Guid",
+    "Percent": "decimal",
+    "Scope": "string",
+    "StoreId": "Guid?"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.InventoryAdjusted": {
+    "At": "DateTime",
+    "OrderId": "Guid?",
+    "ProductId": "Guid",
+    "QuantityAfter": "int",
+    "QuantityChange": "int",
+    "Reason": "string",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.LowStockWarning": {
+    "At": "DateTime",
+    "ProductId": "Guid",
+    "RemainingStock": "int",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.OrderCancelled": {
+    "At": "DateTime",
+    "CancelledBy": "Guid",
+    "OrderId": "Guid",
+    "OrderNumber": "string",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.OrderPlaced": {
+    "At": "DateTime",
+    "ItemCount": "int",
+    "OrderId": "Guid",
+    "OrderNumber": "string",
+    "StoreIds": "IReadOnlyList<Guid>",
+    "Total": "decimal",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.OrderRefunded": {
+    "Amount": "decimal",
+    "At": "DateTime",
+    "OrderId": "Guid",
+    "OrderNumber": "string"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.OrderShipmentStatusChanged": {
+    "At": "DateTime",
+    "OrderId": "Guid",
+    "OrderNumber": "string",
+    "ShipmentStatus": "string",
+    "TrackingNumber": "string?"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.OrderStatusChanged": {
+    "At": "DateTime",
+    "OrderId": "Guid",
+    "OrderNumber": "string",
+    "Status": "string"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.PaymentFailed": {
+    "At": "DateTime",
+    "OrderId": "Guid",
+    "PaymentId": "Guid",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.PaymentInitiated": {
+    "Amount": "decimal",
+    "At": "DateTime",
+    "Method": "string",
+    "OrderId": "Guid",
+    "PaymentId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.PaymentSucceeded": {
+    "Amount": "decimal",
+    "At": "DateTime",
+    "OrderId": "Guid",
+    "PaymentId": "Guid",
+    "TransactionRef": "string?"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.ProductCreated": {
+    "At": "DateTime",
+    "ProductId": "Guid",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.ProductDeleted": {
+    "At": "DateTime",
+    "ProductId": "Guid",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.ProductFeatured": {
+    "At": "DateTime",
+    "Featured": "bool",
+    "ProductId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.ProductPublished": {
+    "Active": "bool",
+    "At": "DateTime",
+    "ProductId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.ProductReviewCreated": {
+    "At": "DateTime",
+    "ProductId": "Guid",
+    "Rating": "int",
+    "ReviewId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.ProductUpdated": {
+    "At": "DateTime",
+    "ProductId": "Guid",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.ReturnDecided": {
+    "At": "DateTime",
+    "Decision": "string",
+    "OrderItemId": "Guid",
+    "RefundAmount": "decimal?",
+    "RequestId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.ReturnRequested": {
+    "At": "DateTime",
+    "OrderItemId": "Guid",
+    "RequestId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreApproved": {
+    "ApprovedBy": "Guid",
+    "At": "DateTime",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreFeatured": {
+    "At": "DateTime",
+    "Featured": "bool",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreOwnerKycApproved": {
+    "ApprovedBy": "Guid",
+    "At": "DateTime",
+    "ProfileId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreOwnerKycRejected": {
+    "At": "DateTime",
+    "ProfileId": "Guid",
+    "Reason": "string?",
+    "RejectedBy": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreOwnerKycSubmitted": {
+    "At": "DateTime",
+    "ProfileId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreRegistered": {
+    "At": "DateTime",
+    "OwnerUserId": "Guid",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreRejected": {
+    "At": "DateTime",
+    "Reason": "string?",
+    "RejectedBy": "Guid",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreReviewCreated": {
+    "At": "DateTime",
+    "Rating": "int",
+    "ReviewId": "Guid",
+    "StoreId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreSuspended": {
+    "At": "DateTime",
+    "Reason": "string?",
+    "StoreId": "Guid",
+    "SuspendedBy": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Marketplace.Events.StoreUpdated": {
+    "At": "DateTime",
+    "StoreId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Messaging.Events.ConversationStarted": {
+    "At": "DateTime",
+    "ContextRefId": "Guid?",
+    "ContextType": "string?",
+    "ConversationId": "Guid",
+    "InitiatorId": "Guid",
+    "OtherUserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Messaging.Events.MessageDeleted": {
+    "At": "DateTime",
+    "ByModerator": "bool",
+    "ByUserId": "Guid",
+    "MessageId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Messaging.Events.MessageDelivered": {
+    "At": "DateTime",
+    "MessageId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Messaging.Events.MessageModerated": {
+    "Action": "string",
+    "ActorId": "Guid",
+    "At": "DateTime",
+    "MessageId": "Guid",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Modules.Messaging.Events.MessageRead": {
+    "At": "DateTime",
+    "ConversationId": "Guid",
+    "LastMessageId": "Guid?",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Messaging.Events.MessageReported": {
+    "At": "DateTime",
+    "MessageId": "Guid",
+    "Reason": "string",
+    "ReportId": "Guid",
+    "ReporterId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Messaging.Events.MessageSent": {
+    "At": "DateTime",
+    "ConversationId": "Guid",
+    "MessageId": "Guid",
+    "RecipientIds": "IReadOnlyList<Guid>",
+    "SenderId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Messaging.Events.UserBlocked": {
+    "At": "DateTime",
+    "BlockedUserId": "Guid",
+    "BlockerId": "Guid",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.LostFoundResolved": {
+    "OccurredAt": "DateTime",
+    "ReportId": "Guid",
+    "Reunited": "bool"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.PetCreated": {
+    "AnimalType": "string",
+    "OccurredAt": "DateTime",
+    "OwnerId": "Guid",
+    "PetId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.PetDeleted": {
+    "OccurredAt": "DateTime",
+    "OwnerId": "Guid",
+    "PetId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.PetFound": {
+    "City": "string",
+    "OccurredAt": "DateTime",
+    "ReportId": "Guid",
+    "ReporterId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.PetMedicalRecordAdded": {
+    "AppointmentId": "Guid?",
+    "OccurredAt": "DateTime",
+    "PetId": "Guid",
+    "RecordId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.PetOwnershipTransferred": {
+    "AdoptionListingId": "Guid?",
+    "FromUserId": "Guid",
+    "OccurredAt": "DateTime",
+    "PetId": "Guid",
+    "ToUserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.PetReportedLost": {
+    "City": "string",
+    "OccurredAt": "DateTime",
+    "PetId": "Guid?",
+    "ReportId": "Guid",
+    "ReporterId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.PetSightingReported": {
+    "Latitude": "double?",
+    "Longitude": "double?",
+    "OccurredAt": "DateTime",
+    "OwnerId": "Guid",
+    "PetId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.PetVaccinationRecorded": {
+    "NextDueOn": "DateTime?",
+    "OccurredAt": "DateTime",
+    "PetId": "Guid",
+    "RecordId": "Guid",
+    "VaccineName": "string"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.ServiceBookingCompleted": {
+    "Amount": "decimal",
+    "BookingId": "Guid",
+    "OccurredAt": "DateTime",
+    "PetId": "Guid?",
+    "ProviderId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Pets.Events.VaccinationDue": {
+    "DaysBefore": "int",
+    "DueOn": "DateTime",
+    "OccurredAt": "DateTime",
+    "OwnerId": "Guid",
+    "PetId": "Guid",
+    "RecordId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.AppointmentBooked": {
+    "AppointmentId": "Guid",
+    "At": "DateTime",
+    "DoctorId": "Guid",
+    "PatientUserId": "Guid",
+    "ScheduledAt": "DateTime",
+    "Status": "string"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.AppointmentCancelled": {
+    "AppointmentId": "Guid",
+    "At": "DateTime",
+    "ByDoctor": "bool",
+    "CancelledBy": "Guid",
+    "Reason": "string?"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.AppointmentCompleted": {
+    "AppointmentId": "Guid",
+    "At": "DateTime"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.AppointmentConfirmed": {
+    "AppointmentId": "Guid",
+    "At": "DateTime"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.AppointmentNoShow": {
+    "AppointmentId": "Guid",
+    "At": "DateTime"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.AppointmentPaid": {
+    "Amount": "decimal",
+    "AppointmentId": "Guid",
+    "At": "DateTime"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.AppointmentRefunded": {
+    "Amount": "decimal",
+    "AppointmentId": "Guid",
+    "At": "DateTime"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.AppointmentRescheduled": {
+    "AppointmentId": "Guid",
+    "At": "DateTime",
+    "NewScheduledAt": "DateTime"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.CredentialVerified": {
+    "At": "DateTime",
+    "CredentialId": "Guid",
+    "DoctorId": "Guid",
+    "Verified": "bool",
+    "VerifierId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.DoctorApproved": {
+    "ApprovedBy": "Guid",
+    "At": "DateTime",
+    "DoctorId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.DoctorRegistered": {
+    "At": "DateTime",
+    "DoctorId": "Guid",
+    "UserId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.DoctorRejected": {
+    "At": "DateTime",
+    "DoctorId": "Guid",
+    "Reason": "string?",
+    "RejectedBy": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.DoctorReviewed": {
+    "At": "DateTime",
+    "DoctorId": "Guid",
+    "Rating": "int",
+    "ReviewerId": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.DoctorSuspended": {
+    "At": "DateTime",
+    "DoctorId": "Guid",
+    "Reason": "string?",
+    "SuspendedBy": "Guid"
+  },
+  "Pawzaroo.Application.Modules.Vet.Events.PrescriptionUploaded": {
+    "AppointmentId": "Guid",
+    "At": "DateTime",
+    "DoctorId": "Guid"
+  }
+}

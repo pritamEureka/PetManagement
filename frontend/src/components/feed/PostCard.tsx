@@ -17,6 +17,7 @@ import { EditPostDialog } from "./EditPostDialog";
 import { ReportPostDialog } from "./ReportPostDialog";
 import { CommentDrawer } from "./CommentDrawer";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { AuthorRepBadge } from "./AuthorRepBadge";
 import { PromptDialog } from "@/components/common/PromptDialog";
 
 interface Props {
@@ -94,7 +95,7 @@ export function PostCard({ post, onChanged }: Props) {
         </Link>
         <div className="flex-1 min-w-0">
           <Link to={`/u/${post.author.id}`} className="font-medium leading-tight truncate hover:underline">
-            {post.author.displayName}
+            {post.author.displayName}<AuthorRepBadge userId={post.author.id} />
           </Link>
           <p className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}

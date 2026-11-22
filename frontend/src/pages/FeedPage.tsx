@@ -12,20 +12,26 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { PostCard } from "@/components/feed/PostCard";
 import { CreatePostDialog } from "@/components/feed/CreatePostDialog";
+import { FollowedPetsStrip } from "@/components/feed/FollowedPetsStrip";
 import { postsApi } from "@/api/posts";
+import { nearbyApi } from "@/api/socialPlus";
+import { useI18n } from "@/lib/i18n";
 import { useAuthStore } from "@/store/authStore";
 
-type Tab = "public" | "following";
+type Tab = "public" | "following" | "nearby";
 
 export function FeedPage() {
   const qc = useQueryClient();
+  const { t } = useI18n();
   const me = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("public");
 
   const queryKey = ["feed", tab];
   const fetchPage = ({ pageParam }: { pageParam?: string }) =>
-    tab === "public"
+    tab === "nearby"
+      ? nearbyApi.list({ cursor: pageParam, pageSize: 20 }).then((r) => ({ items: r.items.map((i) => i.post), nextCursor: r.nextCursor }))
+      : tab === "public"
       ? postsApi.feed({ cursor: pageParam, pageSize: 20 })
       : postsApi.following({ cursor: pageParam, pageSize: 20 });
 
@@ -58,11 +64,14 @@ export function FeedPage() {
       <PageHeader title="Feed" icon={Home} description="Latest from your pet community." />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList className="grid grid-cols-2 w-full sm:max-w-xs">
+        <TabsList className="grid grid-cols-3 w-full sm:max-w-sm">
           <TabsTrigger value="public">Public</TabsTrigger>
           <TabsTrigger value="following">Following</TabsTrigger>
+          <TabsTrigger value="nearby">{t("feed.nearby")}</TabsTrigger>
         </TabsList>
       </Tabs>
+
+      <FollowedPetsStrip />
 
       <Can permission="posts.create">
         <Card className="cursor-pointer hover:bg-background/80 dark:hover:bg-background/60 transition-colors" onClick={() => setOpen(true)}>

@@ -18,6 +18,10 @@ import { CareTab } from "./detail/CareTab";
 import { FamilyTab } from "./detail/FamilyTab";
 import { MoneyTab } from "./detail/MoneyTab";
 import { ShareTab } from "./detail/ShareTab";
+import { CarePlanTab } from "./detail/CarePlanTab";
+import { TypedHealthPanel } from "./detail/TypedHealthPanel";
+import { PetAlbumManager } from "@/components/pets/PetAlbumManager";
+import { Section } from "./detail/shared";
 
 function ageLabel(birthDate?: string | null) {
   if (!birthDate) return null;
@@ -50,8 +54,10 @@ export function PetDetailPage() {
     { key: "health", label: "Health" },
     { key: "medications", label: "Medications" },
     { key: "weight", label: "Weight" },
+    { key: "care-plan", label: "Care plans" },
     ...(pet.myAccess !== "Vet" ? [{ key: "care", label: "Daily care" }, { key: "family", label: "Care team" }] : []),
     ...(editor ? [{ key: "money", label: "Expenses" }] : []),
+    ...(pet.myAccess === "Owner" ? [{ key: "albums", label: "Albums" }] : []),
     { key: "share", label: "Share & ID" },
   ];
   const active = tabs.some((t) => t.key === params.get("tab")) ? params.get("tab")! : "overview";
@@ -95,12 +101,14 @@ export function PetDetailPage() {
           </TabsList>
         </div>
         <TabsContent value="overview"><OverviewTab pet={pet} /></TabsContent>
-        <TabsContent value="health"><HealthTab pet={pet} /></TabsContent>
+        <TabsContent value="health"><div className="space-y-4"><HealthTab pet={pet} /><TypedHealthPanel pet={pet} /></div></TabsContent>
         <TabsContent value="medications"><MedicationsTab pet={pet} /></TabsContent>
         <TabsContent value="weight"><WeightTab pet={pet} /></TabsContent>
+        <TabsContent value="care-plan"><CarePlanTab pet={pet} /></TabsContent>
         <TabsContent value="care"><CareTab pet={pet} /></TabsContent>
         <TabsContent value="family"><FamilyTab pet={pet} /></TabsContent>
         <TabsContent value="money"><MoneyTab pet={pet} /></TabsContent>
+        <TabsContent value="albums"><Section title="Photo albums"><PetAlbumManager petId={pet.id} canManage={pet.myAccess === "Owner"} /></Section></TabsContent>
         <TabsContent value="share"><ShareTab pet={pet} /></TabsContent>
       </Tabs>
 

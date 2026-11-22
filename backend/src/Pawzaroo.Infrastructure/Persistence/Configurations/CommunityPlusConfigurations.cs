@@ -16,6 +16,7 @@ public class CommunityConfiguration : IEntityTypeConfiguration<Community>
         e.Property(x => x.Breed).HasMaxLength(80);
         e.Property(x => x.City).HasMaxLength(100);
         e.Property(x => x.Description).HasMaxLength(2000);
+        e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20).HasDefaultValue(CommunityKind.Community);
         e.HasIndex(x => x.Slug).IsUnique();
         e.HasIndex(x => new { x.Species, x.Breed });
     }

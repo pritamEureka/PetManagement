@@ -12,6 +12,10 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { toast } from "@/components/ui/sonner";
 import { CreateEventDialog } from "@/components/communities/CommunityDialogs";
 import { EventCard } from "@/components/communities/EventCard";
+import { PollCard } from "@/components/communities/PollCard";
+import { CreatePollDialog } from "@/components/communities/CreatePollDialog";
+import { ReputationLeaderboard } from "@/components/communities/ReputationLeaderboard";
+import { communityPlusApi } from "@/api/socialPlus";
 import { useI18n } from "@/lib/i18n";
 import { formatDate, formatNumber } from "@/lib/format";
 import {
@@ -61,6 +65,7 @@ export function CommunityDetailPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [eventOpen, setEventOpen] = useState(false);
+  const [pollOpen, setPollOpen] = useState(false);
   const [memberTab, setMemberTab] = useState<CommunityMemberStatus>("Active");
 
   const community = useQuery({ queryKey: ["communities", "detail", idOrSlug], queryFn: () => communitiesApi.get(idOrSlug) });
@@ -78,6 +83,12 @@ export function CommunityDetailPage() {
   const events = useQuery({
     queryKey: ["community-events", "community", c?.id],
     queryFn: () => communitiesApi.events(c!.id),
+    enabled: canView,
+  });
+
+  const polls = useQuery({
+    queryKey: ["community-plus", "polls", c?.id],
+    queryFn: () => communityPlusApi.polls(c!.id),
     enabled: canView,
   });
 
@@ -128,6 +139,7 @@ export function CommunityDetailPage() {
         <Tabs defaultValue="events">
           <TabsList>
             <TabsTrigger value="events">{t("communities.events")}</TabsTrigger>
+            <TabsTrigger value="polls">{t("poll.tab")}</TabsTrigger>
             <TabsTrigger value="members">{t("communities.membersTab")}</TabsTrigger>
           </TabsList>
 
@@ -135,6 +147,14 @@ export function CommunityDetailPage() {
             {events.isLoading ? <Skeleton className="h-24" aria-busy="true" aria-label={t("common.loading")} /> : events.data && events.data.length > 0
               ? events.data.map((e) => <EventCard key={e.id} event={e} showCommunity={false} />)
               : <EmptyState title={t("communities.noEvents")} description={isActive ? t("communities.hostFirst") : t("communities.joinToHost")} />}
+          </TabsContent>
+
+          <TabsContent value="polls" className="space-y-3">
+            {isActive && <Button size="sm" onClick={() => setPollOpen(true)}><Plus aria-hidden="true" className="h-4 w-4 me-1" />{t("poll.create")}</Button>}
+            {polls.isLoading ? <Skeleton className="h-24" /> : polls.data && polls.data.length > 0
+              ? polls.data.map((p) => <PollCard key={p.id} poll={p} canVote={!!isActive} onChanged={() => qc.invalidateQueries({ queryKey: ["community-plus"] })} />)
+              : <EmptyState title={t("poll.none")} />}
+            <ReputationLeaderboard communityId={c.id} />
           </TabsContent>
 
           <TabsContent value="members" className="space-y-3">
@@ -162,6 +182,7 @@ export function CommunityDetailPage() {
       )}
 
       <CreateEventDialog communityId={c.id} open={eventOpen} onOpenChange={setEventOpen} />
+      <CreatePollDialog communityId={c.id} open={pollOpen} onOpenChange={setPollOpen} onCreated={() => qc.invalidateQueries({ queryKey: ["community-plus"] })} />
     </div>
   );
 }

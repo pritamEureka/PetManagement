@@ -1,20 +1,30 @@
 import type { ReactNode } from "react";
+import { useI18n } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
+/** Chrome (title, dates, notice) is localised; the legal body stays in English on purpose. */
 function Legal({ title, updated, children }: { title: string; updated: string; children: ReactNode }) {
+  const { t, locale } = useI18n();
   return (
-    <article className="max-w-3xl mx-auto px-4 py-10 space-y-5 text-sm leading-relaxed [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-6 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1">
+    <article className="max-w-3xl mx-auto px-4 py-10 space-y-5 text-sm leading-relaxed [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-6 [&_ul]:list-disc [&_ul]:ps-5 [&_ul]:space-y-1">
       <header>
         <h1 className="text-3xl font-bold">{title}</h1>
-        <p className="text-muted-foreground mt-1">Last updated {updated}</p>
+        <p className="text-muted-foreground mt-1">{t("legal.lastUpdated", { date: formatDate(updated) })}</p>
       </header>
+      {locale !== "en" && (
+        <p role="note" lang={locale} className="rounded-md border bg-muted px-3 py-2 text-muted-foreground">{t("legal.englishOnly")}</p>
+      )}
+      <div lang="en">
       {children}
+      </div>
     </article>
   );
 }
 
 export function PrivacyPage() {
+  const { t } = useI18n();
   return (
-    <Legal title="Privacy policy" updated="2 November 2026">
+    <Legal title={t("legal.privacyTitle")} updated="2026-11-02">
       <p>This policy explains what Pawzaroo collects, why, and the controls you have. It is a working draft and should be reviewed by legal counsel before launch.</p>
 
       <h2>What we collect</h2>
@@ -53,8 +63,9 @@ export function PrivacyPage() {
 }
 
 export function TermsPage() {
+  const { t } = useI18n();
   return (
-    <Legal title="Terms of service" updated="2 November 2026">
+    <Legal title={t("legal.termsTitle")} updated="2026-11-02">
       <p>These terms govern your use of Pawzaroo. They are a working draft and should be reviewed by legal counsel before launch.</p>
 
       <h2>Your account</h2>

@@ -17,7 +17,7 @@ export function StatTile({ label, value, icon: Icon, trend, hint, className }: P
     <Card className={cn("", className)}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          {Icon && <Icon className="h-4 w-4" />} {label}
+          {Icon && <Icon aria-hidden="true" className="h-4 w-4" />} {label}
         </CardTitle>
       </CardHeader>
       <CardContent>

@@ -6,12 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge, statusBadgeVariant } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { couponsApi, type Coupon, type CouponInput, type CouponType } from "@/api/marketplace";
 import { toast } from "@/components/ui/sonner";
+import { QueryBoundary } from "@/components/common/QueryBoundary";
+import { EmptyState } from "@/components/common/EmptyState";
+import { DraftBanner } from "@/components/common/DraftBanner";
+import { useDraft } from "@/hooks/useDraft";
+import { useI18n } from "@/lib/i18n";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 
 type FormState = {
   id?: string;
@@ -31,11 +36,13 @@ const empty: FormState = {
 };
 
 export function CouponManagementPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["coupons"], queryFn: () => couponsApi.list() });
+  const query = useQuery({ queryKey: ["coupons"], queryFn: () => couponsApi.list() });
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(empty);
+  const draft = useDraft(`admin-coupon-${form.id ?? "new"}`, form, { enabled: open });
 
   function toInput(f: FormState): CouponInput {
     return {
@@ -51,18 +58,18 @@ export function CouponManagementPage() {
 
   const create = useMutation({
     mutationFn: () => couponsApi.create(toInput(form)),
-    onSuccess: () => { toast.success("Coupon created"); setOpen(false); setForm(empty); qc.invalidateQueries({ queryKey: ["coupons"] }); },
-    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Create failed.")
+    onSuccess: () => { toast.success(t("adm.coupon.created")); draft.clear(); setOpen(false); setForm(empty); qc.invalidateQueries({ queryKey: ["coupons"] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? t("adm.createFailed"))
   });
   const update = useMutation({
     mutationFn: () => couponsApi.update(form.id!, toInput(form)),
-    onSuccess: () => { toast.success("Coupon updated"); setOpen(false); setForm(empty); qc.invalidateQueries({ queryKey: ["coupons"] }); },
-    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Update failed.")
+    onSuccess: () => { toast.success(t("adm.coupon.updated")); draft.clear(); setOpen(false); setForm(empty); qc.invalidateQueries({ queryKey: ["coupons"] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? t("adm.saveFailed"))
   });
   const remove = useMutation({
     mutationFn: (id: string) => couponsApi.remove(id),
-    onSuccess: () => { toast.success("Coupon deleted"); qc.invalidateQueries({ queryKey: ["coupons"] }); },
-    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Delete failed.")
+    onSuccess: () => { toast.success(t("adm.coupon.deleted")); qc.invalidateQueries({ queryKey: ["coupons"] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? t("adm.deleteFailed"))
   });
 
   function beginCreate() { setForm(empty); setOpen(true); }
@@ -84,59 +91,71 @@ export function CouponManagementPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2"><Ticket className="h-5 w-5 text-primary" /> Coupons</CardTitle>
-          <Button size="sm" onClick={beginCreate}><Plus className="h-4 w-4 mr-1" /> New coupon</Button>
+          <CardTitle className="flex items-center gap-2"><Ticket aria-hidden="true" className="h-5 w-5 text-primary" /> {t("adm.coupon.title")}</CardTitle>
+          <Button size="sm" onClick={beginCreate}><Plus aria-hidden="true" className="h-4 w-4 me-1" /> {t("adm.coupon.new")}</Button>
         </CardHeader>
         <CardContent>
-          {isLoading ? <Skeleton className="h-40" /> : !data || data.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">No coupons yet. Create one to give buyers a discount at checkout.</div>
-          ) : (
-            <div className="space-y-2">
-              {data.map((c) => {
-                const expired = c.expiresAt ? new Date(c.expiresAt) < new Date() : false;
-                const exhausted = c.maxRedemptions != null && c.redemptionsCount >= c.maxRedemptions;
-                return (
-                  <div key={c.id} className="flex items-center justify-between border rounded-md p-3 text-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="font-mono font-semibold">{c.code}</div>
-                      <Badge variant="outline">{c.type === "Percent" ? `${c.value}%` : `−$${c.value.toFixed(2)}`}</Badge>
-                      {c.minOrderAmount > 0 && <Badge variant="outline">min ${c.minOrderAmount.toFixed(2)}</Badge>}
-                      {c.maxRedemptions != null && (
-                        <Badge variant={exhausted ? "destructive" : "outline"}>
-                          {c.redemptionsCount}/{c.maxRedemptions} used
+          <QueryBoundary
+            query={query}
+            empty={
+              <EmptyState
+                icon={Ticket}
+                title={t("adm.coupon.emptyTitle")}
+                description={t("adm.coupon.emptyBody")}
+                action={<Button size="sm" onClick={beginCreate}>{t("adm.coupon.new")}</Button>}
+              />
+            }
+          >
+            {(data) => (
+              <div className="space-y-2">
+                {data.map((c) => {
+                  const expired = c.expiresAt ? new Date(c.expiresAt) < new Date() : false;
+                  const exhausted = c.maxRedemptions != null && c.redemptionsCount >= c.maxRedemptions;
+                  return (
+                    <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 border rounded-md p-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="font-mono font-semibold">{c.code}</div>
+                        <Badge variant="outline">{c.type === "Percent" ? `${formatNumber(c.value)}%` : `−${formatCurrency(c.value)}`}</Badge>
+                        {c.minOrderAmount > 0 && <Badge variant="outline">{t("adm.coupon.min", { amount: formatCurrency(c.minOrderAmount) })}</Badge>}
+                        {c.maxRedemptions != null && (
+                          <Badge variant={exhausted ? "destructive" : "outline"}>
+                            {t("adm.coupon.used", { used: formatNumber(c.redemptionsCount), max: formatNumber(c.maxRedemptions) })}
+                          </Badge>
+                        )}
+                        {c.expiresAt && (
+                          <Badge variant={expired ? "destructive" : "outline"}>
+                            {expired ? t("adm.coupon.expired") : t("adm.coupon.expires", { date: formatDate(c.expiresAt) })}
+                          </Badge>
+                        )}
+                        <Badge variant={statusBadgeVariant(c.isActive ? "Active" : "Inactive")}>
+                          {c.isActive ? <Power aria-hidden="true" className="h-3 w-3 me-1" /> : <PowerOff aria-hidden="true" className="h-3 w-3 me-1" />}
+                          {c.isActive ? t("adm.active") : t("adm.inactive")}
                         </Badge>
-                      )}
-                      {c.expiresAt && (
-                        <Badge variant={expired ? "destructive" : "outline"}>
-                          {expired ? "Expired" : `Expires ${new Date(c.expiresAt).toLocaleDateString()}`}
-                        </Badge>
-                      )}
-                      <Badge variant={statusBadgeVariant(c.isActive ? "Active" : "Inactive")} className="ml-auto">
-                        {c.isActive ? <Power className="h-3 w-3 mr-1" /> : <PowerOff className="h-3 w-3 mr-1" />}
-                        {c.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => beginEdit(c)} title={t("common.edit")} aria-label={t("common.edit")}><Edit2 aria-hidden="true" className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove.mutate(c.id)} title={t("common.delete")} aria-label={t("common.delete")}><Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" /></Button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => beginEdit(c)} title="Edit"><Edit2 className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove.mutate(c.id)} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </QueryBoundary>
         </CardContent>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{form.id ? "Edit coupon" : "New coupon"}</DialogTitle>
+            <DialogTitle>{form.id ? t("adm.coupon.edit") : t("adm.coupon.new")}</DialogTitle>
           </DialogHeader>
+
+          <DraftBanner<FormState> draft={draft} onRestore={(d) => setForm({ ...empty, ...d })} />
 
           <div className="space-y-3 py-2">
             <div>
-              <Label htmlFor="code">Code</Label>
+              <Label htmlFor="code">{t("adm.coupon.code")}</Label>
               <Input
                 id="code"
                 placeholder="SUMMER25"
@@ -148,17 +167,17 @@ export function CouponManagementPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Type</Label>
+                <Label htmlFor="ctype">{t("adm.coupon.type")}</Label>
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as CouponType })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="ctype"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Percent">Percent off</SelectItem>
-                    <SelectItem value="Fixed">Fixed amount off</SelectItem>
+                    <SelectItem value="Percent">{t("adm.coupon.percentOff")}</SelectItem>
+                    <SelectItem value="Fixed">{t("adm.coupon.fixedOff")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="value">{form.type === "Percent" ? "Percent (0–100)" : "Amount"}</Label>
+                <Label htmlFor="value">{form.type === "Percent" ? t("adm.coupon.percentLabel") : t("adm.coupon.amount")}</Label>
                 <Input
                   id="value" type="number" step="0.01" min={0}
                   value={form.value}
@@ -171,14 +190,14 @@ export function CouponManagementPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="min">Min order subtotal</Label>
+                <Label htmlFor="min">{t("adm.coupon.minOrder")}</Label>
                 <Input id="min" type="number" step="0.01" min={0}
                   value={form.minOrderAmount}
                   onChange={(e) => setForm({ ...form, minOrderAmount: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="max">Max redemptions (blank = unlimited)</Label>
+                <Label htmlFor="max">{t("adm.coupon.maxRedemptions")}</Label>
                 <Input id="max" type="number" min={1} placeholder="∞"
                   value={form.maxRedemptions}
                   onChange={(e) => setForm({ ...form, maxRedemptions: e.target.value })}
@@ -187,7 +206,7 @@ export function CouponManagementPage() {
             </div>
 
             <div>
-              <Label htmlFor="exp">Expires (blank = never)</Label>
+              <Label htmlFor="exp">{t("adm.coupon.expiresLabel")}</Label>
               <Input id="exp" type="datetime-local"
                 value={form.expiresAt}
                 onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
@@ -197,14 +216,14 @@ export function CouponManagementPage() {
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.isActive}
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-              Active
+              {t("adm.active")}
             </label>
           </div>
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setOpen(false)}>{t("common.cancel")}</Button>
             <Button onClick={submit} disabled={!form.code.trim() || create.isPending || update.isPending}>
-              {form.id ? (update.isPending ? "Saving…" : "Save") : (create.isPending ? "Creating…" : "Create")}
+              {form.id ? (update.isPending ? t("adm.saving") : t("common.save")) : (create.isPending ? t("adm.creating") : t("adm.create"))}
             </Button>
           </DialogFooter>
         </DialogContent>

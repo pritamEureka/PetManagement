@@ -20,6 +20,7 @@ using Pawzaroo.Application;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Infrastructure;
 using Pawzaroo.Infrastructure.Identity;
+using Pawzaroo.Infrastructure.Observability;
 using Pawzaroo.Infrastructure.Persistence;
 using Pawzaroo.Infrastructure.Persistence.Seed;
 using Prometheus;
@@ -28,7 +29,10 @@ using Serilog;
 var builder = WebApplication.CreateBuilder(args);
 
 // Structured logging.
-builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console());
+builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.WithProperty("version", Pawzaroo.Infrastructure.Observability.BuildInfo.Version)
+    .Enrich.WithProperty("gitSha", Pawzaroo.Infrastructure.Observability.BuildInfo.GitSha)
+    .WriteTo.Console());
 
 // Fail fast on missing/weak secrets. Dev defaults live in appsettings.Development.json;
 // production values MUST come from env vars or a secrets manager (Kubernetes Secret,
@@ -41,6 +45,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApiKafkaConsumers();
+builder.Services.AddPawzarooTelemetry(builder.Configuration);
 
 builder.Services.AddScoped<INotificationService, SignalRNotificationService>();
 
@@ -55,7 +60,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidIssuer = jwt.Issuer,
             ValidAudience = jwt.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
+            // Current key + any Jwt:PreviousSigningKeys (validation only) so the signing key can be rotated without logging everyone out.
+            IssuerSigningKeyResolver = JwtKeyRing.FromConfiguration(builder.Configuration).Resolver,
             ValidateIssuer = true, ValidateAudience = true,
             ValidateIssuerSigningKey = true, ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
@@ -96,7 +102,7 @@ builder.Services.AddRateLimiter(opts =>
     opts.AddPolicy("auth", ctx =>
         RateLimitPartition.GetFixedWindowLimiter(
             ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = builder.Configuration.GetValue("RateLimiting:AuthPermitPerMinute", 10), Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     opts.AddPolicy("writes", ctx =>
         RateLimitPartition.GetTokenBucketLimiter(
             ctx.User.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
@@ -181,15 +187,9 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Migrate + seed.
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
-        .CreateLogger("DatabaseSeeder");
-    await DatabaseSeeder.SeedAsync(db, hasher, app.Configuration, seedLogger);
-}
+// Migrate + seed on startup only when Database:AutoMigrate is on (default: Development only);
+// `--migrate-only` / `--seed-only` run the same work as a one-shot job and exit (see deploy/k8s migration + seed jobs).
+if (await Pawzaroo.Infrastructure.Persistence.DatabaseBootstrapper.RunAsync(app.Services, args, app.Configuration)) return;
 
 app.UseMiddleware<RequestLoggingMiddleware>();   // assigns CorrelationId first
 app.UseSerilogRequestLogging();
@@ -226,11 +226,15 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 // /health        — liveness (no checks)
 // /health/ready  — readiness probe (postgres + redis + kafka)
 // /metrics       — Prometheus scrape endpoint
-app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = Pawzaroo.Infrastructure.Observability.HealthResponseWriter.WriteAsync   // includes version + git SHA
+});
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = c => c.Tags.Contains("ready"),
-    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+    ResponseWriter = Pawzaroo.Infrastructure.Observability.HealthResponseWriter.WriteAsync
 });
 app.MapMetrics();
 
@@ -241,3 +245,6 @@ internal class NameIdentifierUserIdProvider : IUserIdProvider
     public string? GetUserId(HubConnectionContext connection)
         => connection.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 }
+
+// Makes the entry point visible to WebApplicationFactory<Program> in integration tests.
+public partial class Program { }

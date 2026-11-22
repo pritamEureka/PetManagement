@@ -30,6 +30,18 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: pawzaroo
+      # Prefer spreading replicas across nodes first, then zones (soft: small dev clusters still schedule).
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector: { matchLabels: { app: api } }
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: topology.kubernetes.io/zone
+                labelSelector: { matchLabels: { app: api } }
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -40,6 +52,10 @@ spec:
         # Spread replicas across zones so a zone outage doesn't take the API down.
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: { matchLabels: { app: api } }
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector: { matchLabels: { app: api } }
       containers:

@@ -16,6 +16,8 @@ import { discoveryApi, type FacetSearchRequest } from "@/api/shopPlus";
 import { SuggestBox } from "@/components/store/SuggestBox";
 import { DiscoveryPanel } from "@/components/store/DiscoveryPanel";
 import { RecentlyViewed } from "@/components/store/RecentlyViewed";
+import { BundleCard } from "@/components/store/BundleCard";
+import { marketplacePlusApi } from "@/api/marketplacePlus";
 
 export function MarketplacePage() {
   const [search, setSearch] = useState("");
@@ -47,8 +49,11 @@ export function MarketplacePage() {
       total: r.total, page: r.page,
       totalPages: Math.max(1, Math.ceil(r.total / r.pageSize)),
       facets: r.facets, didYouMean: r.didYouMean,
+      sponsored: (r.sponsored ?? []).map((s) => s.product),
     }),
   });
+
+  const { data: bundles } = useQuery({ queryKey: ["marketplace-bundles"], queryFn: () => marketplacePlusApi.bundles(6) });
 
   const applyPatch = (patch: Partial<FacetSearchRequest>) => {
     if ("q" in patch) setSearch(patch.q ?? "");
@@ -180,6 +185,31 @@ export function MarketplacePage() {
         <Card><CardContent className="py-16 text-center text-muted-foreground">No products match these filters.</CardContent></Card>
       ) : (
         <>
+          {data.sponsored.length > 0 && (
+            <section aria-label="Sponsored products" className="space-y-2">
+              <Badge variant="outline">Sponsored</Badge>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {data.sponsored.map((p) => (
+                  <ProductCard
+                    key={`sp-${p.id}`}
+                    p={p}
+                    cartQty={inCart.get(p.id) ?? 0}
+                    onAdd={onAdd}
+                    onIncrement={onIncrement}
+                    onDecrement={onDecrement}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          {bundles && bundles.length > 0 && page === 1 && !search && (
+            <section aria-label="Bundles" className="space-y-2">
+              <h2 className="font-semibold">Bundle and save</h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {bundles.slice(0, 3).map((b) => <BundleCard key={b.id} bundle={b} />)}
+              </div>
+            </section>
+          )}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {data.items.map((p) => (
               <ProductCard

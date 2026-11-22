@@ -85,7 +85,11 @@ public record RankedProductDto(ProductSummaryDto Product, double Score, ScoreBre
 
 public record FacetSearchResult(
     IReadOnlyList<RankedProductDto> Items, int Total, int Page, int PageSize,
-    FacetsDto Facets, string? DidYouMean, string? EffectiveQuery);
+    FacetsDto Facets, string? DidYouMean, string? EffectiveQuery,
+    IReadOnlyList<SponsoredProductDto>? Sponsored = null);
+
+/// <summary>Paid placement, always returned separately from organic Items and labelled "Sponsored".</summary>
+public record SponsoredProductDto(ProductSummaryDto Product, Guid PlacementId, string Label = "Sponsored");
 
 public record SuggestionDto(string Text, string Kind);
 

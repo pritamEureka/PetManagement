@@ -12,6 +12,7 @@ import { adoptionApi } from "@/api/adoption";
 import { adminApi } from "@/api/adminV2";
 import { toast } from "@/components/ui/sonner";
 import { PromptDialog } from "@/components/common/PromptDialog";
+import { formatDateTime } from "@/lib/format";
 
 export function ApprovalsPage() {
   return (
@@ -25,11 +26,11 @@ export function ApprovalsPage() {
 
       <Tabs defaultValue="users">
         <TabsList>
-          <TabsTrigger value="users"><UsersIcon className="h-3.5 w-3.5 mr-1" /> Users</TabsTrigger>
-          <TabsTrigger value="adoption"><HeartHandshake className="h-3.5 w-3.5 mr-1" /> Adoption</TabsTrigger>
-          <TabsTrigger value="vets"><Stethoscope className="h-3.5 w-3.5 mr-1" /> Vets</TabsTrigger>
-          <TabsTrigger value="stores"><ShoppingBag className="h-3.5 w-3.5 mr-1" /> Stores</TabsTrigger>
-          <TabsTrigger value="services"><Sparkles className="h-3.5 w-3.5 mr-1" /> Services</TabsTrigger>
+          <TabsTrigger value="users"><UsersIcon className="h-3.5 w-3.5 me-1" /> Users</TabsTrigger>
+          <TabsTrigger value="adoption"><HeartHandshake className="h-3.5 w-3.5 me-1" /> Adoption</TabsTrigger>
+          <TabsTrigger value="vets"><Stethoscope className="h-3.5 w-3.5 me-1" /> Vets</TabsTrigger>
+          <TabsTrigger value="stores"><ShoppingBag className="h-3.5 w-3.5 me-1" /> Stores</TabsTrigger>
+          <TabsTrigger value="services"><Sparkles className="h-3.5 w-3.5 me-1" /> Services</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -95,7 +96,7 @@ function UserRegistrationQueue() {
             <div className="min-w-0">
               <p className="font-medium truncate">{u.displayName}</p>
               <p className="text-xs text-muted-foreground truncate">
-                {u.email} · requested {new Date(u.createdAt).toLocaleString()}
+                {u.email} · requested {formatDateTime(u.createdAt)}
               </p>
               {u.roles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -107,12 +108,12 @@ function UserRegistrationQueue() {
               <Badge variant={statusBadgeVariant("Pending")}>Pending</Badge>
               <Can permission="users.approve">
                 <Button size="sm" onClick={() => approve(u.id, u.displayName)}>
-                  <Check className="h-3.5 w-3.5 mr-1" /> Approve
+                  <Check className="h-3.5 w-3.5 me-1" /> Approve
                 </Button>
               </Can>
               <Can permission="users.reject">
                 <Button size="sm" variant="destructive" onClick={() => setRejecting({ id: u.id, name: u.displayName })}>
-                  <X className="h-3.5 w-3.5 mr-1" /> Reject
+                  <X className="h-3.5 w-3.5 me-1" /> Reject
                 </Button>
               </Can>
             </div>
@@ -163,15 +164,15 @@ function AdoptionQueue() {
           <CardContent className="py-3 flex items-center justify-between gap-3">
             <div>
               <p className="font-medium">{it.title}</p>
-              <p className="text-xs text-muted-foreground">by {it.ownerName} · {new Date(it.createdAt).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">by {it.ownerName} · {formatDateTime(it.createdAt)}</p>
             </div>
             <div className="flex gap-2">
               <Badge variant={statusBadgeVariant("Pending")}>Pending</Badge>
               <Can permission="adoption.approve">
-                <Button size="sm" onClick={() => approve(it.id)}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
+                <Button size="sm" onClick={() => approve(it.id)}><Check className="h-3.5 w-3.5 me-1" /> Approve</Button>
               </Can>
               <Can permission="adoption.reject">
-                <Button size="sm" variant="destructive" onClick={() => setRejecting(it.id)}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
+                <Button size="sm" variant="destructive" onClick={() => setRejecting(it.id)}><X className="h-3.5 w-3.5 me-1" /> Reject</Button>
               </Can>
             </div>
           </CardContent>

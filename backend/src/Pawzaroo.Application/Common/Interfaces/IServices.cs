@@ -55,7 +55,30 @@ public interface INotificationService
 public interface IEmailService
 {
     Task SendAsync(string toEmail, string subject, string body, Guid? userId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends a message with file attachments. Transports without attachment support (the console stub) fall back to
+    /// inlining text attachments after the body, capped at 200 KB each; binary attachments are listed by name only.
+    /// </summary>
+    Task SendWithAttachmentsAsync(string toEmail, string subject, string body, IReadOnlyList<EmailAttachment> attachments,
+        Guid? userId = null, CancellationToken ct = default)
+    {
+        var sb = new System.Text.StringBuilder(body);
+        foreach (var a in attachments)
+        {
+            sb.Append("\n\n--- ").Append(a.FileName).Append(" ---\n");
+            if (a.ContentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase))
+            {
+                var text = System.Text.Encoding.UTF8.GetString(a.Content);
+                sb.Append(text.Length > 200_000 ? text[..200_000] + "\n... (truncated)" : text);
+            }
+            else sb.Append("(binary attachment not delivered by this email transport)");
+        }
+        return SendAsync(toEmail, subject, sb.ToString(), userId, ct);
+    }
 }
+
+public record EmailAttachment(string FileName, string ContentType, byte[] Content);
 
 public interface IPermissionResolver
 {

@@ -6,6 +6,7 @@ import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { deliveriesApi, type DeliveryAssignmentStatus } from "@/api/marketplace";
+import { formatDateTime, formatPhone } from "@/lib/format";
 
 export function DeliveryManagementPage() {
   const [statusFilter, setStatusFilter] = useState<DeliveryAssignmentStatus | "all">("all");
@@ -47,7 +48,7 @@ export function DeliveryManagementPage() {
                     </div>
                     <div className="text-xs text-muted-foreground space-y-1">
                       <p className="flex items-center gap-1"><Mail className="h-3 w-3" /> {u.email}</p>
-                      {u.phoneNumber && <p className="flex items-center gap-1"><Phone className="h-3 w-3" /> {u.phoneNumber}</p>}
+                      {u.phoneNumber && <p className="flex items-center gap-1"><Phone className="h-3 w-3" /> {formatPhone(u.phoneNumber)}</p>}
                     </div>
                     <div className="flex gap-2 pt-1 text-xs">
                       <Badge variant="outline" className="flex items-center gap-1">
@@ -96,19 +97,19 @@ export function DeliveryManagementPage() {
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
                       Courier: <span className="font-medium text-foreground">{a.deliveryUserName}</span>
-                      {a.deliveryUserPhone && <> · {a.deliveryUserPhone}</>}
+                      {a.deliveryUserPhone && <> · {formatPhone(a.deliveryUserPhone)}</>}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      Buyer: {a.customerName}{a.customerPhone && <> · {a.customerPhone}</>}
+                      Buyer: {a.customerName}{a.customerPhone && <> · {formatPhone(a.customerPhone)}</>}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       Ship to: {a.shippingAddress}{a.shippingCity && <>, {a.shippingCity}</>}
                     </p>
                   </div>
-                  <div className="text-right text-xs text-muted-foreground space-y-0.5">
-                    <p>Assigned {new Date(a.assignedAt).toLocaleString()}</p>
-                    {a.deliveredAt && <p className="text-emerald-600">Delivered {new Date(a.deliveredAt).toLocaleString()}</p>}
-                    {a.failedAt && <p className="text-destructive flex items-center gap-1 justify-end"><AlertCircle className="h-3 w-3" /> Failed {new Date(a.failedAt).toLocaleString()}</p>}
+                  <div className="text-end text-xs text-muted-foreground space-y-0.5">
+                    <p>Assigned {formatDateTime(a.assignedAt)}</p>
+                    {a.deliveredAt && <p className="text-emerald-600">Delivered {formatDateTime(a.deliveredAt)}</p>}
+                    {a.failedAt && <p className="text-destructive flex items-center gap-1 justify-end"><AlertCircle className="h-3 w-3" /> Failed {formatDateTime(a.failedAt)}</p>}
                   </div>
                 </div>
               ))}

@@ -43,14 +43,23 @@ public class SmtpEmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task SendAsync(string toEmail, string subject, string body, Guid? userId = null, CancellationToken ct = default)
+    public Task SendAsync(string toEmail, string subject, string body, Guid? userId = null, CancellationToken ct = default)
+        => SendWithAttachmentsAsync(toEmail, subject, body, Array.Empty<EmailAttachment>(), userId, ct);
+
+    /// <summary>Real MIME attachments (MimeKit). A body starting with "&lt;" is sent as HTML, anything else as plain text.</summary>
+    public async Task SendWithAttachmentsAsync(string toEmail, string subject, string body,
+        IReadOnlyList<EmailAttachment> attachments, Guid? userId = null, CancellationToken ct = default)
     {
         var msg = new MimeMessage();
         var fromAddress = string.IsNullOrWhiteSpace(_opt.FromAddress) ? _opt.User : _opt.FromAddress;
         msg.From.Add(new MailboxAddress(_opt.FromName, fromAddress));
         msg.To.Add(MailboxAddress.Parse(toEmail));
         msg.Subject = subject;
-        msg.Body = new BodyBuilder { TextBody = body }.ToMessageBody();
+        var builder = new BodyBuilder();
+        if (body.TrimStart().StartsWith('<')) builder.HtmlBody = body; else builder.TextBody = body;
+        foreach (var a in attachments)
+            builder.Attachments.Add(a.FileName, a.Content, ContentType.Parse(a.ContentType));
+        msg.Body = builder.ToMessageBody();
 
         try
         {

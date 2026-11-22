@@ -25,7 +25,7 @@ export function FilterBar({ search, onSearch, placeholder = "Search...", childre
         <div className="relative flex-1 min-w-[14rem] max-w-md">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            className="pl-8"
+            className="ps-8"
             placeholder={placeholder}
             value={search ?? ""}
             onChange={(e) => onSearch(e.target.value)}
@@ -35,7 +35,7 @@ export function FilterBar({ search, onSearch, placeholder = "Search...", childre
       {children}
       {onReset && (
         <Button variant="ghost" size="sm" onClick={onReset}>
-          <X className="h-3 w-3 mr-1" /> Reset
+          <X className="h-3 w-3 me-1" /> Reset
         </Button>
       )}
     </div>

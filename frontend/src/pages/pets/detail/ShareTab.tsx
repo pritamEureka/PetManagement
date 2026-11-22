@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/sonner";
 import { petsApi, canEditPet, publicPetUrl, sharedHealthUrl, type PetDetail } from "@/api/pets";
 import { Section, Field, Muted, fmtDate } from "./shared";
 import { withStepUp } from "@/lib/withStepUp";
+import { RecordConsentsPanel } from "@/components/vet/RecordConsentsPanel";
 
 async function copy(text: string) {
   try { await navigator.clipboard.writeText(text); toast.success("Link copied."); }
@@ -153,6 +154,7 @@ export function ShareTab({ pet }: { pet: PetDetail }) {
           </>
         )}
       </Section>
+      {isOwner && <RecordConsentsPanel petId={pet.id} petName={pet.name} />}
     </div>
   );
 }

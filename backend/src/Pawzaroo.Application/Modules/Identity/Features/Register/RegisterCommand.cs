@@ -71,19 +71,23 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Registrat
     private readonly IPasswordHasher _hasher;
     private readonly INotificationService _notify;
     private readonly IEmailService _email;
+    private readonly Pawzaroo.Application.Modules.SecurityPlus.ISecuritySignalService? _signals;
 
     public RegisterCommandHandler(IApplicationDbContext db, IPasswordHasher hasher,
-        INotificationService notify, IEmailService email)
+        INotificationService notify, IEmailService email, Pawzaroo.Application.Modules.SecurityPlus.ISecuritySignalService? signals = null)
     {
         _db = db;
         _hasher = hasher;
         _notify = notify;
         _email = email;
+        _signals = signals;
     }
 
     public async Task<RegistrationResult> HandleAsync(RegisterCommand req, CancellationToken ct)
     {
         var email = req.Email.Trim().ToLowerInvariant();
+        if (_signals is not null && await _signals.RecordIdentifierAttemptAsync(req.Ip, email, "register", ct))
+            throw new ConflictException("Too many attempts. Try again later.");
 
         // IgnoreQueryFilters so soft-deleted accounts also surface as duplicates —
         // the unique DB index ix_users_email doesn't honour the soft-delete filter,

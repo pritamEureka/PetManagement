@@ -1,0 +1,13 @@
+# PodDisruptionBudgets.
+# api and worker PDBs already live in api.hpa.yaml / worker.deployment.yaml; web had none.
+# maxUnavailable: 1 (rather than minAvailable: 1) so a single-replica dev overlay never blocks node drains,
+# while production (3 replicas) still always keeps >= 2 pods serving.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web
+  namespace: pawzaroo
+  labels: { app: web, app.kubernetes.io/part-of: pawzaroo }
+spec:
+  maxUnavailable: 1
+  selector: { matchLabels: { app: web } }

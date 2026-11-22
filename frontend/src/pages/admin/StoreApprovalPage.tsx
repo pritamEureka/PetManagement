@@ -91,9 +91,9 @@ export function StoreApprovalPage() {
                         {k.addressProofDocUrl && <a href={k.addressProofDocUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">Address proof doc</a>}
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <Button size="sm" onClick={() => approveKyc.mutate(k.id)}><ShieldCheck className="h-3 w-3 mr-1" /> Approve</Button>
+                        <Button size="sm" onClick={() => approveKyc.mutate(k.id)}><ShieldCheck className="h-3 w-3 me-1" /> Approve</Button>
                         <Button size="sm" variant="destructive" onClick={() => rejectKyc.mutate(k.id)}>
-                          <ShieldAlert className="h-3 w-3 mr-1" /> Reject
+                          <ShieldAlert className="h-3 w-3 me-1" /> Reject
                         </Button>
                       </div>
                     </CardContent>
@@ -136,21 +136,21 @@ export function StoreApprovalPage() {
                       <p className="text-xs">Commission: <span className="font-semibold">{s.commissionPercent}%</span> · Products: {s.productCount} · Rating: {s.avgRating.toFixed(1)}</p>
                       <div className="flex gap-2 flex-wrap pt-2">
                         {s.approvalStatus !== "Approved" && (
-                          <Button size="sm" onClick={() => approveStore.mutate(s.id)}><ShieldCheck className="h-3 w-3 mr-1" /> Approve</Button>
+                          <Button size="sm" onClick={() => approveStore.mutate(s.id)}><ShieldCheck className="h-3 w-3 me-1" /> Approve</Button>
                         )}
                         {s.approvalStatus !== "Rejected" && (
                           <Button size="sm" variant="destructive" onClick={() => rejectStore.mutate(s.id)}>
-                            <ShieldAlert className="h-3 w-3 mr-1" /> Reject
+                            <ShieldAlert className="h-3 w-3 me-1" /> Reject
                           </Button>
                         )}
                         {s.approvalStatus === "Approved" && (
                           <Button size="sm" variant="outline" onClick={() => suspendStore.mutate(s.id)}>
-                            <Pause className="h-3 w-3 mr-1" /> Suspend
+                            <Pause className="h-3 w-3 me-1" /> Suspend
                           </Button>
                         )}
                         {s.approvalStatus === "Suspended" && (
                           <Button size="sm" variant="outline" onClick={() => restoreStore.mutate(s.id)}>
-                            <Play className="h-3 w-3 mr-1" /> Restore
+                            <Play className="h-3 w-3 me-1" /> Restore
                           </Button>
                         )}
                       </div>

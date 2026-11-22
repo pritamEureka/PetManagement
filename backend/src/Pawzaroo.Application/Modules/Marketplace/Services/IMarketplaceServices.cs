@@ -81,6 +81,8 @@ public interface IInventoryService
 public interface ICartService
 {
     Task<CartDto> GetMineAsync(CancellationToken ct = default);
+    /// <summary>Cart with shipping previewed through delivery zones for <paramref name="city"/> (default address city when null; flat fee when no zone matches).</summary>
+    Task<CartDto> GetMineAsync(string? city, CancellationToken ct);
     Task<CartDto> AddAsync(AddToCartInput input, CancellationToken ct = default);
     Task<CartDto> UpdateItemAsync(Guid cartItemId, UpdateCartItemInput input, CancellationToken ct = default);
     Task<CartDto> RemoveItemAsync(Guid cartItemId, CancellationToken ct = default);

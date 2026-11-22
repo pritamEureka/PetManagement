@@ -1,3 +1,4 @@
+import { confirmUpload } from "@/lib/uploadConfirm";
 import { useRef, useState } from "react";
 import { Paperclip, X, Image as ImageIcon, FileText } from "lucide-react";
 import axios from "axios";
@@ -31,8 +32,10 @@ export function AttachmentUpload({ attachments, onChange, disabled }: Props) {
       const presign = await api.post("/media/presign", { fileName: file.name, contentType: file.type })
         .then((r) => r.data?.data ?? r.data);
       await axios.put(presign.url, file, { headers: { "Content-Type": file.type } });
+      // Server-side verification of the bytes that were just PUT straight to storage (deletes the object if invalid).
+      const confirmedUrl = await confirmUpload(presign.key, file.type || "application/octet-stream");
       const next: Attachment = {
-        url: presign.publicUrl,
+        url: confirmedUrl,
         mimeType: file.type || "application/octet-stream",
         sizeBytes: file.size,
         fileName: file.name

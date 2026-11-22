@@ -26,6 +26,8 @@ import { EditUserDialog } from "@/components/admin/EditUserDialog";
 import { ViewUserDialog } from "@/components/admin/ViewUserDialog";
 import { toast } from "@/components/ui/sonner";
 import { useAuthStore } from "@/store/authStore";
+import { formatDate, formatNumber } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
   superadmin: "border-fuchsia-200 bg-fuchsia-100 text-fuchsia-800 dark:border-fuchsia-900/60 dark:bg-fuchsia-950/60 dark:text-fuchsia-200",
@@ -55,6 +57,7 @@ function roleBadgeClass(role: string) {
 }
 
 export function UsersPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const isSuperAdmin = useAuthStore((s) => s.user?.roles.includes("SuperAdmin")) ?? false;
 
@@ -146,7 +149,7 @@ export function UsersPage() {
     },
     {
       key: "joined", header: "Joined", className: "w-32",
-      render: (u) => <span className="text-xs text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</span>
+      render: (u) => <span className="text-xs text-muted-foreground">{formatDate(u.createdAt)}</span>
     },
     {
       key: "actions", header: "", className: "w-12",
@@ -157,29 +160,29 @@ export function UsersPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setViewing(u)}>
-              <Eye className="h-3.5 w-3.5 mr-2" /> View
+              <Eye className="h-3.5 w-3.5 me-2" /> View
             </DropdownMenuItem>
             <Can permission="users.edit">
               <DropdownMenuItem onClick={() => setEditing(u)}>
-                <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+                <Pencil className="h-3.5 w-3.5 me-2" /> Edit
               </DropdownMenuItem>
             </Can>
             <Can permission="roles.assign">
               <DropdownMenuItem onClick={() => setRoleUser(u)}>
-                <KeyRound className="h-3.5 w-3.5 mr-2" /> Manage roles
+                <KeyRound className="h-3.5 w-3.5 me-2" /> Manage roles
               </DropdownMenuItem>
             </Can>
             <DropdownMenuSeparator />
             {u.isSuspended ? (
               <Can permission="users.restore">
                 <DropdownMenuItem onClick={() => setRestoring(u)}>
-                  <RotateCcw className="h-3.5 w-3.5 mr-2" /> Restore
+                  <RotateCcw className="h-3.5 w-3.5 me-2" /> Restore
                 </DropdownMenuItem>
               </Can>
             ) : (
               <Can permission="users.suspend">
                 <DropdownMenuItem destructive onClick={() => setSuspending(u)}>
-                  <Ban className="h-3.5 w-3.5 mr-2" /> Suspend
+                  <Ban className="h-3.5 w-3.5 me-2" /> Suspend
                 </DropdownMenuItem>
               </Can>
             )}
@@ -188,7 +191,7 @@ export function UsersPage() {
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem destructive onClick={() => setDeleting(u)}>
-                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete permanently
+                  <Trash2 className="h-3.5 w-3.5 me-2" /> Delete permanently
                 </DropdownMenuItem>
               </>
             )}
@@ -202,12 +205,12 @@ export function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Users" icon={UsersIcon}
-        description={data ? `${data.total} total` : "Manage accounts and roles."}
+      <PageHeader title={t("admin.nav.users")} icon={UsersIcon}
+        description={data ? t("adm.totalCount", { count: formatNumber(data.total) }) : t("adm.users.desc")}
         actions={
           <Can permission="users.create">
             <Button onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4 mr-2" /> New user
+              <Plus className="h-4 w-4 me-2" /> New user
             </Button>
           </Can>
         } />
@@ -216,7 +219,7 @@ export function UsersPage() {
         <CardContent className="pt-6 space-y-4">
           <div className="relative max-w-sm">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Search by name or email"
+            <Input className="ps-8" placeholder="Search by name or email"
                    value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </div>
 

@@ -160,7 +160,7 @@ export function ScheduledReportsPanel() {
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Scheduled reports</CardTitle>
         {canWrite && (
-          <Button size="sm" onClick={() => openDialog(null)}><Plus className="h-4 w-4 mr-1" /> New schedule</Button>
+          <Button size="sm" onClick={() => openDialog(null)}><Plus className="h-4 w-4 me-1" /> New schedule</Button>
         )}
       </CardHeader>
       <CardContent>

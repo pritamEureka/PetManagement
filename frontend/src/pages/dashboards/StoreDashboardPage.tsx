@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingBag, Package, DollarSign, Star, Boxes, Settings, Plus, AlertTriangle } from "lucide-react";
+import { ShoppingBag, Package, DollarSign, Star, Boxes, Settings, Plus, AlertTriangle, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, statusBadgeVariant } from "@/components/ui/badge";
 import { storesApi } from "@/api/marketplace";
 import { StoreLedgerPanel } from "@/components/commerce/StoreLedgerPanel";
+import { useCommerceT } from "@/components/store/useCommerceT";
+import { StoreMetricsPanel } from "@/components/store/StoreMetricsPanel";
 
 export function StoreDashboardPage() {
+  const c = useCommerceT();
   const { data: store } = useQuery({ queryKey: ["my-store"], queryFn: () => storesApi.mine() });
 
   const sinceMs = 30 * 24 * 60 * 60 * 1000;
@@ -41,6 +44,7 @@ export function StoreDashboardPage() {
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline"><Link to="/dashboard/store/products"><Boxes className="h-4 w-4 mr-1" /> Products</Link></Button>
+          <Button asChild variant="outline"><Link to="/dashboard/store/growth"><TrendingUp className="h-4 w-4 mr-1" /> {c("growth.title")}</Link></Button>
           <Button asChild variant="outline"><Link to="/dashboard/store/orders"><Package className="h-4 w-4 mr-1" /> Orders</Link></Button>
           <Button asChild><Link to="/dashboard/store/products/new"><Plus className="h-4 w-4 mr-1" /> New product</Link></Button>
         </div>
@@ -95,6 +99,7 @@ export function StoreDashboardPage() {
         </Card>
       </div>
 
+      <StoreMetricsPanel />
       <StoreLedgerPanel />
     </div>
   );

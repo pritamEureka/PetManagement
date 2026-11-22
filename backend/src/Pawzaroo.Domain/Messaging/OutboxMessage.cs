@@ -2,7 +2,12 @@ using Pawzaroo.Domain.Common;
 
 namespace Pawzaroo.Domain.Messaging;
 
-public enum OutboxStatus { Pending = 0, Dispatched = 1, Failed = 2 }
+/// <summary>
+/// Pending = eligible for dispatch; Dispatched = delivered; Failed = retries exhausted (transient cause);
+/// Poisoned = permanent failure (e.g. message too large, authorization) that retrying cannot fix.
+/// Stored as int; new values are appended so existing rows stay valid.
+/// </summary>
+public enum OutboxStatus { Pending = 0, Dispatched = 1, Failed = 2, Poisoned = 3 }
 
 /// <summary>
 /// Transactional outbox row. Producers write a single DB transaction that
@@ -31,6 +36,12 @@ public class OutboxMessage : BaseEntity
     public int Attempts { get; set; }
     public string? LastError { get; set; }
     public DateTime? NextAttemptAt { get; set; }
+
+    /// <summary>Dispatcher instance holding the lease on this row (SKIP LOCKED claim).</summary>
+    public string? ClaimedBy { get; set; }
+
+    /// <summary>Lease expiry: if the claiming replica dies, the row is claimable again after this instant.</summary>
+    public DateTime? ClaimedUntil { get; set; }
 
     public string? CorrelationId { get; set; }
     public Guid? UserId { get; set; }

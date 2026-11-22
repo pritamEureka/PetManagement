@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddDbContext<ApplicationDbContext>(opt =>
             opt.UseNpgsql(config.GetConnectionString("Postgres"),
                     npg => npg.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName))
+               .AddInterceptors(Pawzaroo.Infrastructure.Features.ReliabilityRegistration.AuditImmutabilityInterceptor)
                .UseSnakeCaseNamingConvention());
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -153,8 +154,17 @@ public static class DependencyInjection
         services.AddVetPlusFeatures();
         services.AddCommercePlusFeatures();
         services.AddShopPlusFeatures();
+        services.AddLoyaltyPlusFeatures();
         services.AddCommunityPlusFeatures();
         services.AddIntelligenceFeatures();
+        services.AddReliabilityFeatures();
+        services.AddPlatformFeatures();
+        services.AddLogisticsPlusFeatures();
+        services.AddSocialPlusFeatures();
+        services.AddClinicPlusFeatures();
+        services.AddPetHealthPlusFeatures();
+        services.AddExperiencePlusFeatures();
+        services.AddAdoptionMessagingPlusFeatures();   // after the base registrations: it replaces IPresenceService
 
         return services;
     }

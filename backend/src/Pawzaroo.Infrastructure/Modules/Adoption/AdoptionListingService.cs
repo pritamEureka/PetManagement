@@ -267,6 +267,7 @@ public class AdoptionListingService : IAdoptionListingService
         }
 
         await _db.SaveChangesAsync(ct);
+        await ListingRiskEvaluator.EvaluateAndStoreAsync(_db, listing.Id, ct); // flags only; never auto-rejects
         await _cache.RemoveAsync(FirstPageCacheKey, ct);
         await _kafka.PublishAsync(AdoptionTopics.Events,
             new AdoptionListingCreated(listing.Id, uid, input.SubmitForApproval, DateTime.UtcNow),
@@ -357,6 +358,7 @@ public class AdoptionListingService : IAdoptionListingService
         });
 
         await _db.SaveChangesAsync(ct);
+        await ListingRiskEvaluator.EvaluateAndStoreAsync(_db, listing.Id, ct); // flags only; never auto-rejects
         await _kafka.PublishAsync(AdoptionTopics.Approvals,
             new AdoptionListingSubmitted(listing.Id, uid, DateTime.UtcNow), listing.Id.ToString(), ct);
     }
@@ -400,6 +402,7 @@ public class AdoptionListingService : IAdoptionListingService
             && await _db.Pets.AnyAsync(p => p.Id == petId && p.OwnerId == uid, ct))
             await _petSharing.TransferOwnershipAsync(petId, adopterId, listing.Id, includeHealthHistory, ct);
 
+        await AdoptionPlusHooks.OnAdoptedAsync(_db, listing, adoptedByUserId, ct); // follow-ups + stage + notification
         await _cache.RemoveAsync(FirstPageCacheKey, ct);
         await _audit.LogAsync("mark_adopted", "AdoptionListing", listing.Id.ToString(), "Adoption",
             newValues: new { adoptedByUserId }, ct: ct);

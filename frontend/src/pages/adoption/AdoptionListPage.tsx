@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/authStore";
+import { adoptionPlusApi } from "@/api/adoption";
+import { useI18n } from "@/lib/i18n";
 import { Link, useSearchParams } from "react-router-dom";
 import { Plus, HeartHandshake, MapPin, Search, ArrowUpDown, Clock, LocateFixed, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,6 +87,16 @@ export function AdoptionListPage() {
     getNextPageParam: (last) => last.nextCursor ?? undefined
   });
   const items = useMemo(() => (data?.pages ?? []).flatMap((p) => p.items), [data]);
+  const { t: tr } = useI18n();
+  const signedIn = useAuthStore((s) => !!s.user);
+  const itemIds = useMemo(() => items.map((l) => l.id).slice(0, 60), [items]);
+  const { data: matches } = useQuery({
+    queryKey: ["adoption", "match", itemIds],
+    queryFn: () => adoptionPlusApi.match(itemIds),
+    enabled: signedIn && itemIds.length > 0,
+    staleTime: 60_000,
+  });
+  const matchById = useMemo(() => new Map((matches ?? []).map((m) => [m.listingId, m])), [matches]);
 
   const sentinel = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -194,6 +207,11 @@ export function AdoptionListPage() {
                 </div>
                 <CardContent className="pt-4 space-y-2">
                   <p className="font-semibold line-clamp-1">{l.petName ?? l.title}</p>
+                  {matchById.get(l.id) && (
+                    <Badge variant="secondary" className="text-[10px]" title={matchById.get(l.id)!.explanations.join(" · ")}>
+                      {tr("adoptmsg.match", { pct: matchById.get(l.id)!.percent })}
+                    </Badge>
+                  )}
                   <p className="text-xs text-muted-foreground">{l.animalType}{l.breed ? ` · ${l.breed}` : ""}{l.size ? ` · ${l.size.replace("ExtraLarge", "XL")}` : ""}</p>
                   <div className="flex items-center justify-between text-xs">
                     {l.location || l.distanceKm != null ? (

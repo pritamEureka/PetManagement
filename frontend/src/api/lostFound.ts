@@ -19,6 +19,8 @@ export interface LostFoundDetail {
   contactPreference: "Chat" | "Phone" | "Email"; contactPhone?: string | null;
   microchipNumber?: string | null; tagNumber?: string | null; resolvedAt?: string | null;
   feedPostId?: string | null; isMine: boolean;
+  extra?: { markings?: string | null; collarDescription?: string | null; sex?: string | null; ageEstimate?: string | null } | null;
+  locationApproximate?: boolean;
 }
 
 export interface LostFoundMatch { report: LostFoundSummary; score: number; reasons: string[]; }
@@ -28,6 +30,7 @@ export interface CreateLostFoundInput {
   description: string; photoUrl?: string | null; lastSeenAt: string; city: string; area?: string | null;
   latitude?: number | null; longitude?: number | null; contactPreference: "Chat" | "Phone" | "Email";
   contactPhone?: string | null; shareToFeed: boolean;
+  extra?: { markings?: string | null; collarDescription?: string | null; sex?: string | null; ageEstimate?: string | null; microchipNumber?: string | null; timeWindowStart?: string | null; timeWindowEnd?: string | null } | null;
 }
 
 export const lostFoundApi = {

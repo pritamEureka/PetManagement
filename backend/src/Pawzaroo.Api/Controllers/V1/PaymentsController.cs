@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Interfaces;
-using Pawzaroo.Application.Modules.Marketplace.Services;
+using Pawzaroo.Application.Modules.Reliability;
 using Pawzaroo.Infrastructure.Payments;
 
 namespace Pawzaroo.Api.Controllers.V1;
@@ -25,19 +25,16 @@ namespace Pawzaroo.Api.Controllers.V1;
 [AllowAnonymous]
 public class PaymentsController : ControllerBase
 {
-    private readonly IPaymentGateway _gateway;
-    private readonly IOrderService _orders;
+    private readonly IPaymentCallbackProcessor _processor;
     private readonly SslCommerzOptions _options;
     private readonly ILogger<PaymentsController> _log;
 
     public PaymentsController(
-        IPaymentGateway gateway,
-        IOrderService orders,
+        IPaymentCallbackProcessor processor,
         IOptions<SslCommerzOptions> options,
         ILogger<PaymentsController> log)
     {
-        _gateway = gateway;
-        _orders = orders;
+        _processor = processor;
         _options = options.Value;
         _log = log;
     }
@@ -84,7 +81,9 @@ public class PaymentsController : ControllerBase
             dict = Request.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
         }
 
-        var result = await _gateway.VerifyCallbackAsync(dict, kind, ct);
+        // Validation + duplicate protection + amount/currency check + order transition + audit all happen in the
+        // processor, in one transaction. A repeated identical callback replays the stored result (no side effects).
+        var result = await _processor.ProcessAsync(dict, kind, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         // No form/data we could validate. For browser hits (GET), drop the user
         // on the frontend page that matches the URL they reached — the page
@@ -106,24 +105,12 @@ public class PaymentsController : ControllerBase
             return Redirect(fallbackTemplate.Replace("{ORDER_ID}", orderHint));
         }
 
-        switch (result.Outcome)
-        {
-            case PaymentCallbackOutcome.Succeeded:
-                await _orders.MarkPaymentSucceededAsync(result.OrderId, result.ProviderRef, result.AmountValidated, ct);
-                break;
-            case PaymentCallbackOutcome.Failed:
-                await _orders.MarkPaymentFailedAsync(result.OrderId, result.ProviderRef, cancelled: false, ct);
-                break;
-            case PaymentCallbackOutcome.Cancelled:
-                await _orders.MarkPaymentFailedAsync(result.OrderId, result.ProviderRef, cancelled: true, ct);
-                break;
-        }
-
         if (!redirect) return Ok();
 
         var template = result.Outcome switch
         {
-            PaymentCallbackOutcome.Succeeded => _options.FrontendSuccessUrl,
+            // An amount/currency mismatch leaves the order unpaid: never send the buyer to the success page.
+            PaymentCallbackOutcome.Succeeded when result.Result != "AmountMismatch" => _options.FrontendSuccessUrl,
             PaymentCallbackOutcome.Cancelled => _options.FrontendCancelUrl,
             _ => _options.FrontendFailUrl
         };

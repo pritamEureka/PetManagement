@@ -17,7 +17,11 @@ namespace Pawzaroo.Infrastructure.Modules.Security;
 /// </summary>
 public class FileValidationService : IFileValidationService
 {
-    private const long MaxBytes = 20L * 1024 * 1024;     // 20 MB
+    private const long MaxBytes = 200L * 1024 * 1024;    // global ceiling; per-type caps in UploadInspector
+    private readonly IMalwareScanner _scanner;
+
+    public FileValidationService(IMalwareScanner? scanner = null)
+        => _scanner = scanner ?? new CompositeMalwareScanner();
 
     // Allowlist (lowercase ext -> set of legal MIME prefixes)
     private static readonly FrozenDictionary<string, string[]> Allowed =
@@ -58,6 +62,23 @@ public class FileValidationService : IFileValidationService
         if (sig.Prefix is not null && !StartsWith(headBytes, sig.Prefix))
             return new(false, $"File contents do not look like {ext}.");
 
+        // Stronger checks: sniffed MIME must agree with the declared one, per-type size cap, polyglots, pixel limits.
+        var sniff = UploadInspector.Sniff(headBytes);
+        if (sniff.Mime is null) return new(false, "File type could not be determined.");
+        var declared = (contentType ?? "").Split(';')[0].Trim();
+        if (!string.Equals(declared, sniff.Mime, StringComparison.OrdinalIgnoreCase))
+            return new(false, $"Content-Type {declared} does not match file contents ({sniff.Mime}).");
+        if (UploadInspector.MaxBytesByMime.TryGetValue(sniff.Mime, out var cap) && sizeBytes > cap)
+            return new(false, $"Exceeds {cap / (1024 * 1024)} MB limit for {sniff.Mime}.");
+        var poly = UploadInspector.DetectPolyglot(headBytes, sniff.Mime);
+        if (poly is not null) return new(false, poly);
+        if (sniff.Mime.StartsWith("image/", StringComparison.Ordinal))
+        {
+            var dim = UploadInspector.ReadDimensions(headBytes, sniff.Mime);
+            if (dim is not null && !UploadInspector.DimensionsAcceptable(dim))
+                return new(false, "Image dimensions exceed the allowed limit.");
+        }
+
         return new(true, null);
     }
 
@@ -81,10 +102,10 @@ public class FileValidationService : IFileValidationService
     /// platform-specific antimalware call here. Always returns Allowed
     /// in dev so the path stays exercised.
     /// </summary>
-    public Task<FileValidationResult> ScanAsync(Stream content, CancellationToken ct = default)
+    public async Task<FileValidationResult> ScanAsync(Stream content, CancellationToken ct = default)
     {
-        // TODO: forward `content` to the configured antimalware adapter.
-        return Task.FromResult(new FileValidationResult(true, null));
+        var r = await _scanner.ScanAsync(content, ct);
+        return r.Clean ? new FileValidationResult(true, null) : new FileValidationResult(false, $"Malware scan failed: {r.Signature}");
     }
 
     private static bool StartsWith(ReadOnlySpan<byte> head, byte[] sig)

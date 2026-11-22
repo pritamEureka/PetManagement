@@ -18,6 +18,7 @@ import { toast } from "@/components/ui/sonner";
 import { animalTypes } from "@/lib/schemas";
 import { petsApi } from "@/api/pets";
 import { livestockApi, productionTypes, type BreedingRecord, type PetGroup, type ProductionType } from "@/api/livestock";
+import { HerdHealthTab } from "./HerdHealthTab";
 import { RecordDialog, useSave } from "@/pages/pets/detail/HealthTab";
 import { Field, Muted, dateInput, orNull, fmtDate } from "@/pages/pets/detail/shared";
 
@@ -33,10 +34,12 @@ export function LivestockPage() {
           <TabsTrigger value="groups">Groups</TabsTrigger>
           <TabsTrigger value="production">Production</TabsTrigger>
           <TabsTrigger value="breeding">Breeding</TabsTrigger>
+          <TabsTrigger value="health">Herd health</TabsTrigger>
         </TabsList>
         <TabsContent value="groups"><GroupsTab /></TabsContent>
         <TabsContent value="production"><ProductionTab /></TabsContent>
         <TabsContent value="breeding"><BreedingTab /></TabsContent>
+        <TabsContent value="health"><HerdHealthTab /></TabsContent>
       </Tabs>
     </div>
   );

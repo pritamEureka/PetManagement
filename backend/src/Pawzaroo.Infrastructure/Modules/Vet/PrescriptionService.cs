@@ -16,8 +16,12 @@ public class PrescriptionService : IPrescriptionService
     private readonly ICurrentUserService _current;
     private readonly IKafkaProducer _kafka;
 
-    public PrescriptionService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka)
+    private readonly Application.Modules.ClinicPlus.IClinicalGate? _gate;
+
+    public PrescriptionService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
+        Application.Modules.ClinicPlus.IClinicalGate? gate = null)
     {
+        _gate = gate;
         _db = db;
         _current = current;
         _kafka = kafka;
@@ -30,6 +34,7 @@ public class PrescriptionService : IPrescriptionService
             .SingleOrDefaultAsync(a => a.Id == appointmentId, ct)
             ?? throw new NotFoundException("Appointment", appointmentId);
         if (appt.Doctor.UserId != uid) throw new ForbiddenException();
+        if (_gate is not null) await _gate.EnsurePrescriptionEditableAsync(appointmentId, ct); // sealed once the encounter is finalized
 
         var rx = new Prescription
         {

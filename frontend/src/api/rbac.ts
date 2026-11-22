@@ -1,3 +1,4 @@
+import { withStepUp } from "@/lib/withStepUp";
 import { api } from "./client";
 
 export interface PermissionDto {
@@ -31,10 +32,10 @@ export const rbacApi = {
   createRole: (data: { name: string; description?: string; permissions: string[] }) =>
     api.post<{ id: string }>("/v1/roles", data).then((r) => r.data),
   updateRole: (id: string, data: { description?: string; permissions?: string[] }) =>
-    api.put(`/v1/roles/${id}`, data),
+    withStepUp(() => api.put(`/v1/roles/${id}`, data)),
   deleteRole: (id: string) => api.delete(`/v1/roles/${id}`),
 
   userRoles: (userId: string) => api.get<UserRolesView>(`/v1/user-roles/user/${userId}`).then((r) => r.data),
-  assignRole: (userId: string, roleId: string) => api.post("/v1/user-roles/assign", { userId, roleId }),
-  revokeRole: (userId: string, roleId: string) => api.post("/v1/user-roles/revoke", { userId, roleId }),
+  assignRole: (userId: string, roleId: string) => withStepUp(() => api.post("/v1/user-roles/assign", { userId, roleId })),
+  revokeRole: (userId: string, roleId: string) => withStepUp(() => api.post("/v1/user-roles/revoke", { userId, roleId })),
 };

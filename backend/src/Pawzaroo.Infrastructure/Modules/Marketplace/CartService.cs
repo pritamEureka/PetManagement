@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Interfaces;
+using Pawzaroo.Application.Modules.Marketplace;
 using Pawzaroo.Application.Modules.Marketplace.Dtos;
 using Pawzaroo.Application.Modules.Marketplace.Events;
 using Pawzaroo.Application.Modules.Marketplace.Services;
@@ -16,10 +17,13 @@ public class CartService : ICartService
     private readonly ICurrentUserService _current;
     private readonly IKafkaProducer _kafka;
     private readonly MarketplaceOptions _market;
+    private readonly Pawzaroo.Application.Modules.LogisticsPlus.IShippingQuoteService? _shippingQuote; // optional zone preview
 
     public CartService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
-        IOptions<MarketplaceOptions> market)
+        IOptions<MarketplaceOptions> market,
+        Pawzaroo.Application.Modules.LogisticsPlus.IShippingQuoteService? shippingQuote = null)
     {
+        _shippingQuote = shippingQuote;
         _db = db;
         _current = current;
         _kafka = kafka;
@@ -28,12 +32,19 @@ public class CartService : ICartService
 
     private Guid Uid() => _current.UserId ?? throw new ForbiddenException();
 
-    public async Task<CartDto> GetMineAsync(CancellationToken ct = default)
+    public Task<CartDto> GetMineAsync(CancellationToken ct = default) => GetMineAsync(null, ct);
+
+    public async Task<CartDto> GetMineAsync(string? city, CancellationToken ct)
     {
         var uid = Uid();
         var cart = await EnsureCartAsync(uid, ct);
-        return await BuildDto(cart.Id, uid, ct);
+        return await BuildDto(cart.Id, uid, ct, city);
     }
+
+    private async Task<string?> DefaultCityAsync(Guid uid, CancellationToken ct) =>
+        _shippingQuote is null ? null
+            : await _db.ShippingAddresses.AsNoTracking().Where(a => a.UserId == uid && a.IsDefault)
+                .Select(a => a.City).FirstOrDefaultAsync(ct);
 
     public async Task<CartDto> AddAsync(AddToCartInput input, CancellationToken ct = default)
     {
@@ -119,6 +130,7 @@ public class CartService : ICartService
             item.Quantity = input.Quantity;
         }
         await _db.SaveChangesAsync(ct);
+        await PruneBundleMarksAsync(uid, ct);
         return await BuildDto(item.CartId, uid, ct);
     }
 
@@ -132,6 +144,7 @@ public class CartService : ICartService
         await _db.SaveChangesAsync(ct);
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new CartItemRemoved(uid, item.CartId, item.ProductId, DateTime.UtcNow), uid.ToString(), ct);
+        await PruneBundleMarksAsync(uid, ct);
         return await BuildDto(item.CartId, uid, ct);
     }
 
@@ -143,11 +156,39 @@ public class CartService : ICartService
         await RemoveLinksAsync(await items.Select(i => i.Id).ToListAsync(ct), ct);
         _db.CartItems.RemoveRange(items);
         await _db.SaveChangesAsync(ct);
+        await PruneBundleMarksAsync(uid, ct);
         if (cartId != Guid.Empty)
             await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
                 new CartCleared(uid, cartId, DateTime.UtcNow), uid.ToString(), ct);
     }
 
+
+    /// <summary>
+    /// Keeps BundleCartDiscount rows honest: the bundle discount is only valid while the cart still holds the
+    /// component quantities (loyalty-plus). Rows no longer covered are reduced/removed.
+    /// </summary>
+    private async Task PruneBundleMarksAsync(Guid uid, CancellationToken ct)
+    {
+        var marks = await _db.Set<BundleCartDiscount>().Where(m => m.UserId == uid).ToListAsync(ct);
+        if (marks.Count == 0) return;
+        var bundleIds = marks.Select(m => m.BundleId).ToList();
+        var bundles = await _db.Set<ProductBundle>().AsNoTracking().Include(b => b.Items).Where(b => bundleIds.Contains(b.Id)).ToListAsync(ct);
+        var lines = await _db.CartItems.AsNoTracking().Where(i => i.UserId == uid).Select(i => new { i.Id, i.ProductId, i.Quantity }).ToListAsync(ct);
+        var lineIds = lines.Select(l => l.Id).ToList();
+        var links = await _db.Set<CartItemVariant>().AsNoTracking().Where(l => lineIds.Contains(l.CartItemId))
+            .ToDictionaryAsync(l => l.CartItemId, l => l.VariantId, ct);
+        var pool = lines.GroupBy(l => (l.ProductId, VariantId: links.TryGetValue(l.Id, out var v) ? (Guid?)v : null))
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+        foreach (var m in marks)
+        {
+            var b = bundles.FirstOrDefault(x => x.Id == m.BundleId);
+            var covered = b is null ? 0 : BundlePricing.BundlesCoveredByCart(m.Quantity,
+                b.Items.Select(i => (i.Quantity, pool.GetValueOrDefault((i.ProductId, i.VariantId)))));
+            if (covered <= 0) _db.Set<BundleCartDiscount>().Remove(m);
+            else if (covered < m.Quantity) m.Quantity = covered;
+        }
+        await _db.SaveChangesAsync(ct);
+    }
     private async Task RemoveLinksAsync(IReadOnlyCollection<Guid> cartItemIds, CancellationToken ct)
     {
         if (cartItemIds.Count == 0) return;
@@ -189,7 +230,7 @@ public class CartService : ICartService
         return cart;
     }
 
-    private async Task<CartDto> BuildDto(Guid cartId, Guid uid, CancellationToken ct)
+    private async Task<CartDto> BuildDto(Guid cartId, Guid uid, CancellationToken ct, string? city = null)
     {
         var rows = await _db.CartItems.AsNoTracking().Where(i => i.UserId == uid)
             .Select(i => new
@@ -224,6 +265,14 @@ public class CartService : ICartService
         var currency = await _db.Carts.AsNoTracking().Where(c => c.Id == cartId).Select(c => c.Currency).FirstOrDefaultAsync(ct) ?? "USD";
         var subtotal = items.Sum(i => i.Total);
         var (shipping, tax, total) = FeeCalculator.Compute(subtotal, _market);
+        // Preview with delivery-zone fees when the destination city is known and every store resolves to a zone.
+        city ??= await DefaultCityAsync(uid, ct);
+        if (_shippingQuote is not null && !string.IsNullOrWhiteSpace(city) && items.Count > 0)
+        {
+            var perStore = items.GroupBy(i => i.StoreId).Select(g => (g.Key, g.Sum(x => x.Total))).ToList();
+            var zoneFee = await _shippingQuote.TryQuoteOrderFeeAsync(perStore, city, DateTime.UtcNow, ct);
+            if (zoneFee.HasValue) { total = total - shipping + zoneFee.Value; shipping = zoneFee.Value; }
+        }
         return new CartDto(cartId, currency, items, subtotal, items.Sum(i => i.Quantity), shipping, tax, total);
     }
 }

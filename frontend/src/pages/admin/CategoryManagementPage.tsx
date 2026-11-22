@@ -8,99 +8,122 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
+import { QueryBoundary } from "@/components/common/QueryBoundary";
+import { EmptyState } from "@/components/common/EmptyState";
+import { DraftBanner } from "@/components/common/DraftBanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { productsV2Api, type ProductCategory } from "@/api/marketplace";
 import { api } from "@/api/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { toast } from "@/components/ui/sonner";
+import { useDraft } from "@/hooks/useDraft";
+import { useI18n } from "@/lib/i18n";
+import { formatNumber } from "@/lib/format";
 
 export function AdminCategoryManagementPage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [toDelete, setToDelete] = useState<ProductCategory | null>(null);
+  const draft = useDraft("admin-category-new", { name, slug }, { enabled: open });
 
-  const { data, isLoading } = useQuery({
+  const query = useQuery({
     queryKey: ["product-categories"],
     queryFn: () => productsV2Api.categories()
   });
+  const { data } = query;
 
   const create = useMutation({
     mutationFn: () => productsV2Api.createCategory({ name, slug: slug || slugify(name) }),
     onSuccess: () => {
-      toast.success("Category created.");
+      toast.success(t("adm.cat.created"));
       qc.invalidateQueries({ queryKey: ["product-categories"] });
+      draft.clear();
       setName(""); setSlug(""); setOpen(false);
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? "Create failed.")
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? t("adm.createFailed"))
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/v1/products/categories/${id}`),
     onSuccess: () => {
-      toast.success("Deleted.");
+      toast.success(t("adm.deleted"));
       qc.invalidateQueries({ queryKey: ["product-categories"] });
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? e?.message ?? "Delete failed.")
+    onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? e?.message ?? t("adm.deleteFailed"))
   });
 
   const columns: Column<ProductCategory>[] = [
-    { key: "name", header: "Name", render: (c) => <span className="font-medium">{c.name}</span> },
-    { key: "slug", header: "Slug", render: (c) => <span className="font-mono text-xs text-muted-foreground">{c.slug}</span> },
-    { key: "count", header: "Products", className: "text-right w-24",
-      render: (c) => <Badge variant="secondary">{c.productCount}</Badge> },
+    { key: "name", header: t("adm.name"), render: (c) => <span className="font-medium">{c.name}</span> },
+    { key: "slug", header: t("adm.slug"), render: (c) => <span className="font-mono text-xs text-muted-foreground">{c.slug}</span> },
+    { key: "count", header: t("adm.cat.products"), className: "text-end w-24",
+      render: (c) => <Badge variant="secondary">{formatNumber(c.productCount)}</Badge> },
     { key: "actions", header: "", className: "w-12",
       render: (c) => (
-        <Button variant="ghost" size="icon" onClick={() => setToDelete(c)}>
-          <Trash2 className="h-4 w-4 text-destructive" />
+        <Button variant="ghost" size="icon" aria-label={t("common.delete")} onClick={() => setToDelete(c)}>
+          <Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" />
         </Button>
       )
     }
   ];
 
+  const newButton = (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button><Plus aria-hidden="true" className="h-4 w-4 me-1" /> {t("adm.cat.new")}</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{t("adm.cat.new")}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <DraftBanner<{ name: string; slug: string }>
+            draft={draft}
+            onRestore={(d) => { setName(d.name ?? ""); setSlug(d.slug ?? ""); }}
+          />
+          <div>
+            <Label htmlFor="cat-name">{t("adm.name")}</Label>
+            <Input id="cat-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="cat-slug">{t("adm.cat.slugHint")}</Label>
+            <Input id="cat-slug" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder={slugify(name)} />
+          </div>
+          <Button className="w-full" disabled={!name.trim() || create.isPending}
+                  onClick={() => create.mutate()}>
+            {create.isPending ? t("adm.creating") : t("adm.create")}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Product categories" icon={ShoppingBag}
-        description={data ? `${data.length} categories` : ""}
-        actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-1" /> New category</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>New category</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div>
-                  <Label>Name</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Slug (auto-generated if empty)</Label>
-                  <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder={slugify(name)} />
-                </div>
-                <Button className="w-full" disabled={!name.trim() || create.isPending}
-                        onClick={() => create.mutate()}>
-                  {create.isPending ? "Creating..." : "Create"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        } />
+      <PageHeader title={t("adm.cat.title")} icon={ShoppingBag}
+        description={data ? t("adm.cat.count", { count: formatNumber(data.length) }) : ""}
+        actions={newButton} />
 
-      <Card>
-        <CardContent className="pt-6">
-          <DataTable data={data ?? []} columns={columns} rowKey={(c) => c.id} loading={isLoading} />
-        </CardContent>
-      </Card>
+      <QueryBoundary
+        query={query}
+        empty={<EmptyState icon={ShoppingBag} title={t("adm.cat.emptyTitle")} description={t("adm.cat.emptyBody")} />}
+      >
+        {(rows) => (
+          <Card>
+            <CardContent className="pt-6">
+              <DataTable data={rows} columns={columns} rowKey={(c) => c.id} caption={t("adm.cat.title")} />
+            </CardContent>
+          </Card>
+        )}
+      </QueryBoundary>
 
       <ConfirmDialog
         open={!!toDelete}
         onOpenChange={(v) => !v && setToDelete(null)}
         destructive
-        title={toDelete ? `Delete "${toDelete.name}"?` : ""}
-        description="Products assigned to this category will keep working but their category will be cleared."
-        confirmLabel="Delete"
+        title={toDelete ? t("adm.cat.deleteTitle", { name: toDelete.name }) : ""}
+        description={t("adm.cat.deleteBody")}
+        confirmLabel={t("common.delete")}
         isLoading={remove.isPending}
         onConfirm={async () => { if (toDelete) await remove.mutateAsync(toDelete.id); }}
       />

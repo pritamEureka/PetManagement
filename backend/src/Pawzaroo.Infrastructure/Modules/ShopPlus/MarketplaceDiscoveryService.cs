@@ -112,7 +112,52 @@ public class MarketplaceDiscoveryService : IMarketplaceDiscoveryService
         }
 
         var facets = await FacetsAsync(request, tokens, ct);
-        return new FacetSearchResult(items, total, page, size, facets, didYouMean, effectiveQuery);
+        // Sponsored products are NEVER mixed into the organic ranking above: separate array, first page only, max 2.
+        var sponsored = page == 1
+            ? await PickSponsoredAsync(request, tokens, items.Select(i => i.Product.Id).ToHashSet(), ct)
+            : new List<SponsoredProductDto>();
+        return new FacetSearchResult(items, total, page, size, facets, didYouMean, effectiveQuery, sponsored);
+    }
+
+    private const int MaxSponsored = 2;
+
+    /// <summary>
+    /// Approved, active, in-window, within-budget placements whose product matches the search filters.
+    /// Ordered by bid weight (then fewest impressions); products already in the organic page are excluded.
+    /// </summary>
+    private async Task<List<SponsoredProductDto>> PickSponsoredAsync(FacetSearchRequest request, string[] tokens,
+        HashSet<Guid> organicIds, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var placements = await _db.Set<SponsoredPlacement>().AsNoTracking()
+            .Where(p => p.IsActive && p.Status == SponsoredPlacementStatus.Approved && p.StartsAt <= now && p.EndsAt >= now
+                        && (p.Budget == null || p.Spent < p.Budget))
+            .OrderByDescending(p => p.BidWeight).ThenBy(p => p.Impressions).Take(30)
+            .Select(p => new { p.Id, p.ProductId }).ToListAsync(ct);
+        if (placements.Count == 0) return new List<SponsoredProductDto>();
+
+        var ids = placements.Select(p => p.ProductId).Where(id => !organicIds.Contains(id)).Distinct().ToList();
+        if (ids.Count == 0) return new List<SponsoredProductDto>();
+        var products = await DiscoveryFilters.Apply(DiscoveryFilters.PublicProducts(_db), request, tokens)
+            .Where(p => ids.Contains(p.Id) && p.StockQuantity > 0)
+            .Select(DiscoveryFilters.Summary).ToListAsync(ct);
+        var byId = products.ToDictionary(p => p.Id);
+
+        var result = new List<SponsoredProductDto>();
+        var seen = new HashSet<Guid>();
+        foreach (var pl in placements)
+        {
+            if (result.Count >= MaxSponsored) break;
+            if (!byId.TryGetValue(pl.ProductId, out var prod) || !seen.Add(pl.ProductId)) continue;
+            result.Add(new SponsoredProductDto(prod, pl.Id));
+        }
+        if (result.Count > 0)
+        {
+            var shown = result.Select(r => r.PlacementId).ToList();
+            await _db.Set<SponsoredPlacement>().Where(p => shown.Contains(p.Id))
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.Impressions, p => p.Impressions + 1), ct);
+        }
+        return result;
     }
 
     private sealed record RankingContext(

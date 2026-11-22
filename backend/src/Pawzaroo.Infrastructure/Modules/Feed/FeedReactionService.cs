@@ -4,6 +4,7 @@ using Pawzaroo.Application.Modules.Feed.Events;
 using Pawzaroo.Application.Modules.Feed.Services;
 using Pawzaroo.Domain.Common;
 using Pawzaroo.Domain.Social;
+using Pawzaroo.Infrastructure.Modules.Communities;
 using Pawzaroo.Infrastructure.Persistence;
 using Pawzaroo.Shared.Exceptions;
 
@@ -16,14 +17,17 @@ public class FeedReactionService : IFeedReactionService
     private readonly IKafkaProducer _kafka;
     private readonly IFeedCache _cache;
     private readonly INotificationService _notify;
+    private readonly Pawzaroo.Application.Modules.Communities.IReputationService? _reputation;
 
-    public FeedReactionService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka, IFeedCache cache, INotificationService notify)
+    public FeedReactionService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka, IFeedCache cache, INotificationService notify,
+        Pawzaroo.Application.Modules.Communities.IReputationService? reputation = null)
     {
         _db = db;
         _current = current;
         _kafka = kafka;
         _cache = cache;
         _notify = notify;
+        _reputation = reputation;
     }
 
     public async Task SetReactionAsync(Guid postId, string type, CancellationToken ct = default)
@@ -52,6 +56,10 @@ public class FeedReactionService : IFeedReactionService
                 .Where(p => p.Id == postId)
                 .Select(p => new { p.AuthorId })
                 .SingleOrDefaultAsync(ct);
+            // Reputation: author earns a point per distinct (post, reactor); idempotent + capped inside the service.
+            if (post is not null && post.AuthorId != uid && _reputation is not null)
+                await _reputation.AwardAsync(post.AuthorId, null, Pawzaroo.Domain.Communities.ReputationKind.PostLiked,
+                    ReputationRules.SourceKey(postId, uid), ct);
             if (post is not null && post.AuthorId != uid)
             {
                 var reactorName = await _db.Users.Where(u => u.Id == uid)

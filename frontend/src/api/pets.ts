@@ -1,3 +1,4 @@
+import { withStepUp } from "@/lib/withStepUp";
 import { api } from "./client";
 import type { PetInput } from "@/lib/schemas";
 
@@ -259,7 +260,21 @@ export const petsApi = {
     /** Fetches the printable record with auth and opens it in a new tab. */
     openHealthReport: async (id: string) => {
       const win = window.open("", "_blank");
-      const html = await api.get<string>(`${V1}/${id}/health-report`, { responseType: "text" }).then((r) => r.data);
+      // Export requires a recent re-auth. With responseType "text"/"blob" an error body arrives unparsed, so
+      // normalise it to an object first so withStepUp can recognise "step_up_required".
+      const html = await withStepUp(async () => {
+        try {
+          return await api.get<string>(`${V1}/${id}/health-report`, { responseType: "text" }).then((r) => r.data);
+        } catch (err) {
+          const e = err as { response?: { data?: unknown } };
+          if (typeof e.response?.data === "string") {
+            try { e.response.data = JSON.parse(e.response.data); } catch { /* not json */ }
+          } else if (e.response?.data instanceof Blob) {
+            try { e.response.data = JSON.parse(await e.response.data.text()); } catch { /* not json */ }
+          }
+          throw err;
+        }
+      });
       const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
       if (win) win.location.href = url; else window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);

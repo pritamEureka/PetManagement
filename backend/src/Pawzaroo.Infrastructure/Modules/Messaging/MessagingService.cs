@@ -18,10 +18,15 @@ public class MessagingService : IMessagingService
     private readonly IPresenceService _presence;
     private readonly IKafkaProducer _kafka;
     private readonly INotificationService _notify;
+    private readonly IMessageSpamGuard? _spam;
+    private readonly MessageNotificationCoalescer? _coalescer;
 
     public MessagingService(ApplicationDbContext db, ICurrentUserService current, IPresenceService presence,
-        IKafkaProducer kafka, INotificationService notify)
+        IKafkaProducer kafka, INotificationService notify,
+        IMessageSpamGuard? spam = null, MessageNotificationCoalescer? coalescer = null)
     {
+        _spam = spam;
+        _coalescer = coalescer;
         _db = db;
         _current = current;
         _presence = presence;
@@ -69,7 +74,7 @@ public class MessagingService : IMessagingService
 
         return rows.Select(r => new ConversationSummaryDto(
             r.ConversationId, r.Title, r.IsGroup, r.ContextType, r.ContextRefId,
-            r.LastMessageAt, r.LastMessagePreview, r.UnreadCount, r.IsArchived, r.IsMuted,
+            r.LastMessageAt, r.LastMessagePreview != null && r.LastMessagePreview.StartsWith(MessagingPlusService.E2eePrefix) ? "\U0001F512" : r.LastMessagePreview, r.UnreadCount, r.IsArchived, r.IsMuted,
             r.Participants.Select(p =>
                 new ParticipantDto(p.UserId, p.DisplayName, p.AvatarUrl, online.TryGetValue(p.UserId, out var o) && o)
             ).ToList()
@@ -123,6 +128,7 @@ public class MessagingService : IMessagingService
         }
         else
         {
+            if (_spam is not null) await _spam.EnforceNewConversationLimitAsync(uid, ct);
             var conv = new Conversation
             {
                 IsGroup = false,
@@ -217,6 +223,15 @@ public class MessagingService : IMessagingService
         if (!Enum.TryParse<MessageType>(input.Type, true, out var msgType))
             throw new AppException("invalid_type", $"Unknown message type '{input.Type}'.");
 
+        // Opt-in E2EE conversations only accept client-produced ciphertext envelopes.
+        var convSettings = await _db.Set<ConversationSettings>().AsNoTracking()
+            .Where(s => s.ConversationId == conv.Id).Select(s => new { s.E2eeEnabled, s.MutedUntil }).SingleOrDefaultAsync(ct);
+        if (convSettings?.E2eeEnabled == true && msgType == MessageType.Text
+            && !(input.Content ?? "").StartsWith(MessagingPlusService.E2eePrefix))
+            throw new ConflictException("This conversation is end-to-end encrypted; plaintext messages are not accepted.");
+
+        string? spamFlag = _spam is null ? null : await _spam.CheckOutgoingAsync(uid, conv.Id, input.Content, ct);
+
         var msg = new Message
         {
             ConversationId = input.ConversationId,
@@ -249,11 +264,19 @@ public class MessagingService : IMessagingService
         await _kafka.PublishAsync(MessagingTopics.Messages,
             new MessageSent(msg.Id, conv.Id, uid, otherIds, DateTime.UtcNow), msg.Id.ToString(), ct);
 
-        // Push in-app notification to muted-off recipients.
-        foreach (var p in conv.Participants.Where(p => p.UserId != uid && !p.IsMuted))
-            await _notify.NotifyUserAsync(p.UserId, "New message",
-                input.Content is { Length: > 0 } ? Trim(input.Content!, 80) : "Sent you a message",
-                new { conversationId = conv.Id, messageId = msg.Id }, ct);
+        if (spamFlag is not null && _spam is not null)
+            await _spam.AutoFlagAsync(msg.Id, uid, spamFlag, ct);
+
+        // Push in-app notification to muted-off recipients (coalesced per conversation when available).
+        var preview = convSettings?.E2eeEnabled == true ? "Sent you an encrypted message"
+            : input.Content is { Length: > 0 } ? Trim(input.Content!, 80) : "Sent you a message";
+        if (convSettings?.MutedUntil is null || convSettings.MutedUntil <= DateTime.UtcNow)
+            foreach (var p in conv.Participants.Where(p => p.UserId != uid && !p.IsMuted))
+            {
+                if (_coalescer is not null) await _coalescer.NotifyAsync(p.UserId, conv.Id, msg.Id, preview, ct);
+                else await _notify.NotifyUserAsync(p.UserId, "New message", preview,
+                    new { conversationId = conv.Id, messageId = msg.Id }, ct);
+            }
 
         var sender = await _db.Users.Where(u => u.Id == uid)
             .Select(u => new { u.DisplayName, u.AvatarUrl }).SingleOrDefaultAsync(ct)

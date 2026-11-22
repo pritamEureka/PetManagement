@@ -64,6 +64,8 @@ public interface IAppointmentService
     Task CancelByDoctorAsync(Guid appointmentId, CancelInput input, CancellationToken ct = default);
     Task ConfirmAsync(Guid appointmentId, CancellationToken ct = default);
     Task CompleteAsync(Guid appointmentId, CancellationToken ct = default);
+    /// <summary>Complete with an optional audited override reason for the clinical-record completion gate.</summary>
+    Task CompleteWithOverrideAsync(Guid appointmentId, string? overrideReason, CancellationToken ct = default);
     Task MarkNoShowAsync(Guid appointmentId, CancellationToken ct = default);
     Task MarkPaidAsync(Guid appointmentId, CancellationToken ct = default);  // payment placeholder
     Task RefundAsync(Guid appointmentId, CancellationToken ct = default);

@@ -18,6 +18,7 @@ import { toast } from "@/components/ui/sonner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { VariantPicker } from "@/components/store/VariantPicker";
 import { SubscribeBox } from "@/components/store/SubscribeBox";
+import { ProductBundles, DeliveryPromiseBadge } from "@/components/store/BundleCard";
 
 export function ProductDetailPage() {
   const { id = "" } = useParams();
@@ -240,6 +241,8 @@ export function ProductDetailPage() {
 
           <VariantPicker productId={product.id} quantity={qty} onSelect={(v) => setVariantId(v?.id ?? null)} />
           <SubscribeBox productId={product.id} variantId={variantId} quantity={qty} unitPrice={price} />
+          <DeliveryPromiseBadge storeId={product.storeId} />
+          <ProductBundles productId={product.id} />
 
           <div className="grid grid-cols-2 gap-2 pt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /> Fast shipping</div>

@@ -6,6 +6,12 @@ export type CommunityRole = "Member" | "Moderator" | "Owner";
 export type CommunityMemberStatus = "Active" | "Pending" | "Banned";
 export type CommunityEventType = "Meetup" | "VaccinationCamp" | "AdoptionDrive" | "Other";
 export type RsvpStatus = "Going" | "Waitlisted" | "Cancelled";
+export type CommunityKind = "Community" | "LocalClub" | "BreedClub";
+export const COMMUNITY_KINDS: { value: CommunityKind; label: string }[] = [
+  { value: "Community", label: "Community" },
+  { value: "LocalClub", label: "Local club" },
+  { value: "BreedClub", label: "Breed club" },
+];
 export type MemberAction = "Approve" | "Ban" | "Unban" | "Promote" | "Demote" | "Remove";
 
 export const EVENT_TYPES: { value: CommunityEventType; label: string }[] = [
@@ -21,11 +27,12 @@ export interface Community {
   id: string; name: string; slug: string; species?: string | null; breed?: string | null; isPublic: boolean;
   description?: string | null; city?: string | null; ownerId: string; memberCount: number;
   myRole?: CommunityRole | null; myStatus?: CommunityMemberStatus | null; createdAt: string;
+  kind?: CommunityKind;
 }
 
 export interface CreateCommunityInput {
   name: string; species?: string | null; breed?: string | null; isPublic: boolean;
-  description?: string | null; city?: string | null;
+  description?: string | null; city?: string | null; kind?: CommunityKind;
 }
 
 export interface CommunityMember {
@@ -58,7 +65,7 @@ const C = "/v1/communities";
 const E = "/v1/community-events";
 
 export const communitiesApi = {
-  list: (params: { q?: string; species?: string; city?: string; mine?: boolean; page?: number; pageSize?: number } = {}) =>
+  list: (params: { q?: string; species?: string; city?: string; mine?: boolean; kind?: CommunityKind; page?: number; pageSize?: number } = {}) =>
     data<Paged<Community>>(api.get(C, { params })),
   get: (idOrSlug: string) => data<Community>(api.get(`${C}/${encodeURIComponent(idOrSlug)}`)),
   create: (input: CreateCommunityInput) => data<Community>(api.post(C, input)),

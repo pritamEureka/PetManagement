@@ -21,9 +21,11 @@ public class DeliveryService : IDeliveryService, IDeliveryStatusApplier
     private readonly IKafkaProducer _kafka;
     private readonly IAuditLogger _audit;
     private readonly ILedgerRecorder _ledger;
+    private readonly Pawzaroo.Application.Modules.Marketplace.IOrderPricingPipeline? _pricing; // loyalty-plus (optional; idempotent per order)
 
     public DeliveryService(ApplicationDbContext db, ICurrentUserService current,
-        INotificationService notify, IKafkaProducer kafka, IAuditLogger audit, ILedgerRecorder ledger)
+        INotificationService notify, IKafkaProducer kafka, IAuditLogger audit, ILedgerRecorder ledger,
+        Pawzaroo.Application.Modules.Marketplace.IOrderPricingPipeline? pricing = null)
     {
         _db = db;
         _current = current;
@@ -31,6 +33,7 @@ public class DeliveryService : IDeliveryService, IDeliveryStatusApplier
         _kafka = kafka;
         _audit = audit;
         _ledger = ledger;
+        _pricing = pricing;
     }
 
     // -------- Admin --------------------------------------------------------------
@@ -218,7 +221,10 @@ public class DeliveryService : IDeliveryService, IDeliveryStatusApplier
         await _db.SaveChangesAsync(ct);
 
         if (input.Status == DeliveryAssignmentStatus.Delivered)
+        {
             await _ledger.RecordOrderEarningsAsync(a.OrderId, ct);
+            if (_pricing is not null) await _pricing.OnOrderDeliveredAsync(a.OrderId, ct);
+        }
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new OrderShipmentStatusChanged(a.OrderId, a.Order.OrderNumber, a.Order.ShipmentStatus.ToString(), a.Order.TrackingNumber, DateTime.UtcNow),
@@ -310,7 +316,10 @@ public class DeliveryService : IDeliveryService, IDeliveryStatusApplier
         await _db.SaveChangesAsync(ct);
 
         if (target == ShipmentStatus.Delivered)
+        {
             await _ledger.RecordOrderEarningsAsync(orderId, ct);
+            if (_pricing is not null) await _pricing.OnOrderDeliveredAsync(orderId, ct);
+        }
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new OrderShipmentStatusChanged(order.Id, order.OrderNumber, order.ShipmentStatus.ToString(), order.TrackingNumber, now),

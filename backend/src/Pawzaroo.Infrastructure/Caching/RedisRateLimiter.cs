@@ -25,7 +25,13 @@ public class RedisRateLimiter : IRedisRateLimiter
         return { current, ttl }
     ";
 
-    public RedisRateLimiter(CacheHelper cache) => _cache = cache;
+    private readonly IDegradedModePolicy _policy;
+
+    public RedisRateLimiter(CacheHelper cache, IDegradedModePolicy? policy = null)
+    {
+        _cache = cache;
+        _policy = policy ?? new DegradedModePolicyService();
+    }
 
     public async Task<RateLimitDecision> CheckAsync(string scope, string partition, int permitLimit, TimeSpan window, CancellationToken ct = default)
     {
@@ -43,11 +49,14 @@ public class RedisRateLimiter : IRedisRateLimiter
             var remaining = Math.Max(0, permitLimit - count);
             return new RateLimitDecision(count <= permitLimit, remaining, resetIn);
         }
-        catch (RedisException)
+        catch (RedisException ex)
         {
-            // Fail-open: if Redis is down we'd rather serve traffic than 5xx.
-            // The in-proc limiter still protects against runaway abuse.
-            return new RateLimitDecision(true, permitLimit, window);
+            // Explicit degraded-mode policy: auth-sensitive scopes fail closed; the rest fail open
+            // (the in-proc limiter still protects against runaway abuse). See Security:RedisDegraded:RateLimit.
+            _policy.Report(DegradedSites.RateLimit, ex);
+            return _policy.ForRateLimitScope(scope) == DegradedModePolicy.FailClosed
+                ? new RateLimitDecision(false, 0, window)
+                : new RateLimitDecision(true, permitLimit, window);
         }
     }
 }

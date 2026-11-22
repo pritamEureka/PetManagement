@@ -16,6 +16,7 @@ public class AppointmentSeriesController : ControllerBase
     public AppointmentSeriesController(IRecurringBookingService svc) => _svc = svc;
 
     [HttpPost]
+    [Pawzaroo.Api.Filters.Idempotent]
     [EnableRateLimiting("writes")]
     public Task<BookSeriesResult> Book([FromBody] BookSeriesInput input, CancellationToken ct) => _svc.BookSeriesAsync(input, ct);
 }

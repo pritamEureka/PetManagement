@@ -9,4 +9,9 @@ public class StorageOptions
     public string SecretKey { get; set; } = default!;
     public bool UsePathStyle { get; set; } = true;
     public string? PublicBaseUrl { get; set; }             // CDN/public host, optional
+    /// <summary>When true, returned URLs are presigned + expiring instead of public. Default false (public assets keep working).</summary>
+    public bool PrivateByDefault { get; set; }
+    public int SignedUrlMinutes { get; set; } = 60;
+    /// <summary>HMAC key for /api/media/signed proxy links; falls back to Jwt:SigningKey.</summary>
+    public string? UrlSigningKey { get; set; }
 }

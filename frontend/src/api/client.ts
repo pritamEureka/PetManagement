@@ -1,6 +1,8 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
+import { t, hasKey, useLocaleStore } from "@/lib/i18n";
+import { messageForApiError } from "@/lib/apiErrors";
 
 export const apiBase = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -60,15 +62,31 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {
-        if (!refreshing) refreshing = useAuthStore.getState().refresh();
+        // Share one in-flight refresh across concurrent 401s; always reset it
+        // (success OR failure) so later 401s start a fresh attempt.
+        if (!refreshing) {
+          refreshing = useAuthStore
+            .getState()
+            .refresh()
+            .finally(() => {
+              refreshing = null;
+            });
+        }
         const token = await refreshing;
-        refreshing = null;
         if (token) {
           original.headers.Authorization = `Bearer ${token}`;
           return api.request(original);
         }
+        // Refresh returned null: end the session once (refresh() already clears tokens when the
+        // server rejects it, so the guard makes concurrent 401s a no-op).
+        const st = useAuthStore.getState();
+        if (st.accessToken || st.refreshToken) void st.logout();
       } catch {
-        useAuthStore.getState().logout();
+        // _retry is set on this request so it cannot loop; only log out while a
+        // session still exists so concurrent failures log out exactly once.
+        if (useAuthStore.getState().accessToken || useAuthStore.getState().refreshToken) {
+          void useAuthStore.getState().logout();
+        }
       }
     }
 
@@ -77,8 +95,10 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const shouldToast = status !== 401 && !original?.skipErrorToast;
     if (shouldToast) {
-      const body = error.response?.data as { error?: { message?: string; code?: string } } | undefined;
-      const msg = body?.error?.message ?? error.message ?? "Request failed.";
+      const body = error.response?.data as { error?: { message?: string; code?: string; details?: unknown } } | undefined;
+      // Prefer the localized message for the stable error code; fall back to the server message.
+      const fallback = error.response ? error.message : t("err.network");
+      const msg = messageForApiError(body, t, hasKey, fallback || "Request failed.", useLocaleStore.getState().locale === "en");
       toast.error(msg, { id: `api:${original?.method ?? ""}:${original?.url ?? ""}:${status ?? ""}` });
     }
 

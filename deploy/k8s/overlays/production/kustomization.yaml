@@ -15,6 +15,7 @@ resources:
 patches:
   - path: patches/replicas.yaml
   - path: patches/ingress-host.yaml
+  - path: patches/configmap.yaml
   - path: patches/resources.yaml
   - target:
       kind: StatefulSet

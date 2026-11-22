@@ -111,7 +111,9 @@ public record CheckoutInput(
     Guid? ShippingAddressId,
     string? ShippingAddress, string? ShippingCity, string? ShippingCountry,
     string? PaymentMethod,
-    string? CouponCode = null);
+    string? CouponCode = null,
+    int? RedeemLoyaltyPoints = null,
+    string? GiftCardCode = null);
 
 public record OrderItemDto(
     Guid Id, Guid ProductId, string ProductName, string? ImageUrl,

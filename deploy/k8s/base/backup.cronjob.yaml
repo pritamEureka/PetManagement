@@ -1,0 +1,81 @@
+# Nightly logical backup (pg_dump, custom format) to a PVC and optionally to S3-compatible storage.
+# SUSPENDED BY DEFAULT: enable per environment with a patch (spec.suspend: false) once the
+# destination below is provisioned. See docs/runbooks/backup-restore.md.
+# For production prefer the managed database's native PITR/snapshots; this is the portable fallback.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backups
+  namespace: pawzaroo
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: { storage: 50Gi }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: pawzaroo
+  labels: { app: postgres-backup, app.kubernetes.io/part-of: pawzaroo }
+spec:
+  suspend: true
+  schedule: "17 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels: { app: postgres-backup }
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70          # postgres user in postgres:16-alpine
+            fsGroup: 70
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: pg-dump
+              image: postgres:16-alpine
+              envFrom:
+                - configMapRef: { name: pawzaroo-config }   # POSTGRES_HOST / PORT / DB / USER
+              env:
+                - name: PGPASSWORD
+                  valueFrom: { secretKeyRef: { name: pawzaroo-secrets, key: POSTGRES_PASSWORD } }
+                - name: RETENTION_DAYS
+                  value: "14"
+                # Optional off-cluster copy: set BACKUP_S3_URI (e.g. s3://pawzaroo-backups/postgres) and provide
+                # aws-cli credentials via a patch; left empty = PVC only.
+                - name: BACKUP_S3_URI
+                  value: ""
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+                  FILE=/backups/pawzaroo-${STAMP}.dump
+                  pg_dump -h "$POSTGRES_HOST" -p "${POSTGRES_PORT:-5432}" -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+                    --format=custom --no-owner --file "$FILE"
+                  pg_restore --list "$FILE" > /dev/null   # integrity check: archive must be readable
+                  echo "backup ok: $FILE ($(du -h "$FILE" | cut -f1))"
+                  if [ -n "$BACKUP_S3_URI" ]; then
+                    if command -v aws >/dev/null; then aws s3 cp "$FILE" "$BACKUP_S3_URI/"; else echo "aws cli not present in image: skipping S3 upload" >&2; fi
+                  fi
+                  find /backups -name 'pawzaroo-*.dump' -mtime +"$RETENTION_DAYS" -delete
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: "100m", memory: "128Mi" }
+                limits:   { cpu: "1",    memory: "512Mi" }
+              volumeMounts:
+                - { name: backups, mountPath: /backups }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: backups
+              persistentVolumeClaim: { claimName: postgres-backups }
+            - { name: tmp, emptyDir: {} }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -6,7 +6,6 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -17,6 +16,12 @@ import {
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { SkipToContent } from "@/components/common/a11y";
+import { MobileTabBar, type TabItem } from "@/components/layout/MobileTabBar";
+import { RecentItemsMenu } from "@/components/layout/RecentItemsMenu";
+import { SearchHistoryDropdown } from "@/components/common/SearchHistoryDropdown";
+import { flushUndoable } from "@/lib/undo";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { WifiOff } from "lucide-react";
 import {
   Home,
   PawPrint,
@@ -34,7 +39,6 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeft,
-  Search,
   LayoutDashboard,
   ClipboardPlus,
   Siren,
@@ -84,6 +88,14 @@ const NAV_LABEL_KEYS: Record<string, string> = {
   "/dashboard/store": "nav.myStore",
   "/admin": "nav.adminPanel",
   "/delivery": "nav.deliveries",
+  "/emergency": "nav.emergency",
+  "/store/loyalty": "nav.loyalty",
+  "/adoption/pipeline": "nav.adoptionPipeline",
+  "/vets/emergency": "nav.vetEmergency",
+  "/vets/care-plans": "nav.carePlans",
+  "/adoption/follow-ups": "nav.adoptionFollowUps",
+  "/adoption/profile": "nav.adoptionProfile",
+  "/store/compare": "nav.storeCompare",
 };
 
 function navLabel(to: string, fallback: string, t: (k: string) => string): string {
@@ -110,6 +122,9 @@ const USER_NAV: NavItem[] = [
   { to: "/lost-found", label: "Lost & found", icon: Siren, perm: "lost_found.view" },
   { to: "/services", label: "Pet services", icon: Scissors, perm: "services.view" },
   { to: "/communities", label: "Communities", icon: UsersIcon },
+  { to: "/emergency", label: "Emergency", icon: Siren },
+  { to: "/store/loyalty", label: "Loyalty & referrals", icon: Sparkles },
+  { to: "/adoption/pipeline", label: "Adoption pipeline", icon: HeartHandshake, perm: "adoption.create" },
   { to: "/assistant", label: "Care assistant", icon: Sparkles },
   { to: "/my-subscriptions", label: "My subscriptions", icon: CalendarClock },
   { to: "/price-watches", label: "Price watches", icon: Bell },
@@ -433,6 +448,34 @@ function FloatingCartBar() {
   );
 }
 
+/** Primary mobile destinations (permission-filtered) + "More" which opens the full nav sheet. */
+const MOBILE_TABS: NavItem[] = [
+  { to: "/home", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/feed", label: "Feed", icon: Home, perm: "posts.view", end: true },
+  { to: "/pets", label: "My Pets", icon: PawPrint, perm: "pets.view" },
+  { to: "/messages", label: "Messages", icon: MessageSquare, perm: "messaging.view", badgeKey: "unreadMessages" },
+];
+
+function AppMobileTabBar({ onMore, moreOpen }: { onMore: () => void; moreOpen: boolean }) {
+  const { can } = usePermissions();
+  const { t } = useI18n();
+  const unreadMessages = useUnreadMessages();
+  const unreadNotifications = useNotifications();
+  const badges = { unreadMessages, unreadNotifications };
+  const tabs: TabItem[] = MOBILE_TABS.filter((i) => !i.perm || can(i.perm)).map((i) => {
+    const count = i.badgeKey ? badges[i.badgeKey] : 0;
+    return {
+      to: i.to,
+      label: navLabel(i.to, i.label, t),
+      icon: i.icon,
+      end: i.end,
+      badge: count,
+      badgeLabel: t("notif.unreadCount", { count: formatNumber(count) }),
+    };
+  });
+  return <MobileTabBar tabs={tabs} onMore={onMore} moreOpen={moreOpen} ariaLabel={t("layout.mobileNav")} />;
+}
+
 export function AppLayout() {
   const { user, logout } = useAuthStore();
   const { t } = useI18n();
@@ -443,13 +486,19 @@ export function AppLayout() {
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [mobileSidebarSearch, setMobileSidebarSearch] = useState("");
 
+  const { pathname } = useLocation();
+  const online = useOnlineStatus();
+
+  // Commit any pending undoable actions (e.g. dismissed notifications) when the route changes.
+  useEffect(() => () => void flushUndoable(), [pathname]);
+
   async function onLogout() {
     await logout();
     nav("/login", { replace: true });
   }
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="h-screen h-dvh flex overflow-hidden">
       {/* Desktop sidebar */}
       <aside
         aria-label={t("layout.sidebar")}
@@ -493,17 +542,13 @@ export function AppLayout() {
             collapsed ? "h-0 opacity-0 px-2" : "h-auto opacity-100 px-3 pb-3",
           )}
         >
-          <div className="relative">
-            <Search aria-hidden="true" className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              className="ps-8 h-9 text-sm"
-              type="search"
-              aria-label={t("layout.searchMenu")}
-              placeholder={t("layout.searchMenu")}
-              value={sidebarSearch}
-              onChange={(e) => setSidebarSearch(e.target.value)}
-            />
-          </div>
+          <SearchHistoryDropdown
+            scope="global"
+            aria-label={t("layout.searchMenu")}
+            placeholder={t("layout.searchMenu")}
+            value={sidebarSearch}
+            onChange={setSidebarSearch}
+          />
         </div>
 
         {/* Nav (scrollable) */}
@@ -585,7 +630,12 @@ export function AppLayout() {
       </aside>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col h-screen min-w-0">
+      <div className="flex-1 flex flex-col h-screen h-dvh min-w-0">
+        {!online && (
+          <div role="status" className="flex shrink-0 items-center justify-center gap-2 bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-950">
+            <WifiOff aria-hidden="true" className="h-3.5 w-3.5" /> {t("state.offlineBanner")}
+          </div>
+        )}
         {/* Top navbar */}
         <header role="banner" className="sticky top-0 z-30 h-14 shrink-0 flex items-center gap-2 px-4 md:px-6 border-b bg-background/95 backdrop-blur">
           {/* Mobile hamburger */}
@@ -615,17 +665,13 @@ export function AppLayout() {
               </SheetHeader>
               {/* Mobile search */}
               <div className="px-3 pt-3 pb-1 shrink-0">
-                <div className="relative">
-                  <Search aria-hidden="true" className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    className="ps-8 h-9 text-sm"
-                    type="search"
-                    aria-label={t("layout.searchMenu")}
-                    placeholder={t("layout.searchMenu")}
-                    value={mobileSidebarSearch}
-                    onChange={(e) => setMobileSidebarSearch(e.target.value)}
-                  />
-                </div>
+                <SearchHistoryDropdown
+                  scope="global"
+                  aria-label={t("layout.searchMenu")}
+                  placeholder={t("layout.searchMenu")}
+                  value={mobileSidebarSearch}
+                  onChange={setMobileSidebarSearch}
+                />
               </div>
               <div className="flex-1 overflow-y-auto py-2">
                 <SidebarContent
@@ -688,6 +734,8 @@ export function AppLayout() {
           {/* Spacer */}
           <div className="flex-1" />
 
+          <RecentItemsMenu />
+
           {/* Notification bell */}
           <Button
             variant="ghost"
@@ -724,6 +772,7 @@ export function AppLayout() {
           </div>
           <FloatingCartBar />
         </main>
+        <AppMobileTabBar onMore={() => setMobileOpen(true)} moreOpen={mobileOpen} />
       </div>
     </div>
   );

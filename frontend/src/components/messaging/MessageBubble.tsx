@@ -1,10 +1,11 @@
-import { Check, CheckCheck, FileText, MoreHorizontal, Trash2, Flag } from "lucide-react";
+import { Check, CheckCheck, FileText, MoreHorizontal, Trash2, Flag, Pencil, Undo2, Pin } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import type { ChatMessage } from "@/api/messages";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   msg: ChatMessage;
@@ -13,10 +14,21 @@ interface Props {
   state?: "sending" | "sent" | "delivered" | "read";
   onDelete?: () => void;
   onReport?: () => void;
+  /** Edit allowed within 15 min (server enforces). */
+  onEdit?: () => void;
+  /** Recall (delete for all) allowed within 10 min (server enforces). */
+  onRecall?: () => void;
+  onPin?: () => void;
+  /** Decrypted / display text override (E2EE). */
+  displayText?: string;
 }
 
-export function MessageBubble({ msg, mine, state, onDelete, onReport }: Props) {
-  const text = msg.isDeletedForAll ? "Message deleted" : msg.content;
+export function MessageBubble({ msg, mine, state, onDelete, onReport, onEdit, onRecall, onPin, displayText }: Props) {
+  const { t } = useI18n();
+  const ageMs = Date.now() - new Date(msg.createdAt).getTime();
+  const canEdit = mine && !!onEdit && !msg.isDeletedForAll && ageMs <= 15 * 60_000;
+  const canRecall = mine && !!onRecall && !msg.isDeletedForAll && ageMs <= 10 * 60_000;
+  const text = msg.isDeletedForAll ? t("adoptmsg.msg.removed") : (displayText ?? msg.content);
 
   return (
     <div className={`group flex ${mine ? "justify-end" : "justify-start"} gap-1`}>
@@ -36,19 +48,28 @@ export function MessageBubble({ msg, mine, state, onDelete, onReport }: Props) {
         {text && <p className={msg.isDeletedForAll ? "italic opacity-70" : "whitespace-pre-wrap"}>{text}</p>}
 
         <p className={`text-[10px] flex items-center gap-1 ${mine ? "opacity-80" : "text-muted-foreground"} justify-end`}>
-          {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
+          {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}{msg.isEdited && !msg.isDeletedForAll ? ` · ${t("adoptmsg.msg.edited")}` : ""}
           {mine && <ReceiptIcon state={state ?? "sent"} />}
         </p>
       </div>
 
       {/* Hover menu */}
-      {(onDelete || onReport) && (
+      {(onDelete || onReport || onPin || canEdit || canRecall) && (
         <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-3 w-3" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align={mine ? "end" : "start"}>
+              {canEdit && (
+                <DropdownMenuItem onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</DropdownMenuItem>
+              )}
+              {canRecall && (
+                <DropdownMenuItem onClick={onRecall}><Undo2 className="h-3.5 w-3.5 mr-2" /> Recall</DropdownMenuItem>
+              )}
+              {onPin && !msg.isDeletedForAll && (
+                <DropdownMenuItem onClick={onPin}><Pin className="h-3.5 w-3.5 mr-2" /> Pin</DropdownMenuItem>
+              )}
               {mine && onDelete && (
                 <DropdownMenuItem destructive onClick={onDelete}>
                   <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete for everyone

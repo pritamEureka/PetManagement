@@ -20,11 +20,17 @@ public class AppointmentService : IAppointmentService
     private readonly ISlotLockService _slotLock;
     private readonly IUnitOfWork _uow;
     private readonly IWaitlistNotifier? _waitlist;
+    private readonly Application.Modules.ClinicPlus.IBookingPolicyService? _policy;
+    private readonly Application.Modules.ClinicPlus.IClinicalGate? _gate;
 
     public AppointmentService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
-        ISlotLockService slotLock, IUnitOfWork uow, IWaitlistNotifier? waitlist = null)
+        ISlotLockService slotLock, IUnitOfWork uow, IWaitlistNotifier? waitlist = null,
+        Application.Modules.ClinicPlus.IBookingPolicyService? policy = null,
+        Application.Modules.ClinicPlus.IClinicalGate? gate = null)
     {
         _waitlist = waitlist;
+        _policy = policy;
+        _gate = gate;
         _db = db;
         _current = current;
         _kafka = kafka;
@@ -133,6 +139,7 @@ public class AppointmentService : IAppointmentService
                 ConfirmedAt = startStatus == AppointmentStatus.Confirmed ? DateTime.UtcNow : null
             };
             _db.Appointments.Add(appt);
+            if (_policy is not null) await _policy.ApplyOnBookingAsync(appt, token); // deposit row (if the doctor has a policy)
 
             slot.Status = SlotStatus.Booked;
             slot.AppointmentId = appt.Id;
@@ -156,6 +163,7 @@ public class AppointmentService : IAppointmentService
                 null, null, DateTime.UtcNow);
         }, ct);
 
+        Pawzaroo.Infrastructure.Observability.PawzarooTelemetry.BookingCreated.Add(1);
         return result!;
     }
 
@@ -170,6 +178,7 @@ public class AppointmentService : IAppointmentService
             or AppointmentStatus.CancelledByUser or AppointmentStatus.Completed
             or AppointmentStatus.NoShow or AppointmentStatus.Refunded)
             throw new ConflictException("Cannot reschedule a closed appointment.");
+        if (_policy is not null) await _policy.EnsureRescheduleAllowedAsync(appt, ct);
 
         await using var releaser = await _slotLock.AcquireAsync(appt.DoctorId, input.NewTimeSlotId, TimeSpan.FromSeconds(5), ct);
 
@@ -242,6 +251,8 @@ public class AppointmentService : IAppointmentService
 
         appt.Status = byDoctor ? AppointmentStatus.CancelledByDoctor : AppointmentStatus.CancelledByUser;
         appt.CancellationReason = input.Reason;
+        // Cancellation policy: resolves the deposit (fee / refund). Result is readable via GET appointments/{id}/cancellation-outcome.
+        if (_policy is not null) await _policy.ApplyCancellationAsync(appt, byDoctor, waivePenalty: false, ct);
         DoctorTimeSlot? freedSlot = null;
         if (appt.TimeSlotId is { } slotId)
         {
@@ -286,12 +297,15 @@ public class AppointmentService : IAppointmentService
         await _kafka.PublishAsync(VetTopics.Appointments, new AppointmentConfirmed(appt.Id, DateTime.UtcNow), appt.Id.ToString(), ct);
     }
 
-    public async Task CompleteAsync(Guid id, CancellationToken ct = default)
+    public Task CompleteAsync(Guid id, CancellationToken ct = default) => CompleteWithOverrideAsync(id, null, ct);
+
+    public async Task CompleteWithOverrideAsync(Guid id, string? overrideReason, CancellationToken ct = default)
     {
         var uid = _current.UserId ?? throw new ForbiddenException();
         var appt = await _db.Appointments.SingleOrDefaultAsync(a => a.Id == id, ct)
             ?? throw new NotFoundException("Appointment", id);
         if (!await _db.Doctors.AnyAsync(d => d.Id == appt.DoctorId && d.UserId == uid, ct)) throw new ForbiddenException();
+        if (_gate is not null) await _gate.EnsureCanCompleteAsync(appt, overrideReason, ct); // Clinical:RequireFinalizedEncounter
         appt.Status = AppointmentStatus.Completed;
         appt.CompletedAt = DateTime.UtcNow;
         // Mirror the visit into the pet's health history in the same transaction.
@@ -307,6 +321,7 @@ public class AppointmentService : IAppointmentService
             ?? throw new NotFoundException("Appointment", id);
         if (!await _db.Doctors.AnyAsync(d => d.Id == appt.DoctorId && d.UserId == uid, ct)) throw new ForbiddenException();
         appt.Status = AppointmentStatus.NoShow;
+        if (_policy is not null) await _policy.ApplyNoShowAsync(appt, ct);
         await _db.SaveChangesAsync(ct);
         await _kafka.PublishAsync(VetTopics.Appointments, new AppointmentNoShow(appt.Id, DateTime.UtcNow), appt.Id.ToString(), ct);
     }
@@ -324,6 +339,7 @@ public class AppointmentService : IAppointmentService
                      ?? throw new NotFoundException("Doctor", appt.DoctorId);
         appt.Status = doctor.AutoConfirmAppointments ? AppointmentStatus.Confirmed : AppointmentStatus.PendingConfirmation;
         if (appt.Status == AppointmentStatus.Confirmed) appt.ConfirmedAt = DateTime.UtcNow;
+        if (_policy is not null) await _policy.OnPaidAsync(appt, ct);
 
         await _db.SaveChangesAsync(ct);
         await _kafka.PublishAsync(VetTopics.Appointments,

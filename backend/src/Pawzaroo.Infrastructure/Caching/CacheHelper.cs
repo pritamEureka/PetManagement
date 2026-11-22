@@ -86,6 +86,39 @@ public class CacheHelper
         return fresh;
     }
 
+    /// <summary>
+    /// Read-through with stampede protection (single-flight): concurrent misses for the same key run
+    /// <paramref name="loader"/> once per process (SemaphoreSlim) and once per cluster (short Redis lock);
+    /// the others pick the value up from the cache. Fails open when Redis is unavailable.
+    /// </summary>
+    public Task<T?> GetOrCreateAsync<T>(string key, Func<CancellationToken, Task<T?>> loader, TimeSpan ttl, CancellationToken ct = default)
+        => new SingleFlight(new RedisSingleFlightBackend(this)).GetOrCreateAsync(key, loader, ttl, ct);
+
+    private sealed class RedisSingleFlightBackend : ISingleFlightBackend
+    {
+        private readonly CacheHelper _c;
+        public RedisSingleFlightBackend(CacheHelper c) => _c = c;
+        private static string LockKey(string key) => "lock:sf:" + key;
+
+        public async Task<(bool Hit, T? Value)> TryGetAsync<T>(string key, CancellationToken ct)
+        {
+            var v = await _c.Db.StringGetAsync(key);
+            return v.IsNullOrEmpty ? (false, default) : (true, JsonSerializer.Deserialize<T>(v!, Json));
+        }
+
+        public Task SetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken ct)
+            => _c.Db.StringSetAsync(key, JsonSerializer.Serialize(value, Json), ttl);
+
+        public async Task<string?> TryLockAsync(string key, TimeSpan ttl, CancellationToken ct)
+        {
+            var token = Guid.NewGuid().ToString("N");
+            return await _c.Db.LockTakeAsync(LockKey(key), token, ttl) ? token : null;
+        }
+
+        public Task UnlockAsync(string key, string token, CancellationToken ct)
+            => _c.Db.LockReleaseAsync(LockKey(key), token);
+    }
+
     // ---- Counters -----------------------------------------------------------
 
     public async Task<long> IncrementAsync(string key, long delta = 1, TimeSpan? ttl = null)

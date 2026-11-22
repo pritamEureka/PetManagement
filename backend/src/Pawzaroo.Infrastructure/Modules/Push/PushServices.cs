@@ -186,6 +186,12 @@ public class PushDispatcher : IPushDispatcher
         var pref = await _db.Set<NotificationPreference>().AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId && p.Category == category, ct);
         var quiet = await _db.Set<NotificationQuietHours>().AsNoTracking().FirstOrDefaultAsync(q => q.UserId == userId, ct);
+        // Category-level mute (scope Category). Conversation/community/source mutes are enforced by
+        // INotificationMuteService.IsMutedAsync, which producers that know those ids should call.
+        var categoryMuted = await _db.Set<NotificationMute>().AsNoTracking().AnyAsync(m =>
+            m.UserId == userId && m.Scope == NotificationMuteScope.Category && m.ScopeId == category
+            && (m.MutedUntil == null || m.MutedUntil > now), ct);
+        if (categoryMuted) return false;
         return NotificationPolicy.ShouldDeliver(
             NotificationChannel.Push,
             pref is null ? null : new ChannelPrefs(pref.InAppEnabled, pref.PushEnabled, pref.EmailEnabled),

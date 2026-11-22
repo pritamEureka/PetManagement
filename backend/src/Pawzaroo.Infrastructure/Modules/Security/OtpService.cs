@@ -23,16 +23,18 @@ public class OtpService : IOtpService
     private readonly IOtpDeliveryService _delivery;
     private readonly IRedisRateLimiter _rate;
     private readonly ILogger<OtpService> _logger;
+    private readonly Pawzaroo.Application.Modules.SecurityPlus.ISecuritySignalService? _signals;
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(5);
     private const int MaxAttempts = 5;
 
     public OtpService(ApplicationDbContext db, IOtpDeliveryService delivery,
-        IRedisRateLimiter rate, ILogger<OtpService> logger)
+        IRedisRateLimiter rate, ILogger<OtpService> logger, Pawzaroo.Application.Modules.SecurityPlus.ISecuritySignalService? signals = null)
     {
         _db = db;
         _delivery = delivery;
         _rate = rate;
         _logger = logger;
+        _signals = signals;
     }
 
     public async Task IssueAsync(Guid userId, OtpPurpose purpose, string destination, CancellationToken ct = default)
@@ -77,11 +79,16 @@ public class OtpService : IOtpService
 
     public async Task<bool> VerifyAsync(Guid userId, OtpPurpose purpose, string code, CancellationToken ct = default)
     {
+        if (_signals is not null && await _signals.IsOtpLockedAsync(userId, ct)) return false;
         var row = await _db.OtpCodes
             .Where(o => o.UserId == userId && o.Purpose == purpose && !o.Consumed && o.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(o => o.CreatedAt)
             .FirstOrDefaultAsync(ct);
-        if (row is null) return false;
+        if (row is null)
+        {
+            if (_signals is not null) await _signals.RecordOtpFailureAsync(userId, null, ct);
+            return false;
+        }
 
         row.Attempts++;
         var expected = Hash(userId, code);
@@ -89,6 +96,7 @@ public class OtpService : IOtpService
         var ok = ConstantTimeEquals(expected, row.CodeHash);
         if (ok || row.Attempts >= MaxAttempts) row.Consumed = true;
         await _db.SaveChangesAsync(ct);
+        if (!ok && _signals is not null) await _signals.RecordOtpFailureAsync(userId, null, ct);
         return ok;
     }
 

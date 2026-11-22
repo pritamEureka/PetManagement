@@ -1,6 +1,12 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { uxEn, uxBn } from "./i18n.ux";
+import { socialEn, socialBn } from "./i18n.social";
+import { adoptMsgEn, adoptMsgBn } from "./i18n.adoptmsg";
+import { adminEn, adminBn } from "./i18n.admin";
+import { care2En, care2Bn } from "./i18n.care2";
+import { commerce2En, commerce2Bn } from "./i18n.commerce2";
 
 export type Locale = "en" | "bn";
 export const SUPPORTED_LOCALES: readonly Locale[] = ["en", "bn"];
@@ -947,7 +953,20 @@ export const bn: Catalog = {
   "events.emptyDesc": "বড় ব্যাসার্ধ বা অন্য শহর চেষ্টা করুন।",
 };
 
+// UX-package catalogs (pickers, drafts, uploads, notifications, API error codes).
+Object.assign(en, uxEn);
+Object.assign(bn, uxBn);
+Object.assign(en, adminEn, care2En, commerce2En);
+Object.assign(bn, adminBn, care2Bn, commerce2Bn);
+Object.assign(en, socialEn, adoptMsgEn);
+Object.assign(bn, socialBn, adoptMsgBn);
+
 export const catalogs: Record<Locale, Catalog> = { en, bn };
+
+/** True when the English catalog defines the key (used to fall back to server messages). */
+export function hasKey(key: string): boolean {
+  return key in en;
+}
 
 export type TranslateVars = Record<string, string | number>;
 

@@ -53,7 +53,7 @@ export function AssignRoleDialog({ open, onOpenChange, userId, userDisplayName, 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-96 overflow-y-auto pe-1">
           {allRoles.map((r) => {
             const assigned = assignedIds.has(r.id);
             return (

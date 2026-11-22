@@ -22,4 +22,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Update="Unit/Security/AuthorizationAllowlist.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="contracts/*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@ import {
 } from "@/api/security";
 import { ModerationActionModal } from "@/components/security/ModerationActionModal";
 import { toast } from "@/components/ui/sonner";
+import { formatDateTime } from "@/lib/format";
 
 const STATUSES: ReportStatus[] = ["Open", "UnderReview", "Resolved", "Dismissed"];
 const TYPES: ReportTargetType[] = [
@@ -84,7 +85,7 @@ export function ReportedContentPage() {
                 </div>
                 <Button size="sm" onClick={() =>
                   setModAction({ id: g.reports[0].id, targetType: g.targetType, targetId: g.targetId })}>
-                  <Gavel className="h-3 w-3 mr-1" /> Take action
+                  <Gavel className="h-3 w-3 me-1" /> Take action
                 </Button>
               </CardHeader>
               <CardContent className="space-y-2 text-sm divide-y">
@@ -104,7 +105,7 @@ export function ReportedContentPage() {
                     </div>
                     {r.details && <p className="text-muted-foreground">{r.details}</p>}
                     <p className="text-xs text-muted-foreground">
-                      By {r.reporterDisplayName} · {new Date(r.createdAt).toLocaleString()}
+                      By {r.reporterDisplayName} · {formatDateTime(r.createdAt)}
                     </p>
                   </div>
                 ))}

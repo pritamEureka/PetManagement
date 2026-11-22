@@ -21,10 +21,14 @@ public class UserDeviceService : IUserDeviceService
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _current;
 
-    public UserDeviceService(ApplicationDbContext db, ICurrentUserService current)
+    private readonly Pawzaroo.Application.Modules.SecurityPlus.IIpGeoLookup? _geo;
+
+    public UserDeviceService(ApplicationDbContext db, ICurrentUserService current,
+        Pawzaroo.Application.Modules.SecurityPlus.IIpGeoLookup? geo = null)
     {
         _db = db;
         _current = current;
+        _geo = geo;
     }
 
     public async Task<UserDevice> TrackOnLoginAsync(Guid userId, string? userAgent, string? ip,
@@ -52,6 +56,10 @@ public class UserDeviceService : IUserDeviceService
             device.LastSeenAt = DateTime.UtcNow;
             device.IpAddress = ip ?? device.IpAddress;
         }
+        // Record country/city when a geo source knows them (no-op without an edge proxy / GeoIP provider).
+        var geo = _geo?.Lookup(ip);
+        if (geo?.Country is { Length: > 0 } c) device.IpCountry = c.Length > 64 ? c[..64] : c;
+        if (geo?.City is { Length: > 0 } city) device.IpCity = city.Length > 128 ? city[..128] : city;
         await _db.SaveChangesAsync(ct);
         return device;
     }

@@ -29,6 +29,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost("checkout")]
+    [Pawzaroo.Api.Filters.Idempotent]
     public Task<OrderDto> Checkout([FromBody] CheckoutInput input, CancellationToken ct) => _orders.CheckoutAsync(input, ct);
 
     [HttpGet("mine")]
@@ -104,6 +105,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/refund")]
+    [Pawzaroo.Api.Filters.Idempotent]
     [Permission(Permissions.Orders.Refund)]
     public async Task<IActionResult> Refund(Guid id, [FromBody] RefundBody? body, CancellationToken ct)
     {
@@ -125,6 +127,7 @@ public class OrdersController : ControllerBase
         => _returns.ListAsync(page, pageSize, ct);
 
     [HttpPost("returns/{id:guid}/approve")]
+    [Pawzaroo.Api.Filters.Idempotent]
     [Permission(Permissions.Orders.Refund)]
     public async Task<IActionResult> ApproveReturn(Guid id, [FromBody] RefundBody? body, CancellationToken ct)
     {

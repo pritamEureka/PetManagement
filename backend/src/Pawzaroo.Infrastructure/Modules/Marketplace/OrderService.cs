@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Pawzaroo.Application.Common.Interfaces;
 using Pawzaroo.Application.Common.Permissions;
 using Pawzaroo.Application.Modules.CommercePlus;
+using Pawzaroo.Application.Modules.Marketplace;
 using Pawzaroo.Application.Modules.Marketplace.Dtos;
 using Pawzaroo.Application.Modules.Marketplace.Events;
 using Pawzaroo.Application.Modules.Marketplace.Services;
@@ -25,11 +26,14 @@ public class OrderService : IOrderService
     private readonly IPaymentGateway _paymentGateway;
     private readonly MarketplaceOptions _market;
     private readonly ILedgerRecorder _ledger;
+    private readonly IOrderPricingPipeline? _pricing; // loyalty-plus pricing pipeline (optional)
+    private readonly Pawzaroo.Application.Modules.LogisticsPlus.IShippingQuoteService? _shippingQuote; // logistics-plus zones (optional)
 
     public OrderService(ApplicationDbContext db, ICurrentUserService current, IKafkaProducer kafka,
         IAuditLogger audit, IInventoryService inventory, ICommissionConfigurationService commission,
         INotificationService notify, IPaymentGateway paymentGateway, IOptions<MarketplaceOptions> market,
-        ILedgerRecorder ledger)
+        ILedgerRecorder ledger, IOrderPricingPipeline? pricing = null,
+        Pawzaroo.Application.Modules.LogisticsPlus.IShippingQuoteService? shippingQuote = null)
     {
         _db = db;
         _current = current;
@@ -41,6 +45,8 @@ public class OrderService : IOrderService
         _paymentGateway = paymentGateway;
         _market = market.Value;
         _ledger = ledger;
+        _pricing = pricing;
+        _shippingQuote = shippingQuote;
     }
 
     private Guid Uid() => _current.UserId ?? throw new ForbiddenException();
@@ -50,7 +56,37 @@ public class OrderService : IOrderService
     /// resolves per-store commission, and ships an OrderPlaced Kafka event.
     /// Wrapped in a transaction so partial stock decrements never leak.
     /// </summary>
-    public async Task<OrderDto> CheckoutAsync(CheckoutInput input, CancellationToken ct = default)
+    public Task<OrderDto> CheckoutAsync(CheckoutInput input, CancellationToken ct = default)
+    {
+        // [reliability:begin] Run the whole checkout (stock decrement, order, payment record, cart clear, gateway session)
+        // as ONE unit through the DbContext's execution strategy, so a retriable failure re-runs the full transaction
+        // from a clean change tracker instead of leaving partial state behind.
+        var strategy = _db.Database.CreateExecutionStrategy();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        return RecordCheckoutAsync();
+        async Task<OrderDto> RecordCheckoutAsync()
+        {
+            var outcome = "error";
+            try
+            {
+                var order = await strategy.ExecuteAsync(async () =>
+                {
+                    _db.ChangeTracker.Clear();
+                    return await CheckoutCoreAsync(input, ct);
+                });
+                outcome = "ok";
+                return order;
+            }
+            finally
+            {
+                Pawzaroo.Infrastructure.Observability.PawzarooTelemetry.CheckoutDurationMs.Record(sw.Elapsed.TotalMilliseconds);
+                Pawzaroo.Infrastructure.Observability.PawzarooTelemetry.CheckoutCompleted.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+            }
+        }
+        // [reliability:end]
+    }
+
+    private async Task<OrderDto> CheckoutCoreAsync(CheckoutInput input, CancellationToken ct)
     {
         var uid = Uid();
         var cartLines = await _db.CartItems.Include(c => c.Product).ThenInclude(p => p.Store)
@@ -183,6 +219,36 @@ public class OrderService : IOrderService
 
         var subtotalAfterDiscount = order.Subtotal - discount;
         var (shipping, tax, total) = FeeCalculator.Compute(subtotalAfterDiscount, _market);
+        // ---- BEGIN loyalty-plus pricing pipeline (promotions, bundles, loyalty points, gift cards) ----
+        if (_pricing is not null)
+        {
+            var pricingLines = itemVariants.Select(iv => new PricingLine(
+                iv.Item.ProductId, iv.Item.StoreId,
+                cartLines.First(c => c.ProductId == iv.Item.ProductId).Product.CategoryId,
+                iv.VariantId, iv.Item.Quantity, iv.Item.UnitPrice)).ToList();
+            var market = _market;
+            var priced = await _pricing.ApplyAsync(new OrderPricingRequest(
+                uid, order.Id, pricingLines, order.Subtotal, discount, !string.IsNullOrWhiteSpace(order.CouponCode),
+                s => FeeCalculator.Compute(s, market), input.RedeemLoyaltyPoints, input.GiftCardCode,
+                paymentMethodNormalized == "sslcommerz" ? 1m : 0m, true), ct);
+            if (priced.MerchandiseDiscount > 0m)
+            {
+                discount += priced.MerchandiseDiscount;
+                order.DiscountAmount = discount;
+            }
+            shipping = priced.ShippingFee; tax = priced.Tax; total = priced.Total;
+        }
+        // ---- END loyalty-plus pricing pipeline ----
+        // ---- BEGIN logistics-plus delivery zones (falls back to the fee above when no zone matches every store) ----
+        if (_shippingQuote is not null)
+        {
+            var zoneNets = Pawzaroo.Infrastructure.Features.LedgerMath.NetOfDiscount(order.Items.Select(i => i.Total).ToList(), discount);
+            var perStore = order.Items.Select((i, ix) => (i.StoreId, Net: zoneNets[ix])).GroupBy(x => x.StoreId)
+                .Select(g => (g.Key, g.Sum(x => x.Net))).ToList();
+            var zoneFee = await _shippingQuote.TryQuoteOrderFeeAsync(perStore, city, DateTime.UtcNow, ct);
+            if (zoneFee.HasValue) { total = total - shipping + zoneFee.Value; shipping = zoneFee.Value; }
+        }
+        // ---- END logistics-plus delivery zones ----
         order.ShippingFee = shipping;
         order.Tax = tax;
         order.Total = total;
@@ -286,25 +352,40 @@ public class OrderService : IOrderService
 
             payment.TransactionRef = session.SessionId;
             checkoutUrl = session.CheckoutUrl;
+            // [reliability] immutable audit row for the initiation, committed atomically with the payment record.
+            _db.Set<PaymentAuditEntry>().Add(Pawzaroo.Infrastructure.Features.Reliability.PaymentAuditService.Build(
+                new Pawzaroo.Application.Modules.Reliability.PaymentAuditRecord(
+                    PaymentAuditEventType.Initiated, "sslcommerz", order.Id, payment.Id, order.Total, "BDT",
+                    Note: $"session {session.SessionId}")));
             await _db.SaveChangesAsync(ct);
         }
 
         await tx.CommitAsync(ct);
 
-        await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
-            new OrderPlaced(order.Id, order.OrderNumber, uid, order.Total, order.Items.Count,
-                storeIds.ToList(), DateTime.UtcNow),
-            order.Id.ToString(), ct);
-
-        foreach (var sid in storeIds)
+        // [reliability:begin] The order is committed: a failing event/notification/audit side effect must NOT turn
+        // into a 5xx (the client would retry and hit an empty cart / duplicate). Best-effort from here on.
+        try
         {
-            var ownerId = await _db.Stores.AsNoTracking().Where(s => s.Id == sid).Select(s => s.OwnerUserId).FirstOrDefaultAsync(ct);
-            if (ownerId != Guid.Empty)
-                await _notify.NotifyUserAsync(ownerId, "New order received",
-                    $"Order {order.OrderNumber} placed.", new { orderId = order.Id }, ct);
-        }
+            await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
+                new OrderPlaced(order.Id, order.OrderNumber, uid, order.Total, order.Items.Count,
+                    storeIds.ToList(), DateTime.UtcNow),
+                order.Id.ToString(), ct);
 
-        await _audit.LogAsync("order.checkout", "Order", order.Id.ToString(), order.OrderNumber, ct: ct);
+            foreach (var sid in storeIds)
+            {
+                var ownerId = await _db.Stores.AsNoTracking().Where(s => s.Id == sid).Select(s => s.OwnerUserId).FirstOrDefaultAsync(ct);
+                if (ownerId != Guid.Empty)
+                    await _notify.NotifyUserAsync(ownerId, "New order received",
+                        $"Order {order.OrderNumber} placed.", new { orderId = order.Id }, ct);
+            }
+
+            await _audit.LogAsync("order.checkout", "Order", order.Id.ToString(), order.OrderNumber, ct: ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            System.Diagnostics.Trace.TraceError($"Post-commit checkout side effects failed for order {order.Id}: {ex}");
+        }
+        // [reliability:end]
         var dto = (await GetByIdAsync(order.Id, ct))!;
         return checkoutUrl is null ? dto : dto with { PaymentCheckoutUrl = checkoutUrl };
     }
@@ -318,6 +399,9 @@ public class OrderService : IOrderService
     /// </summary>
     private async Task AfterCloseAsync(Order order, CancellationToken ct)
     {
+        // loyalty-plus: restore redeemed points / gift card balance, reverse earned points (idempotent, never throws)
+        if (_pricing is not null) await _pricing.OnOrderClosedAsync(order.Id, null, ct);
+
         var sales = await _db.InventoryAdjustments.AsNoTracking()
             .Where(a => a.OrderId == order.Id && a.Reason == InventoryReason.Sale
                         && a.Notes != null && a.Notes.StartsWith(VariantNotePrefix))
@@ -451,6 +535,7 @@ public class OrderService : IOrderService
         order.UpdatedBy = _current.UserId;
         await _db.SaveChangesAsync(ct);
         if (status == ShipmentStatus.Delivered) await _ledger.RecordOrderEarningsAsync(order.Id, ct);
+        if (status == ShipmentStatus.Delivered && _pricing is not null) await _pricing.OnOrderDeliveredAsync(order.Id, ct); // loyalty-plus
 
         await _kafka.PublishAsync(MarketplaceTopics.OrderEvents,
             new OrderShipmentStatusChanged(order.Id, order.OrderNumber, status.ToString(), trackingNumber, DateTime.UtcNow),
@@ -574,6 +659,7 @@ public class OrderService : IOrderService
         await _db.SaveChangesAsync(ct);
 
         await _ledger.RecordOrderRefundAsync(order.Id, amount, ct);
+        if (_pricing is not null) await _pricing.OnOrderClosedAsync(order.Id, amount, ct); // loyalty-plus
 
         var refundAmount = amount ?? order.Total;
         await _kafka.PublishAsync(MarketplaceTopics.PaymentEvents,

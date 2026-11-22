@@ -38,3 +38,6 @@ export const notificationsApi = {
   markAllAsRead: () =>
     api.post("/v1/notifications/read-all")
 };
+
+/** Dismiss (soft-delete) a notification. Used with the undo soft-commit helper. */
+export const dismissNotification = (id: string) => api.delete(`/v1/notifications/${id}`);

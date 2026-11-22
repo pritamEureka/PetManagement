@@ -4,7 +4,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { UserPicker } from "@/components/pickers";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/sonner";
 import { adoptionApi } from "@/api/adoption";
@@ -44,12 +44,12 @@ export function MarkAsAdoptedDialog({ open, onOpenChange, listingId, onDone }: P
         <DialogHeader>
           <DialogTitle>Mark as adopted</DialogTitle>
           <DialogDescription>
-            The listing will be closed to new requests. You can optionally record the adopter's user ID for your records.
+            The listing will be closed to new requests. You can optionally pick the adopter from the user directory.
           </DialogDescription>
         </DialogHeader>
         <div>
-          <Label htmlFor="adopter">Adopter user ID (optional)</Label>
-          <Input id="adopter" placeholder="UUID" value={adopterId} onChange={(e) => setAdopterId(e.target.value)} />
+          <Label htmlFor="adopter">Adopter (optional)</Label>
+          <UserPicker id="adopter" value={adopterId} onChange={(id) => setAdopterId(id)} clearable />
         </div>
         {validId && (
           <div className="space-y-2 rounded-md border p-3">

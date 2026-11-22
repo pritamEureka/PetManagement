@@ -62,7 +62,7 @@ export function RolesPage() {
           </p>
         </div>
         <Can permission="roles.create">
-          <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> New role</Button>
+          <Button onClick={openCreate}><Plus className="h-4 w-4 me-2" /> New role</Button>
         </Can>
       </div>
 
@@ -92,11 +92,11 @@ export function RolesPage() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="outline" onClick={() => setViewing(r)}>
-                  <Eye className="h-3 w-3 mr-1" /> View
+                  <Eye className="h-3 w-3 me-1" /> View
                 </Button>
                 <Can permission="roles.edit">
                   <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
-                    <Pencil className="h-3 w-3 mr-1" /> Edit
+                    <Pencil className="h-3 w-3 me-1" /> Edit
                   </Button>
                 </Can>
                 <Can permission="roles.delete">
@@ -104,7 +104,7 @@ export function RolesPage() {
                     size="sm" variant="destructive" onClick={() => onDelete(r)}
                     disabled={r.isSystem}
                   >
-                    <Trash2 className="h-3 w-3 mr-1" /> Delete
+                    <Trash2 className="h-3 w-3 me-1" /> Delete
                   </Button>
                 </Can>
               </div>
@@ -202,7 +202,7 @@ function RoleViewDialog({
             This role has no permissions assigned.
           </p>
         ) : (
-          <ScrollArea className="max-h-96 -mx-1 pr-2">
+          <ScrollArea className="max-h-96 -mx-1 pe-2">
             <div className="space-y-4 px-1">
               {grouped.map((g) => (
                 <div key={g.module} className="space-y-1.5">

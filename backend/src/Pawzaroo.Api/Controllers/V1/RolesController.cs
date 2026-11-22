@@ -44,6 +44,7 @@ public class RolesController : ControllerBase
     [Permission(Permissions.Roles.Edit)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRoleDto dto, CancellationToken ct)
     {
+        await HttpContext.RequestServices.GetRequiredService<Pawzaroo.Application.Modules.SecurityPlus.IStepUpAuthService>().RequireRecentAsync(ct);
         await _perms.UpdateRoleAsync(id, dto.Description, dto.Permissions, ct);
         return NoContent();
     }

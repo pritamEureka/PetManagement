@@ -30,13 +30,37 @@ public class TwoFactorService : ITwoFactorService
     private const int Digits = 6;
 
     public TwoFactorService(ApplicationDbContext db, ICurrentUserService current,
-        IPasswordHasher hasher, Microsoft.Extensions.Options.IOptions<Pawzaroo.Infrastructure.Identity.JwtSettings> jwt)
+        IPasswordHasher hasher, Microsoft.Extensions.Options.IOptions<Pawzaroo.Infrastructure.Identity.JwtSettings> jwt,
+        Microsoft.Extensions.Configuration.IConfiguration? config = null)
     {
         _db = db;
         _current = current;
         _hasher = hasher;
         _jwtSettings = jwt.Value;
+        _config = config;
     }
+
+    private readonly Microsoft.Extensions.Configuration.IConfiguration? _config;
+
+    /// <summary>
+    /// Key material for the TOTP-seed cipher, in priority order. New seeds are always encrypted with the FIRST entry;
+    /// decryption tries every entry so rotating the JWT signing key (Jwt:PreviousSigningKeys) never strands stored seeds.
+    /// Set Security:TwoFactorKey to decouple the seed cipher from JWT rotation entirely.
+    /// </summary>
+    private IReadOnlyList<string> SeedKeyMaterial()
+    {
+        var list = new List<string>();
+        var dedicated = _config?["Security:TwoFactorKey"];
+        if (!string.IsNullOrWhiteSpace(dedicated)) list.Add(dedicated);
+        list.Add(_jwtSettings.SigningKey);
+        var previous = _config is not null
+            ? Pawzaroo.Infrastructure.Identity.JwtKeyRing.ReadPreviousKeys(_config)
+            : _jwtSettings.PreviousSigningKeys;
+        foreach (var k in previous) if (!string.IsNullOrWhiteSpace(k) && !list.Contains(k)) list.Add(k);
+        return list;
+    }
+
+    private static byte[] DeriveSeedKey(string material) => SHA256.HashData(Encoding.UTF8.GetBytes(material + ":2fa"));
 
     public async Task<TwoFactorSetupDto> BeginSetupAsync(CancellationToken ct = default)
     {
@@ -160,7 +184,7 @@ public class TwoFactorService : ITwoFactorService
 
     private string EncryptSeed(byte[] secret)
     {
-        var key = SHA256.HashData(Encoding.UTF8.GetBytes(_jwtSettings.SigningKey + ":2fa"));
+        var key = DeriveSeedKey(SeedKeyMaterial()[0]);
         var nonce = RandomNumberGenerator.GetBytes(12);
         var cipher = new byte[secret.Length];
         var tag = new byte[16];
@@ -175,11 +199,19 @@ public class TwoFactorService : ITwoFactorService
         var nonce = blob[..12];
         var tag = blob[12..28];
         var cipher = blob[28..];
-        var key = SHA256.HashData(Encoding.UTF8.GetBytes(_jwtSettings.SigningKey + ":2fa"));
-        var plain = new byte[cipher.Length];
-        using var aes = new AesGcm(key, tag.Length);
-        aes.Decrypt(nonce, cipher, tag, plain);
-        return plain;
+        CryptographicException? last = null;
+        foreach (var material in SeedKeyMaterial())
+        {
+            try
+            {
+                var plain = new byte[cipher.Length];
+                using var aes = new AesGcm(DeriveSeedKey(material), tag.Length);
+                aes.Decrypt(nonce, cipher, tag, plain);
+                return plain;
+            }
+            catch (CryptographicException ex) { last = ex; }
+        }
+        throw last ?? new CryptographicException("No key could decrypt the 2FA seed.");
     }
 
     private static string Base32Encode(byte[] data)

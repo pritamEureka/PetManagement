@@ -1,4 +1,5 @@
 import { api } from "./client";
+import { withIdempotency } from "@/lib/idempotency";
 import type { BookAppointmentInput, DoctorRegistrationInput, AvailabilityRuleInput } from "@/lib/schemas";
 
 export type AppointmentStatus =
@@ -156,7 +157,7 @@ export const appointmentsApi = {
              unwrap<CursorPage<Appointment>>(api.get("/v1/appointments/clinic", { params: p })),
   get:     (id: string) => unwrap<Appointment>(api.get(`/v1/appointments/${id}`)),
 
-  book:    (data: BookAppointmentInput) => unwrap<Appointment>(api.post("/v1/appointments/book", data)),
+  book:    (data: BookAppointmentInput) => unwrap<Appointment>(api.post("/v1/appointments/book", data, withIdempotency())),
   reschedule: (id: string, newTimeSlotId: string) => api.post(`/v1/appointments/${id}/reschedule`, { newTimeSlotId }),
   cancel:  (id: string, reason?: string) => api.post(`/v1/appointments/${id}/cancel`, { reason }),
   cancelByDoctor: (id: string, reason?: string) => api.post(`/v1/appointments/${id}/cancel-by-doctor`, { reason }),
